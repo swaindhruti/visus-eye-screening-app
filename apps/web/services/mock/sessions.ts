@@ -1,32 +1,37 @@
-// Stand-in for the server until the routes are live. The scores here are canned:
-// the real scoring and rules live on the server.
-import { TEST_CATALOG, type Category, type NextStep, type ScoredResult, type Status, type SubmitResult, type TestId, type Verdict } from "@visus/shared";
+// Stand-in for the server (NEXT_PUBLIC_USE_MOCK=1). Scores here are canned;
+// the real scoring and rules live in apps/server.
+import {
+  TEST_CATALOG,
+  type Category,
+  type IntakeChatResponse,
+  type IntakeMessage,
+  type NextStep,
+  type ScoredResult,
+  type SessionSummary,
+  type Status,
+  type SubmitResult,
+  type TestId,
+  type Verdict,
+} from "@visus/shared";
 
-import type { CheckMode, CreatedSession, History, SessionListItem } from "../sessions";
+import type { CheckMode, CreatedSession, NewSession } from "../sessions";
 import { delay, load, save, uid } from "./store";
 
-type MockSession = {
-  id: string;
-  mode: CheckMode;
-  date: string;
-  plan: TestId[];
-  results: ScoredResult[];
-  redFlagShown: boolean;
-};
+type MockSession = { id: string; profileId: string; mode: CheckMode; date: string; plan: TestId[]; results: ScoredResult[]; redFlagShown: boolean };
 
 const REASONS: Partial<Record<TestId, string>> = {
   tumbling_e: "Sharpness of far-away detail",
   clock_dial: "Can make lights streak at night",
   amsler: "Checks your central vision",
   contrast: "Night blur often starts here",
-  near_reading: "Small print up close",
-  glare_night: "Halos and glare from headlights",
   kids_tumbling_e: "Sharpness, made into a game",
   kids_colour_shapes: "Colour vision with shapes",
 };
 
+const eye = (value: string, score: number, status: Status) => ({ value, score, status });
+
 const CANNED: Record<TestId, Omit<ScoredResult, "testId" | "eye">> = {
-  tumbling_e: { score: 82, status: "mild", summary: "Right eye 20/20, left eye 20/30" },
+  tumbling_e: { score: 82, status: "mild", summary: "Right eye 20/20, left eye 20/30", eyes: { right: eye("20/20", 92, "good"), left: eye("20/30", 74, "mild") }, meaning: "Your left eye reads one line less than your right.", tip: "Ask your eye doctor to recheck your left lens." },
   near_reading: { score: 90, status: "good", summary: "Smallest clear line N8" },
   near_point: { score: 84, status: "good", summary: "Right eye 11 cm, left eye 13 cm" },
   clock_dial: { score: 92, status: "good", summary: "Right eye even, left eye even" },
@@ -45,22 +50,32 @@ const CANNED: Record<TestId, Omit<ScoredResult, "testId" | "eye">> = {
 const PLANS: Record<Exclude<CheckMode, "single">, TestId[]> = {
   full: ["tumbling_e", "clock_dial", "amsler", "contrast"],
   quick: ["tumbling_e", "amsler", "clock_dial"],
-  glasses: ["tumbling_e"],
+  glasses: ["tumbling_e", "tumbling_e"],
 };
 
-const sessions = () => load<Record<string, MockSession>>("sessions", {});
-const put = (s: MockSession) => save("sessions", { ...sessions(), [s.id]: s });
+const sessions = () => load<Record<string, MockSession>>("sessions-v2", {});
+const put = (s: MockSession) => save("sessions-v2", { ...sessions(), [s.id]: s });
 
-export async function create(input: { profileId: string; intake: string; mode: CheckMode; testId?: TestId }): Promise<CreatedSession> {
+const FOLLOW_UPS: [string, string[]][] = [
+  ["Is it in both eyes, or one more than the other?", ["Both eyes", "Mostly left", "Mostly right"]],
+  ["How long has it been happening?", ["A few days", "A few weeks", "Months or more"]],
+  ["Any pain, redness or flashes of light?", ["None of those", "Some discomfort", "Yes, flashes"]],
+];
+
+export async function intakeChat(messages: IntakeMessage[]): Promise<IntakeChatResponse> {
   await delay(900);
-  const child = load<{ id: string; isChild: boolean }[]>("profiles", []).find((p) => p.id === input.profileId)?.isChild ?? input.profileId === "p2";
-  const plan =
-    input.mode === "single" && input.testId
-      ? [input.testId]
-      : input.mode === "full" && child
-        ? (["kids_tumbling_e", "kids_colour_shapes"] as TestId[])
-        : PLANS[input.mode === "single" ? "full" : input.mode];
-  const s: MockSession = { id: uid(), mode: input.mode, date: new Date().toISOString(), plan, results: [], redFlagShown: false };
+  const asked = messages.filter((m) => m.from === "ai").length - 1;
+  if (asked >= FOLLOW_UPS.length) return { reply: "", chips: [], done: true };
+  const [reply, chips] = FOLLOW_UPS[asked];
+  return { reply, chips, done: false };
+}
+
+export async function create(input: NewSession): Promise<CreatedSession> {
+  await delay(900);
+  const child = load<{ id: string; isChild: boolean }[]>("profiles-v2", []).find((p) => p.id === input.profileId)?.isChild ?? input.profileId === "p2";
+  const mode = input.mode ?? "full";
+  const plan = mode === "single" && input.testId ? [input.testId] : mode === "full" && child ? (["kids_tumbling_e", "kids_colour_shapes"] as TestId[]) : PLANS[mode === "single" ? "full" : mode];
+  const s: MockSession = { id: uid(), profileId: input.profileId, mode, date: new Date().toISOString(), plan, results: [], redFlagShown: false };
   put(s);
   return {
     sessionId: s.id,
@@ -71,9 +86,17 @@ export async function create(input: { profileId: string; intake: string; mode: C
 
 export async function submit(sessionId: string, r: SubmitResult): Promise<NextStep> {
   await delay(700);
-  const s = sessions()[sessionId] ?? { id: sessionId, mode: "full", date: new Date().toISOString(), plan: PLANS.full, results: [], redFlagShown: false };
-  const canned = s.mode === "glasses" ? { score: 92, status: "good" as const, summary: "Right eye 20/40 → 20/20, left eye 20/50 → 20/20" } : CANNED[r.testId];
-  const result: ScoredResult = { testId: r.testId, eye: r.eye, ...canned };
+  const s = sessions()[sessionId] ?? { id: sessionId, profileId: "p1", mode: "full", date: new Date().toISOString(), plan: PLANS.full, results: [], redFlagShown: false };
+  if (s.mode === "glasses") {
+    const off = r.answers.round === "glasses_off";
+    const result: ScoredResult = off
+      ? { testId: r.testId, eye: r.eye, score: 45, status: "mild", summary: "Without glasses: right eye 20/40, left eye 20/50", eyes: { right: eye("20/40", 50, "mild"), left: eye("20/50", 40, "mild") } }
+      : { testId: r.testId, eye: r.eye, score: 92, status: "good", summary: "With glasses: right eye 20/20, left eye 20/20", eyes: { right: eye("20/20", 92, "good"), left: eye("20/20", 92, "good") } };
+    s.results = [...s.results, result];
+    put(s);
+    return off ? { type: "next_test", result, testId: "tumbling_e", reason: "Now with your glasses on", added: false } : { type: "done", result };
+  }
+  const result: ScoredResult = { testId: r.testId, eye: r.eye, ...CANNED[r.testId] };
   s.results = [...s.results.filter((x) => x.testId !== r.testId), result];
 
   if (r.testId === "amsler" && !s.redFlagShown) {
@@ -87,10 +110,15 @@ export async function submit(sessionId: string, r: SubmitResult): Promise<NextSt
   return { type: "next_test", result, testId: next, reason: REASONS[next] ?? "Next in your plan", added: false };
 }
 
-const worst = (a: Status | undefined, b: Status): Status => {
-  const rank: Status[] = ["good", "mild", "see_doctor"];
-  return !a || rank.indexOf(b) > rank.indexOf(a) ? b : a;
-};
+/** Guest mode: one test, scored, nothing kept. */
+export async function guestScore(r: SubmitResult): Promise<NextStep> {
+  await delay(500);
+  const result: ScoredResult = { testId: r.testId, eye: r.eye, ...CANNED[r.testId] };
+  return r.testId === "amsler" ? { type: "red_flag", result, finding: "Wavy lines near the centre" } : { type: "done", result };
+}
+
+const RANK: Status[] = ["good", "mild", "see_doctor"];
+const worst = (a: Status | undefined, b: Status): Status => (!a || RANK.indexOf(b) > RANK.indexOf(a) ? b : a);
 
 const LENS: Verdict["lens"] = [
   {
@@ -102,20 +130,13 @@ const LENS: Verdict["lens"] = [
       { name: "DuraVision Platinum UV", reason: "Fewer reflections, resists scratches" },
     ],
   },
-  {
-    product: "ZEISS SmartLife",
-    lensType: "Single vision lens",
-    reason: "Made for a life that switches between screens and the world around you, all day.",
-    coatings: [{ name: "DuraVision Platinum UV", reason: "Fewer reflections, resists scratches" }],
-  },
+  { product: "ZEISS SmartLife", lensType: "Single vision lens", reason: "Made for a life that switches between screens and the world around you, all day.", coatings: [{ name: "DuraVision Platinum UV", reason: "Fewer reflections, resists scratches" }] },
 ];
 
 export async function verdict(sessionId: string): Promise<Verdict> {
   await delay(500);
   const s = sessions()[sessionId];
-  const results: ScoredResult[] = s?.results.length
-    ? s.results
-    : PLANS.full.map((testId) => ({ testId, eye: "both", ...CANNED[testId] }));
+  const results: ScoredResult[] = s?.results.length ? s.results : PLANS.full.map((testId) => ({ testId, eye: "both", ...CANNED[testId] }));
   const areas: Partial<Record<Category, Status>> = {};
   for (const r of results) {
     const cat = TEST_CATALOG.find((t) => t.id === r.testId)!.category;
@@ -129,54 +150,41 @@ export async function verdict(sessionId: string): Promise<Verdict> {
     areas,
     results,
     lens: LENS,
+    date: s?.date ?? "2026-10-12T10:00:00Z",
+    minutes: results.reduce((n, r) => n + (TEST_CATALOG.find((t) => t.id === r.testId)?.minutes ?? 1), 0),
   };
 }
 
-const PAST: SessionListItem[] = [
-  { id: "past-oct", date: "2026-10-12", mode: "full", title: "Full eye check", testCount: 4, categoryLabel: "", status: "good" },
-  { id: "past-sep", date: "2026-09-14", mode: "single", title: "Distance acuity", testCount: 1, categoryLabel: "Clarity", status: "mild" },
-  { id: "past-aug", date: "2026-08-20", mode: "full", title: "Full eye check", testCount: 4, categoryLabel: "", status: "good" },
-  { id: "past-jul", date: "2026-07-18", mode: "single", title: "Colour vision plates", testCount: 1, categoryLabel: "Colour", status: "good" },
+const PAST: SessionSummary[] = [
+  { id: "past-oct", profileId: "p1", date: "2026-10-12T10:00:00Z", mode: "full", headline: "Your eyes look healthy", status: "good", tests: ["tumbling_e", "contrast", "colour_plates", "amsler"], scores: { tumbling_e: 86, contrast: 76, colour_plates: 95 } },
+  { id: "past-sep", profileId: "p1", date: "2026-09-14T10:00:00Z", mode: "single", headline: "A little soft in one eye", status: "mild", tests: ["tumbling_e"], scores: { tumbling_e: 84 } },
+  { id: "past-aug", profileId: "p1", date: "2026-08-20T10:00:00Z", mode: "full", headline: "Your eyes look healthy", status: "good", tests: ["tumbling_e", "contrast", "colour_plates"], scores: { tumbling_e: 82, contrast: 73, colour_plates: 93 } },
+  { id: "past-jul", profileId: "p1", date: "2026-07-18T10:00:00Z", mode: "full", headline: "Your eyes look healthy", status: "good", tests: ["tumbling_e", "contrast", "colour_plates"], scores: { tumbling_e: 79, contrast: 71, colour_plates: 94 } },
+  { id: "past-jun", profileId: "p1", date: "2026-06-10T10:00:00Z", mode: "full", headline: "Your eyes look healthy", status: "good", tests: ["tumbling_e", "contrast", "colour_plates"], scores: { tumbling_e: 80, contrast: 72, colour_plates: 92 } },
+  { id: "past-may", profileId: "p1", date: "2026-05-08T10:00:00Z", mode: "full", headline: "Your eyes look healthy", status: "good", tests: ["tumbling_e", "contrast", "colour_plates"], scores: { tumbling_e: 78, contrast: 70, colour_plates: 92 } },
 ];
 
-const CATEGORY_LABEL: Record<Category, string> = {
-  clarity: "Clarity",
-  focus: "Focus",
-  eye_health: "Eye Health",
-  colour: "Colour",
-  comfort: "Comfort",
-  kids: "Kids",
-};
-
-export async function history(): Promise<History> {
+export async function list(): Promise<SessionSummary[]> {
   await delay(250);
   const own = Object.values(sessions())
     .filter((s) => s.results.length > 0)
     .sort((a, b) => b.date.localeCompare(a.date))
-    .map((s): SessionListItem => {
-      const first = TEST_CATALOG.find((t) => t.id === s.results[0].testId)!;
-      return {
+    .map(
+      (s): SessionSummary => ({
         id: s.id,
+        profileId: s.profileId,
         date: s.date,
         mode: s.mode,
-        title: s.mode === "single" ? first.name : s.mode === "quick" ? "Quick check" : s.mode === "glasses" ? "Glasses check" : "Full eye check",
-        testCount: s.results.length,
-        categoryLabel: CATEGORY_LABEL[first.category],
+        headline: "",
         status: s.results.reduce<Status>((w, r) => worst(w, r.status), "good"),
-      };
-    });
-  const months = ["May", "Jun", "Jul", "Aug", "Sep", "Oct"];
-  return {
-    sessions: [...own, ...PAST],
-    trends: [
-      { label: "Sharpness", months, values: [78, 80, 79, 82, 84, 86] },
-      { label: "Contrast", months, values: [70, 72, 71, 74, 73, 76] },
-      { label: "Colour", months, values: [92, 92, 94, 93, 95, 95] },
-    ],
-  };
+        tests: s.results.map((r) => r.testId),
+        scores: Object.fromEntries(s.results.map((r) => [r.testId, r.score])),
+      }),
+    );
+  return [...own, ...PAST];
 }
 
 export async function share(sessionId: string) {
   await delay(400);
-  return { url: `https://visus.app/r/${sessionId}`, expiresAt: new Date(Date.now() + 864e5).toISOString() };
+  return { url: `${typeof location !== "undefined" ? location.origin : "https://visus.app"}/r/${sessionId}`, expiresAt: new Date(Date.now() + 864e5).toISOString() };
 }

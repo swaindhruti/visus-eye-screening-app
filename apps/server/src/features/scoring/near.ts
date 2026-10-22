@@ -1,7 +1,7 @@
 // Scorers for near_reading and near_point (close-up vision).
 import type { Eye } from '@visus/shared';
 
-import { clamp, eachEyeSummary, eyesLabel, num, scoreEachEye, type Answers, type Ctx, type Scored } from './helpers';
+import { clamp, eachEyeSummary, num, scoreEachEye, yourEyes, type Answers, type Ctx, type Scored } from './helpers';
 
 /** near_reading: { smallestRead: "N8" } (mobile) or { smallestLine: "N8" } (web), both eyes together. */
 export function scoreNearReading(answers: Answers, ctx: Ctx): Scored {
@@ -57,8 +57,8 @@ export function scoreNearPoint(answers: Answers, eye: Eye, ctx: Ctx): Scored {
     eyes: result,
     meaning:
       age >= 40
-        ? `Your ${eyesLabel(flagged)} can't focus as close as expected. This is the usual start of presbyopia, and reading or progressive lenses make close work easy again.`
-        : `Your ${eyesLabel(flagged)} can't focus as close as expected for your age. This can cause tired eyes when reading; an eye test can find out why.`,
+        ? `${yourEyes(flagged)} can't focus as close as expected. This is the usual start of presbyopia, and reading or progressive lenses make close work easy again.`
+        : `${yourEyes(flagged)} can't focus as close as expected for your age. This can cause tired eyes when reading; an eye test can find out why.`,
     tip: age >= 40 ? 'Ask an optician about progressive or reading lenses.' : 'Mention this at your next eye test.',
   };
 }

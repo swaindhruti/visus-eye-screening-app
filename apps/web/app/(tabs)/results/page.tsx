@@ -12,20 +12,22 @@ import { Icon } from "@/components/Icon";
 import { Screen } from "@/components/Screen";
 import { ErrorState } from "@/components/States";
 import { MONTHS } from "@/lib/dates";
-import { getHistory, type SessionListItem } from "@/services/sessions";
+import { sessionSub, sessionTitle, trends } from "@/lib/history";
+import { listSessions, type SessionSummary } from "@/services/sessions";
 
 export default function Results() {
-  const q = useQuery({ queryKey: ["history"], queryFn: getHistory });
+  const q = useQuery({ queryKey: ["sessions"], queryFn: listSessions });
   const [metric, setMetric] = useState(0);
   const [all, setAll] = useState(false);
 
   if (q.isError) return <ErrorState onRetry={() => q.refetch()} retrying={q.isFetching} />;
-  const sessions = q.data?.sessions ?? [];
-  const trend = q.data?.trends[metric];
+  const sessions = q.data ?? [];
+  const series = trends(sessions);
+  const trend = series[Math.min(metric, series.length - 1)];
   const empty = q.isSuccess && sessions.length === 0;
 
   return (
-    <Screen tabs gap="gap-5" eyebrow={q.isPending ? " " : empty ? "No checks yet" : `${sessions.length} checks since ${trend?.months[0] ?? ""}`} title="Results">
+    <Screen tabs gap="gap-5" eyebrow={q.isPending ? " " : empty ? "No checks yet" : `${sessions.length} ${sessions.length === 1 ? "check" : "checks"}${trend ? ` since ${trend.months[0]}` : ""}`} title="Results">
       {empty ? (
         <div className="flex flex-1 flex-col items-center justify-center px-3 pb-10 text-center">
           <span className="grid size-[72px] place-items-center rounded-full border border-line bg-white">
@@ -39,9 +41,9 @@ export default function Results() {
         </div>
       ) : (
         <div className="flex flex-col gap-5 md:flex-row md:items-start md:gap-6">
-          {trend && q.data && (
+          {trend && trend.values.length > 1 && (
             <Card className="flex flex-none flex-col md:flex-[3_1_0] md:rounded-[24px] md:p-6">
-              <Segmented pill options={q.data.trends.map((t) => t.label)} value={metric} onChange={setMetric} />
+              <Segmented pill options={series.map((t) => t.label)} value={metric} onChange={setMetric} />
               <Trend values={trend.values} months={trend.months} />
             </Card>
           )}
@@ -98,7 +100,7 @@ function Trend({ values, months }: { values: number[]; months: string[] }) {
   );
 }
 
-function PastCheck({ s, first }: { s: SessionListItem; first: boolean }) {
+function PastCheck({ s, first }: { s: SessionSummary; first: boolean }) {
   const d = new Date(s.date);
   return (
     <Link href={`/results/${s.id}`} className={cn("flex min-h-16 items-center gap-3.5 bg-white px-4 py-2.5 transition-colors hover:bg-card-hover", !first && "border-t border-divider")}>
@@ -107,8 +109,8 @@ function PastCheck({ s, first }: { s: SessionListItem; first: boolean }) {
         <span className="mt-[3px] text-[10px] font-bold tracking-[.04em] text-muted">{MONTHS[d.getMonth()].toUpperCase()}</span>
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-[16px] font-semibold">{s.title}</span>
-        <span className="text-[13px] text-muted">{s.mode === "single" ? `${s.categoryLabel} · Both eyes` : `${s.testCount} tests · Both eyes`}</span>
+        <span className="text-[16px] font-semibold">{sessionTitle(s)}</span>
+        <span className="text-[13px] text-muted">{sessionSub(s)} · Both eyes</span>
       </span>
       <StatusBadge status={s.status} label={s.status === "good" ? "All clear" : undefined} className="self-center" />
     </Link>

@@ -12,7 +12,7 @@ import { Screen, Spacer } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { ErrorState, LoadingState } from "@/components/States";
 import { fmtFull } from "@/lib/dates";
-import { listProfiles, updateProfile, type Prescription, type ProfileDetails } from "@/services/profiles";
+import { fmtPower, listProfiles, parsePower, updateProfile, type Prescription, type Profile } from "@/services/profiles";
 
 export default function Glasses() {
   const id = useSearchParams().get("id");
@@ -24,8 +24,16 @@ export default function Glasses() {
   return <GlassesForm key={p.id} profile={p} />;
 }
 
-type Rx = Omit<Prescription, "updatedAt">;
+/** The six boxes as typed. Saved as the shared numeric Prescription. */
+type Rx = { rS: string; rC: string; rA: string; lS: string; lC: string; lA: string };
 const EMPTY: Rx = { rS: "", rC: "", rA: "", lS: "", lC: "", lA: "" };
+const toRx = (p: Prescription): Rx => ({ rS: fmtPower(p.right.sph), rC: fmtPower(p.right.cyl), rA: String(p.right.axis), lS: fmtPower(p.left.sph), lC: fmtPower(p.left.cyl), lA: String(p.left.axis) });
+const axis = (s: string) => Math.min(180, Math.max(0, Math.round(Number(s) || 0)));
+const fromRx = (r: Rx): Prescription => ({
+  right: { sph: parsePower(r.rS), cyl: parsePower(r.rC), axis: axis(r.rA) },
+  left: { sph: parsePower(r.lS), cyl: parsePower(r.lC), axis: axis(r.lA) },
+  updatedAt: new Date().toISOString().slice(0, 10),
+});
 const ROWS = [
   ["Right", "OD", "r", "Right eye"],
   ["Left", "OS", "l", "Left eye"],
@@ -36,12 +44,12 @@ const COLS = [
   ["A", "axis", "numeric"],
 ] as const;
 
-function GlassesForm({ profile }: { profile: ProfileDetails }) {
+function GlassesForm({ profile }: { profile: Profile }) {
   const qc = useQueryClient();
-  const [rx, setRx] = useState<Rx>(profile.prescription ?? EMPTY);
-  const [unknown, setUnknown] = useState(false);
+  const [rx, setRx] = useState<Rx>(profile.prescription ? toRx(profile.prescription) : EMPTY);
+  const [unknown, setUnknown] = useState(profile.prescription === null && profile.eyewear !== undefined && profile.eyewear !== "none");
   const save = useMutation({
-    mutationFn: () => updateProfile(profile.id, { prescription: unknown ? null : { ...rx, updatedAt: new Date().toISOString().slice(0, 10) } }),
+    mutationFn: () => updateProfile(profile.id, { prescription: unknown ? null : fromRx(rx) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["profiles"] }),
   });
   const edit = (k: keyof Rx, v: string) => {

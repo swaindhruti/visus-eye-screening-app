@@ -1,7 +1,13 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
+// The only place the web app talks to the server. Pages call services/*, never fetch.
+// NEXT_PUBLIC_USE_MOCK=1: every service returns data from services/mock/ (no server).
 
-/** Services return mock data until NEXT_PUBLIC_API_URL points at the server. */
-export const USE_MOCK = !BASE;
+/** The Visus API (apps/web/.env.example). */
+export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8787").replace(/\/$/, "");
+
+export const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "1";
+
+/** The AI plan and verdict can take ~10 s on a slow day. */
+const TIMEOUT_MS = 30_000;
 
 const TOKEN_KEY = "visus.token";
 
@@ -29,19 +35,33 @@ export class ApiError extends Error {
   }
 }
 
-export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+export async function api<T>(path: string, init: { method?: string; body?: unknown; auth?: boolean } = {}): Promise<T> {
   const token = getToken();
-  const res = await fetch(BASE + path, {
-    method: init.method ?? (init.body ? "POST" : "GET"),
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: init.body ? JSON.stringify(init.body) : undefined,
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => null);
-    throw new ApiError(res.status, data?.error ?? res.statusText);
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(API_URL + path, {
+      method: init.method ?? (init.body === undefined ? "GET" : "POST"),
+      headers: {
+        "Content-Type": "application/json",
+        ...(token && init.auth !== false ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: init.body === undefined ? undefined : JSON.stringify(init.body),
+      signal: abort.signal,
+    });
+  } catch {
+    throw new ApiError(0, "Can't reach Visus. Check your internet connection and try again.");
+  } finally {
+    clearTimeout(timer);
   }
-  return res.json() as Promise<T>;
+  const data = await res.json().catch(() => null);
+  // Not logged in, or the saved login expired: back to Welcome.
+  if (res.status === 401 && init.auth !== false) {
+    setToken(null);
+    if (typeof window !== "undefined" && !location.pathname.startsWith("/welcome")) location.replace("/welcome");
+    throw new ApiError(401, "Please log in again.");
+  }
+  if (!res.ok) throw new ApiError(res.status, data?.error ?? "Something went wrong. Please try again.");
+  return data as T;
 }

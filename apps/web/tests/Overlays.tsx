@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/Button";
+import { DistancePanel } from "@/components/DistancePanel";
 import { HeaderButton } from "@/components/ScreenHeader";
+import { distanceState } from "@/lib/useDistance";
 
 /** Screen 44: between the right and left eye of a test. Counts down from 3, then starts. */
 export function SwitchEye({ title, onReady, onExit }: { title: string; onReady: () => void; onExit: () => void }) {
@@ -170,10 +172,9 @@ export function ExitDialog({ finished, total, onLeave, onStay }: { finished: num
   );
 }
 
-/** Screen 47: shown over a test while the face is outside 35–45 cm. The test waits. */
-export function DistanceWarning({ title, cm, onExit }: { title: string; cm: number; onExit: () => void }) {
-  const close = cm < 35;
-  const pos = Math.min(100, Math.max(0, ((cm - 15) / 60) * 100));
+/** Screen 47: shown over a test after the face was too close or too far for a moment. The test waits; Resume once back in range. */
+export function DistanceWarning({ title, cm, target, onResume, onExit }: { title: string; cm: number | null; target: number; onResume: () => void; onExit: () => void }) {
+  const ok = distanceState(cm, target) === "ok";
   return (
     <div className="fixed inset-0 z-30 mx-auto flex max-w-[760px] flex-col overflow-y-auto bg-pearl px-5 pb-8 pt-6" role="alertdialog" aria-label="Distance warning">
       <div className="flex h-11 flex-none items-center">
@@ -181,38 +182,14 @@ export function DistanceWarning({ title, cm, onExit }: { title: string; cm: numb
         <span className="flex-1 text-center text-[17px] font-bold">{title}</span>
         <span className="w-11 text-right text-[13px] font-semibold text-muted">Paused</span>
       </div>
-      <div className="relative mt-4 h-[390px] max-h-[48dvh] min-h-[220px] flex-none overflow-hidden rounded-[28px] bg-[#1F1F1E]">
-        <div className="absolute left-1/2 top-[52%] h-[250px] max-h-[64%] w-[190px] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border-2 border-dashed border-white/40" />
-        <div
-          className="absolute left-1/2 top-[52%] h-[232px] max-h-[60%] w-[176px] rounded-[50%] border-[2.5px] border-white transition-transform duration-500"
-          style={{ transform: `translate(-50%,-50%) scale(${close ? 1.28 : 0.68})` }}
-        />
-        <div className="absolute left-1/2 top-4 flex h-9 -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-mild-bg px-3.5 text-[15px] font-semibold text-mild">
-          <span className="size-[7px] rounded-full bg-current" />
-          {close ? "Move back a little" : "Move a bit closer"}
-        </div>
-        <div className="absolute bottom-3.5 left-4 flex items-center gap-1.5 text-[12px] font-semibold text-white/65">
-          <span className="size-1.5 rounded-full bg-white/65" />
-          Front camera
-        </div>
-      </div>
-      <div className="mt-5 flex flex-none items-baseline justify-between gap-3">
-        <span className="text-[34px] font-bold leading-none tracking-[-0.03em] tabular-nums">{Math.round(cm)} cm</span>
-        <span className="text-[14px] text-muted">Aim for 35–45 cm</span>
-      </div>
-      <div className="relative mt-4 h-2 flex-none rounded-full bg-line">
-        <div className="absolute inset-y-0 left-[33.3%] w-[16.7%] rounded-full bg-[#BFE3CC]" />
-        <div className="absolute top-1/2 -ml-2.5 -mt-2.5 size-5 rounded-full border-[3px] border-white bg-ink shadow-[0_1px_4px_rgba(0,0,0,.25)] transition-[left] duration-500" style={{ left: `${pos}%` }} />
-      </div>
-      <div className="mt-2 flex flex-none justify-between text-[12px] text-[#8A8A85]">
-        <span>Closer</span>
-        <span>Further</span>
-      </div>
+      <DistancePanel cm={cm} target={target} />
       <div className="flex-1" />
       <div className="mb-3 flex flex-none items-center justify-center gap-2 text-[13px] text-muted">
-        <span>The test waits until you&apos;re 35–45 cm away.</span>
+        <span>{ok ? "Distance is right. You can carry on." : `The test waits until you're ${target - 5}–${target + 5} cm away.`}</span>
       </div>
-      <Button disabled>Waiting for the right distance</Button>
+      <Button disabled={!ok} onClick={onResume}>
+        {ok ? "Resume test" : "Waiting for the right distance"}
+      </Button>
     </div>
   );
 }

@@ -12,7 +12,7 @@ import { Icon } from "@/components/Icon";
 import { Screen, Spacer } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { ErrorState } from "@/components/States";
-import { initials, listProfiles } from "@/services/profiles";
+import { initials, listProfiles, relationLabel } from "@/services/profiles";
 import { useCheck } from "@/store/check";
 import { useHydrated } from "@/store/hydrated";
 
@@ -56,7 +56,7 @@ export default function Who() {
                   {p.isChild && <span className="flex h-[22px] items-center rounded-full bg-mild-bg px-2 text-[12px] font-semibold text-mild">Kids mode</span>}
                 </span>
                 <span className="text-[14px] text-muted">
-                  {p.relation ?? "Family"} · {p.age} years
+                  {relationLabel(p)} · {p.age} years
                 </span>
               </span>
               <Radio on={on} />

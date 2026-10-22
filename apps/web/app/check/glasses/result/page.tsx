@@ -23,22 +23,14 @@ export default function GlassesResult() {
   );
 }
 
-/** Screen 61. The server summary reads "Right eye 20/40 → 20/20, left eye 20/50 → 20/30". */
+/** Screen 61: round 1 (results[0], glasses off) against round 2 (results[1], glasses on). */
 function GlassesResultScreen() {
   const { results, sessionId } = useCheck();
-  const result = results.find((r) => r.testId === "tumbling_e");
-  if (!result) return <Screen />;
-  const good = result.status === "good";
-  const eyes = perEye(result.summary);
-  const rows = eyes
-    ? ([
-        ["Left eye", eyes.left],
-        ["Right eye", eyes.right],
-      ] as const).map(([eye, v]) => {
-        const [wo, wi] = v.split(/\s*→\s*/);
-        return { eye, wo, wi: wi ?? wo };
-      })
-    : [];
+  const [off, on] = results;
+  if (!off || !on) return <Screen />;
+  const good = on.status === "good";
+  const value = (r: typeof on, side: "left" | "right") => r.eyes?.[side]?.value ?? perEye(r.summary)?.[side] ?? "—";
+  const rows = (["left", "right"] as const).map((side) => ({ eye: side === "left" ? "Left eye" : "Right eye", wo: value(off, side), wi: value(on, side) }));
 
   return (
     <Screen gap="gap-0">

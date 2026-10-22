@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
@@ -9,16 +9,12 @@ import { Icon } from "@/components/Icon";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { OfflinePill } from "@/components/States";
 import { useStartCheck } from "@/lib/useStartCheck";
+import { useVoiceInput } from "@/lib/useVoiceInput";
 import { listProfiles } from "@/services/profiles";
+import { intakeChat, intakeText, type IntakeMessage } from "@/services/sessions";
 import { useCheck } from "@/store/check";
 
-const FOLLOW_UPS: [string, string[]][] = [
-  ["Is it in both eyes, or one more than the other?", ["Both eyes", "Mostly left", "Mostly right"]],
-  ["How long has it been happening?", ["A few days", "A few weeks", "Months or more"]],
-  ["Any pain, redness or flashes of light?", ["None of those", "Some discomfort", "Yes, flashes"]],
-];
-
-type Msg = { from: "ai" | "me"; text: string };
+type Msg = IntakeMessage;
 
 const subscribe = (cb: () => void) => {
   window.addEventListener("online", cb);
@@ -36,37 +32,49 @@ export default function Intake() {
   const name = (profiles.data?.find((p) => p.id === profileId) ?? profiles.data?.[0])?.name.split(" ")[0];
   const start = useStartCheck();
 
-  const [answers, setAnswers] = useState<string[]>([]);
-  const [typing, setTyping] = useState(false);
+  const owner = profiles.data?.find((p) => p.id === profileId) ?? profiles.data?.[0];
+  const greeting: Msg = { from: "ai", text: `Hi${name ? ` ${name}` : ""}. What's bothering your eyes today?` };
+  // The whole chat so far, greeting first; sent to POST /intake/chat every turn.
+  const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [chips, setChips] = useState<string[]>([]);
+  const [done, setDone] = useState(false);
   const [text, setText] = useState("");
   const end = useRef<HTMLDivElement>(null);
+  const voice = useVoiceInput(setText);
+  const chat = msgs.length ? msgs : [greeting];
 
-  const step = answers.length; // 0 = the complaint, 1–3 = follow-ups
-  const chatDone = step === 4 && !typing;
-
-  const msgs: Msg[] = [{ from: "ai", text: `Hi${name ? ` ${name}` : ""}. What's bothering your eyes today?` }];
-  answers.forEach((a, i) => {
-    msgs.push({ from: "me", text: a });
-    if (i < 3 && (i < answers.length - 1 || !typing)) msgs.push({ from: "ai", text: FOLLOW_UPS[i][0] });
+  const turn = useMutation({
+    mutationFn: (next: Msg[]) => intakeChat(owner?.id ?? profileId ?? "", next),
+    onSuccess: (res, next) => {
+      if (res.done) {
+        setDone(true);
+        setChips([]);
+        return;
+      }
+      setMsgs([...next, { from: "ai", text: res.reply }]);
+      setChips(res.chips);
+    },
   });
-  const chips = !typing && step >= 1 && step <= 3 ? FOLLOW_UPS[step - 1][1] : [];
 
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [answers.length, typing, start.isPending]);
+  }, [chat.length, turn.isPending, done, start.isPending]);
 
   const answer = (raw: string) => {
     const v = raw.trim();
-    if (!v || typing || step >= 4) return;
-    const next = [...answers, v];
-    setAnswers(next);
+    if (!v || turn.isPending || done) return;
+    voice.cancel();
+    const next = [...chat, { from: "me" as const, text: v }];
+    setMsgs(next);
+    setChips([]);
     setText("");
-    setTyping(true);
-    setTimeout(() => setTyping(false), 900);
+    turn.mutate(next);
   };
 
-  const intake = answers.map((a, i) => (i === 0 ? a : `${FOLLOW_UPS[i - 1][0]} ${a}`)).join("\n");
-  const canSend = text.trim().length > 0 && !typing && step < 4;
+  const typing = turn.isPending;
+  const chatDone = done;
+  const intake = intakeText(chat);
+  const canSend = text.trim().length > 0 && !typing && !done && !!owner;
 
   return (
     <div className="min-h-dvh bg-pearl">
@@ -77,7 +85,7 @@ export default function Intake() {
 
       <div className="no-scrollbar -mx-5 min-h-0 flex-1 overflow-y-auto px-5 md:-mx-2 md:px-2">
         <div className="flex min-h-full flex-col justify-end gap-3 pb-3.5 pt-4" aria-live="polite">
-          {msgs.map((m, i) => (
+          {chat.map((m, i) => (
             <Bubble key={i} {...m} />
           ))}
           {chips.length > 0 && online && (
@@ -95,6 +103,14 @@ export default function Intake() {
             </div>
           )}
           {(typing || start.isPending) && <Typing />}
+          {turn.isError && (
+            <div className="flex flex-col items-start gap-2">
+              <Bubble from="ai" text={turn.error.message || "Sorry, I couldn't answer that. Try again."} />
+              <button type="button" onClick={() => turn.mutate(chat)} className="h-10 rounded-full border border-line-strong bg-white px-4 text-[15px] font-semibold hover:border-ink">
+                Try again
+              </button>
+            </div>
+          )}
           {chatDone && !start.isPending && !start.isSuccess && online && (
             <div className="flex flex-col items-start gap-2">
               <Bubble from="ai" text="Thanks, that helps. I'll pick the right tests for you now." />
@@ -142,22 +158,36 @@ export default function Intake() {
           value={text}
           disabled={!online}
           onChange={(e) => setText(e.target.value)}
-          placeholder={!online ? "Chat is offline" : chatDone ? "Add anything else…" : "Type your answer…"}
+          placeholder={!online ? "Chat is offline" : voice.listening ? "Listening…" : chatDone ? "Add anything else…" : "Type or speak your answer…"}
           aria-label="Your message"
           className="min-w-0 flex-1 border-none bg-transparent text-[16px] outline-none focus-visible:outline-none disabled:cursor-not-allowed disabled:text-[#8A8A85]"
         />
-        <button type="button" disabled aria-label="Voice input, coming soon" title="Voice input coming soon" className="grid size-11 flex-none place-items-center rounded-full opacity-30">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="9" y="3" width="6" height="11" rx="3" />
-            <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" />
-          </svg>
-        </button>
+        {voice.supported && (
+          <button
+            type="button"
+            disabled={!online || chatDone || typing}
+            onClick={() => (voice.listening ? voice.stop() : voice.start(text))}
+            aria-label={voice.listening ? "Stop listening" : "Speak your answer"}
+            aria-pressed={voice.listening}
+            title={voice.listening ? "Stop listening" : "Speak your answer"}
+            className={cn(
+              "grid size-11 flex-none place-items-center rounded-full transition-colors duration-200 disabled:opacity-30",
+              voice.listening ? "animate-pulse bg-acc-soft" : "hover:bg-fill",
+            )}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={voice.listening ? "#194F81" : "#111"} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="3" width="6" height="11" rx="3" />
+              <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" />
+            </svg>
+          </button>
+        )}
         <button type="submit" aria-label="Send" disabled={!canSend} className={cn("grid size-11 flex-none place-items-center rounded-full transition-colors duration-200", canSend ? "bg-ink" : "bg-[#D6D6D1]")}>
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M10 16V4M5 9l5-5 5 5" />
           </svg>
         </button>
       </form>
+      {voice.error && <p className="m-0 mt-2.5 text-center text-[13px] leading-[1.4] text-doc">{voice.error}</p>}
       <p className="m-0 mt-2.5 text-center text-[12px] leading-[1.4] text-[#8A8A85]">Visus isn&apos;t a diagnosis. Sudden vision loss? See a doctor now.</p>
     </section>
     <aside className="hidden min-w-0 flex-[2_1_0] flex-col gap-4 lg:flex">

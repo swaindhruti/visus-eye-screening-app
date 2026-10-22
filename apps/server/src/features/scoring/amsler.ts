@@ -1,7 +1,7 @@
 // Scorer for amsler (central vision distortion). Per eye: { gridSize | grid: 10, marked: number[], allStraight }.
 import type { Eye } from '@visus/shared';
 
-import { arr, eyesLabel, num, plural, scoreEachEye, type Answers, type Scored } from './helpers';
+import { arr, eyesLabel, num, plural, scoreEachEye, yourEyes, type Answers, type Scored } from './helpers';
 
 /** Areas in the middle 4×4 of the grid, around the centre dot. */
 const central = (cell: number, size: number) => {
@@ -41,7 +41,7 @@ export function scoreAmsler(answers: Answers, eye: Eye): Scored {
     status,
     summary: `Wavy or missing lines, ${which}`,
     eyes: result,
-    meaning: `Your ${which} saw wavy, blurry or missing lines${nearCentre ? ' near the centre' : ''}. This can be an early sign of a problem in the macula, the part of the eye you read with, and should be checked by an eye doctor.`,
+    meaning: `${yourEyes(flagged)} saw wavy, blurry or missing lines${nearCentre ? ' near the centre' : ''}. This can be an early sign of a problem in the macula, the part of the eye you read with, and should be checked by an eye doctor.`,
     tip: 'Book an eye doctor this week and show them this result. If your vision suddenly gets worse, go today.',
   };
 }

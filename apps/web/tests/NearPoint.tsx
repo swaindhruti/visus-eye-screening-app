@@ -12,8 +12,8 @@ import type { TestProps } from "./types";
 const LINE_MM = 5 * 0.3528;
 
 /**
- * Screen 28. The user moves the screen closer until the line blurs. With camera distance
- * (build sprint) the cm is measured live; until then the user enters it after stopping.
+ * Screen 28. The user moves the screen closer until the line blurs. With the camera the cm is
+ * measured live (lib/useDistance.ts); without it the user enters it after stopping.
  */
 export function NearPoint({ eye, pxPerMm, onDone, onExit, onPause }: TestProps) {
   const live = useDistance();

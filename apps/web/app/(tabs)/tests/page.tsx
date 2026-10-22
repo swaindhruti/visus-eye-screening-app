@@ -11,11 +11,13 @@ import { Screen } from "@/components/Screen";
 import { HeaderButton } from "@/components/ScreenHeader";
 import { TestIcon, TestPreview } from "@/components/TestArt";
 import { CATEGORIES, categoryOf, eyesLabel, librarySub, TEST_COPY } from "@/lib/tests";
+import { useGuest } from "@/lib/useGuest";
 
 export default function Tests() {
   const [sel, setSel] = useState(-1);
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [sheet, setSheet] = useState(false);
+  const guest = useGuest();
   const filtered = hasFilters(filters);
   const cat = sel >= 0 ? CATEGORIES[sel] : null;
   const base = filtered ? applyFilters(filters) : TEST_CATALOG;
@@ -89,16 +91,18 @@ export default function Tests() {
                 <TestCard key={t.id} t={t} />
               ))}
             </div>
-            <Link href="/check/glasses" className="mt-1 flex min-h-[66px] flex-wrap items-center gap-3.5 rounded-[20px] bg-acc-soft px-4 py-3 transition-transform active:scale-[.98] md:rounded-[22px] md:px-6 md:py-5">
-              <span className="grid size-11 flex-none place-items-center rounded-full bg-white text-acc-ink md:size-12">
-                <Icon name="glasses" size={22} />
-              </span>
-              <span className="flex min-w-0 flex-[1_1_200px] flex-col gap-0.5">
-                <span className="text-[16px] font-bold md:text-[18px]">Glasses check</span>
-                <span className="text-[13px] text-acc-ink md:text-[15px]">Are your glasses still right? Sharpness with and without them, 3 min.</span>
-              </span>
-              <span className="hidden h-11 items-center rounded-[14px] bg-ink px-[18px] text-[15px] font-semibold text-white md:flex">Start</span>
-            </Link>
+            {!guest && (
+              <Link href="/check/glasses" className="mt-1 flex min-h-[66px] flex-wrap items-center gap-3.5 rounded-[20px] bg-acc-soft px-4 py-3 transition-transform active:scale-[.98] md:rounded-[22px] md:px-6 md:py-5">
+                <span className="grid size-11 flex-none place-items-center rounded-full bg-white text-acc-ink md:size-12">
+                  <Icon name="glasses" size={22} />
+                </span>
+                <span className="flex min-w-0 flex-[1_1_200px] flex-col gap-0.5">
+                  <span className="text-[16px] font-bold md:text-[18px]">Glasses check</span>
+                  <span className="text-[13px] text-acc-ink md:text-[15px]">Are your glasses still right? Sharpness with and without them, 3 min.</span>
+                </span>
+                <span className="hidden h-11 items-center rounded-[14px] bg-ink px-[18px] text-[15px] font-semibold text-white md:flex">Start</span>
+              </Link>
+            )}
           </section>
         </div>
       </Screen>

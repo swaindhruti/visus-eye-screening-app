@@ -1,7 +1,7 @@
 "use client";
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
-import { useState } from "react";
 
 import { Button } from "@/components/Button";
 import { cn } from "@/components/cn";
@@ -10,16 +10,30 @@ import { Screen, Spacer } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { ErrorState, LoadingState } from "@/components/States";
 import { useVerdict } from "@/lib/useVerdict";
+import { listProfiles, updateProfile } from "@/services/profiles";
+import { listSessions } from "@/services/sessions";
+import { useCheck } from "@/store/check";
 
 export default function Lens() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const q = useVerdict(sessionId);
-  const [saved, setSaved] = useState(false);
+  const qc = useQueryClient();
+  const sessions = useQuery({ queryKey: ["sessions"], queryFn: listSessions });
+  const profiles = useQuery({ queryKey: ["profiles"], queryFn: listProfiles });
+  const current = useCheck((s) => s.profileId);
+  // Whose check this was: from the sessions list, else the check just taken.
+  const profileId = sessions.data?.find((s) => s.id === sessionId)?.profileId ?? current;
+  const profile = profiles.data?.find((p) => p.id === profileId);
+  const save = useMutation({
+    mutationFn: (lens: { product: string; sessionId: string } | null) => updateProfile(profileId!, { savedLens: lens }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["profiles"] }),
+  });
 
   if (q.isPending) return <LoadingState />;
   if (q.isError) return <ErrorState onRetry={() => q.refetch()} retrying={q.isFetching} />;
   const [best, ...others] = q.data.lens;
   if (!best) return <ErrorState title="No lens suggestions" body="This check didn't need a lens suggestion." />;
+  const savedNow = save.isPending ? save.variables !== null : profile?.savedLens?.sessionId === sessionId;
 
   return (
     <Screen gap="gap-0">
@@ -68,14 +82,15 @@ export default function Lens() {
       <div className="flex flex-none gap-2.5">
         <button
           type="button"
-          onClick={() => setSaved(!saved)}
-          aria-pressed={saved}
-          className={cn("flex h-btn flex-none items-center gap-2 rounded-[16px] border bg-white px-[18px] text-[16px] font-semibold transition-[border-color] hover:bg-card-hover", saved ? "border-ink" : "border-line-strong")}
+          disabled={!profile || save.isPending}
+          onClick={() => save.mutate(savedNow ? null : { product: best.product, sessionId })}
+          aria-pressed={savedNow}
+          className={cn("flex h-btn flex-none items-center gap-2 rounded-[16px] border bg-white px-[18px] text-[16px] font-semibold transition-[border-color] hover:bg-card-hover disabled:opacity-60", savedNow ? "border-ink" : "border-line-strong")}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill={saved ? "#111" : "none"} stroke="#111" strokeWidth="2" strokeLinejoin="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill={savedNow ? "#111" : "none"} stroke="#111" strokeWidth="2" strokeLinejoin="round">
             <path d="M6.5 3.5h11v17L12 16.5l-5.5 4z" />
           </svg>
-          {saved ? "Saved" : "Save"}
+          {savedNow ? "Saved" : "Save"}
         </button>
         <Button href={`/results/${sessionId}/share`} className="flex-1">
           Show at store

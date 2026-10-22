@@ -29,40 +29,37 @@ Area: web app + server (scoring, rules, lens, history). Claude updates this file
 **Don't edit** `apps/mobile` or Dhrutinandan's server folders (`index.ts`, `db/`, `lib/`, `auth/`, `profiles/`, `sessions/`, `agent/`, `intake/`). Write what you need in your Blockers / Notes and he'll change it. `packages/shared`: add only, both approve.
 
 ## Now
-- Web app Phase 1 + Phase 2 screens are done on `feat/web` (all routes in `docs/SCREENS.md` except mobile-only Screen Coach). Waiting for PR review.
+- Web runs end to end on the real API locally (2026-10-22): signup → onboarding → AI intake chat → AI plan → 5–6 tests with red flag and an added test → AI verdict → result detail, lens Save, share link, public report `/r/<token>`, Results tab, Home, Profile. Server smoke test 37/37.
 
 ## Next
-- Switch web services from mock to the real API as server routes go live (set `NEXT_PUBLIC_API_URL`; only `services/*` change).
-- Server side (Teammate): scoring, red-flag rules, lens mapping, `GET /sessions`.
-- Build sprint: camera distance with MediaPipe in `apps/web/lib/useDistance.ts` (Distance setup, Distance warning and Near point already read from it).
+- Vercel deploy; send Dhrutinandan the URL (`WEB_URL` for share links, CORS).
 
 ## Blockers
-- None
+- None. (Local run: `apps/server/.dev.vars` filled; web with `NEXT_PUBLIC_USE_MOCK=0`.)
 
-## Notes for Dhrutinandan / shared types
-- Web services define two local types the server will need to return; worth moving into `packages/shared` when we agree:
-  - `SessionListItem` + `History` (`GET /sessions`: past checks and trend values for the Results tab), in `apps/web/services/sessions.ts`.
-  - `ProfileDetails` = `Profile` + `relation`, `specs` (glasses/contacts/both/neither), `pastEyeTest`, `screenTime` label and `prescription` (My glasses), in `apps/web/services/profiles.ts`.
-- Eyes tested one at a time (`eachEye`) are sent as **one** `SubmitResult` with `eye: "both"` and `answers: { right: {...}, left: {...} }`.
-- Added `zustand` and `@tanstack/react-query` to `apps/web` (updates root `bun.lock`).
-- Summary formats the web reads for display (server should keep them): eachEye tests `"Right eye X, left eye Y"`; glasses check `"Right eye 20/40 → 20/20, left eye 20/50 → 20/20"`.
-- Glasses check sends one `tumbling_e` result with `answers: { glassesOff: {right,left}, glassesOn: {right,left} }` in a `mode: "glasses"` session.
-- Peripheral answers: `{ right: { seen: boolean[24], reactionMs, falseTaps }, left: … }`, point index = ring * 8 + direction (0 = up, clockwise).
-
-## Web differences from the design
-- Desktop layouts follow the responsive redesign canvas above (made in Claude Design from the mobile design's styles); phones keep the original mobile design.
-- Tests on desktop use a wider centred column, not the canvas's side-panel layout.
-- Tumbling E is sized for 2 m (the design's "placed 2 m away · helper answers"), so its instruction step 1 says 2 m instead of arm's length. Kids E is sized for 40 cm, as the Kids intro says.
-- Calibration matches the card's short edge (a landscape card is wider than most phone screens).
-- Web Permissions asks for the camera only (per `docs/SCREENS.md`), so it reads "One quick permission".
-- Home has no screen-time card (mobile only); "Last eye check" is a full-width card.
-- Tests tab has search + filter buttons in the header and a Glasses check entry (the design doesn't show where these open from).
-- Between-test analysis, result detail and single-test complete show per-eye values parsed from the server summary, without the design's per-eye sub-labels ("Sharp", "A little soft") the API doesn't return.
-- Results & analysis adds a "Lenses that suit you" link to screen 19.
-- Copy fixes from `docs/SCREENS.md` applied (Entry, Analysing footer, About); About's title is "Your data and privacy". Analysing title while loading is "Analysing your answers" so it doesn't repeat the footer.
-- Distance setup shows a live camera preview but doesn't measure yet; Near point asks the user for the distance until camera measuring lands.
+## Notes for Dhrutinandan (from the live test)
+- Gemini often times out or returns 503 (`gemini-3.5-flash-lite`, `gemini-3.8-flash`, `gemini-3.6-flash`). The rule fallbacks work, but the user waits about 10 s on intake, plan, re-plan and verdict when that happens. A shorter per-model timeout would help.
+- New public route (mine, `history/`): `POST /reports/guest-score`, body = `SubmitResult` + optional `age`, returns `NextStep` (`red_flag` or `done`), saves nothing. Needs a row in `docs/API.md` (I don't edit docs; please add it, or tell me to).
+- Mobile guest mode (optional): the web now has "Continue as guest" on Welcome with a dialog (what needs an account, Back / Continue), then the Tests library only. Mobile can use the same `POST /reports/guest-score` if you want it there too.
+- Mobile voice input: the intake mic is still a "coming soon" placeholder on mobile; the web now has it (speech fills the text box, user sends). Mobile needs a native speech-to-text package.
+- Share links use `WEB_URL` from `wrangler.jsonc` (`https://visus.app`), so locally the QR points to visus.app. Locally, `WEB_URL=http://localhost:3000` in `.dev.vars` fixes it; production needs the Vercel URL.
 
 ## Log
+- 2026-10-22: Fix: Retake on a single test hung on "Saving your answers…". Next keeps visited pages alive and brought the run screen back with its finished state; the run screen is now keyed on the check's start time, so every new check (Retake included) gets a fresh one. Guest wording: "Checking your answers…", and the result says it disappears when the tab closes (the guest check lives in sessionStorage; the server saves nothing).
+- 2026-10-22: Web guest mode. Welcome → "Continue as guest" → dialog (what needs an account; Back / Continue) → Tests library only: nav shows just Tests + Log in / Sign up (phones: a Guest mode bar in place of the tabs), no Glasses check, single tests only. Guest results are scored by the new public `POST /reports/guest-score` (`history/`, same scorer + red-flag rules, nothing saved, no DB); the guest session lives only in the tab. Sign up / log in / log out end guest mode. Also: "Time for your eye check?" on Home; scorer wording "Both your eyes …" / "In both your eyes …" via `yourEyes()` in `scoring/helpers.ts` (acuity, clock dial, near, peripheral, Amsler).
+- 2026-10-22: Web camera distance with MediaPipe FaceLandmarker (`@mediapipe/tasks-vision` 1.1.1, WASM from jsDelivr, model from Google storage, all in the browser). Distance from the iris width (11.7 mm) and an assumed 60° webcam field of view; one shared camera + model (`lib/useDistance.ts`). Distance setup shows the live preview, cm, gauge and "Perfect, hold still"; Continue unlocks at 35–45 cm, "Continue without the camera" otherwise. Tests with a target (40 cm: near reading, clock dial, duochrome, Amsler, contrast, kids E; 30 cm: peripheral) pause after 1.5 s out of range, Resume once back. Tumbling E (2 m) isn't watched. Near point measures live. Tested with a fake camera face at 3 sizes (24 / 41 / 82 cm) and on a real laptop webcam. Also: "Later" on the onboarding summary goes to Home.
+- 2026-10-22: Web voice input in the intake chat (`lib/useVoiceInput.ts`, browser speech recognition, no new library): tap the mic, the words fill the message box live, the user checks and sends. Hidden where the browser has no speech recognition (Firefox); clear message when the mic is blocked. Share links checked with `WEB_URL=http://localhost:3000`.
+- 2026-10-22: Live test against the local server. Fixes: onboarding now saves the profile when the last question is skipped (only "Finish" saved before, so the account had no profile); every test result now sends `calibrated` (acuity always said "Your screen wasn't calibrated"); acuity wording "Both eyes …" instead of "Your both eyes …" (`apps/server/src/features/scoring/acuity.ts`).
+- 2026-10-22: Synced `feat/web` with `main` (was 66 behind). Web on the real API:
+  - `services/api.ts`: `NEXT_PUBLIC_API_URL` (default `http://localhost:8787`), `NEXT_PUBLIC_USE_MOCK=1` keeps the mocks, 30 s timeout, `{ error }` messages, 401 → log out and back to Welcome. `apps/web/.env.example` added.
+  - Shared `Profile` / `SessionSummary` / `Verdict` replace the web-only types; `GET /me` for profiles; Results tab and Home trends from `GET /sessions` scores.
+  - Intake chat on `POST /intake/chat`; `intake` sent as `Visus: …` / `Me: …` lines.
+  - Glasses check sends two `tumbling_e` results (`round: "glasses_off"` / `"glasses_on"`), matching the server's two-round plan, instead of one `{ glassesOff, glassesOn }` result.
+  - Added tests (`added: true`) are inserted right after the current test.
+  - Result screens use `eyes`, `meaning`, `tip`, `field` (peripheral map) and the verdict's `date` / `minutes`.
+  - Lens "Save" writes `savedLens` on the profile; Share report uses the check's owner and date.
+  - New public page `/r/[token]` (`GET /reports/:token`, expired-link message on 404).
+  - Guest mode removed (every route needs a login).
 - 2026-10-21: Web is now a responsive website instead of a phone frame on desktop: top nav on desktop / bottom tab bar on phones, wide dashboard layouts for Welcome (landing page), Home, Tests (sidebar + card grid), Results tab, Profile and Results & analysis (lens column); intake gets a side panel; flows and tests sit in a centred column; sheets become centred cards on desktop. Redesign canvas: https://claude.ai/artifact/PUPUi2asuoXR8sN1k6CKYg (`feat/web`)
 - 2026-10-21: Group 12 web: Quick check intro, Glasses check setup + two-round run + result, Re-check reminder over Home (when last check > 3 months, `?reminder=1` to preview, snooze a week). Offline and error states were built earlier (intake + shared ErrorState). (`feat/web`)
 - 2026-10-21: Group 11 web: all 14 tests now render in the run screen: Near reading (N-sizes from pxPerMm, EN/HI/OR with Noto fonts), Near point (user enters the distance until camera measuring lands), Duochrome, Colour plates (12 dot plates generated like the design), Kids Tumbling E (stars, never says right/wrong) and Kids colour shapes, Eye risk / Eye strain / Glare questionnaires, Peripheral dot field (24 points, Space works, feeds the field map). (`feat/web`)

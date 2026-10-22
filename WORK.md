@@ -42,7 +42,7 @@ Server:
 - [x] D [x] T: Quick check, Glasses check, Who is this for, Kids intro, test-flow extras (switch eye, pause, exit), Permissions
 - [x] D [x] T: Distance warning (47): needs camera distance tracking (Phase 3)
 - [x] D [x] T: States: offline, error, re-check reminder; Tests library filter and search
-- [x] D [ ] T: Switch services from mock to real API
+- [x] D [x] T: Switch services from mock to real API
 - [x] T: Scoring for remaining tests (built by D)
 - [x] T: `GET /sessions`, `GET /sessions/:id`, share link (built by D, + `GET /reports/:token`)
 - [x] D: Profiles: list, create, update
@@ -60,10 +60,10 @@ Dhrutinandan:
 
 Sidhartha (details and pointers in `progress/sidhartha.md` → Handover):
 
-- [ ] T: Web services from mock to the real API (`NEXT_PUBLIC_API_URL`); replace web-only types with the shared ones
-- [ ] T: Web intake chat on `POST /intake/chat` (AI follow-up questions with chips)
-- [ ] T: Web report page `/r/[token]` reading `GET /reports/:token` (the doctor link from Share report)
-- [ ] T: Web camera distance (MediaPipe in `apps/web/lib/useDistance.ts`)
+- [x] T: Web services from mock to the real API (`NEXT_PUBLIC_API_URL`); replace web-only types with the shared ones
+- [x] T: Web intake chat on `POST /intake/chat` (AI follow-up questions with chips)
+- [x] T: Web report page `/r/[token]` reading `GET /reports/:token` (the doctor link from Share report)
+- [x] T: Web camera distance (MediaPipe in `apps/web/lib/useDistance.ts`)
 - [ ] T: Vercel deploy (root `apps/web`) with the live API URL; send Dhrutinandan the web URL (share links + CORS)
 - [ ] T: Tune scoring / rules / lens if the accuracy check shows it (`apps/server/src/features/{scoring,rules,lens}`)
 - [ ] T: Accuracy check with 15–20 people

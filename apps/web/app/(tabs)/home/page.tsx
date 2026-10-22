@@ -14,8 +14,9 @@ import { Screen } from "@/components/Screen";
 import { TestIcon } from "@/components/TestArt";
 import { daysAgo, fmtLong, fmtShort, MONTHS, useToday } from "@/lib/dates";
 import { categoryOf, TEST_COPY, testInfo } from "@/lib/tests";
-import { initials, listProfiles } from "@/services/profiles";
-import { getHistory, type SessionListItem } from "@/services/sessions";
+import { sessionSub, sessionTitle, trends, type Trend } from "@/lib/history";
+import { initials, isOwner, listProfiles, relationLabel } from "@/services/profiles";
+import { listSessions, type SessionSummary } from "@/services/sessions";
 import { useHydrated } from "@/store/hydrated";
 import { useSettings } from "@/store/settings";
 
@@ -23,11 +24,11 @@ const POPULAR: TestId[] = ["tumbling_e", "colour_plates", "amsler", "eye_strain"
 
 export default function Home() {
   const today = useToday();
-  const history = useQuery({ queryKey: ["history"], queryFn: getHistory });
+  const history = useQuery({ queryKey: ["sessions"], queryFn: listSessions });
   const profiles = useQuery({ queryKey: ["profiles"], queryFn: listProfiles });
-  const last = history.data?.sessions[0];
-  const me = profiles.data?.find((p) => p.relation === "You");
-  const trend = history.data?.trends[0];
+  const last = history.data?.[0];
+  const me = profiles.data?.find(isOwner);
+  const trend = history.data ? trends(history.data)[0] : undefined;
 
   const preview = useSearchParams().get("reminder") === "1";
   const snoozed = useSettings((s) => s.reminderSnoozedUntil);
@@ -47,7 +48,7 @@ export default function Home() {
                   <span className="size-[7px] rounded-full bg-acc-bright" />
                   Due today · about 5 min
                 </span>
-                <h2 className="m-0 mt-2.5 text-[24px] font-bold leading-[1.2] tracking-[-0.02em] md:mt-2 md:text-[32px] md:leading-[1.15] md:tracking-[-0.025em]">Time for your eye check</h2>
+                <h2 className="m-0 mt-2.5 text-[24px] font-bold leading-[1.2] tracking-[-0.02em] md:mt-2 md:text-[32px] md:leading-[1.15] md:tracking-[-0.025em]">Time for your eye check?</h2>
                 <p className="m-0 max-w-[440px] text-[15px] leading-[1.45] text-white/75 md:text-[17px] md:leading-normal">Sharpness, focus, colour and contrast. Tell us what&apos;s bothering you and we&apos;ll pick the tests.</p>
               </div>
               <Button href="/check/who" variant="inverted" arrow className="mt-3.5 md:mt-0 md:px-[26px]">
@@ -92,10 +93,10 @@ export default function Home() {
           <section className="flex min-w-0 flex-col gap-2.5 md:flex-[2_1_0] md:gap-3.5">
             <h2 className="m-0 text-[18px] font-bold tracking-[-0.01em] md:text-[24px] md:tracking-[-0.02em]">Recent checks</h2>
             <div className="overflow-hidden rounded-[20px] border border-line bg-white">
-              {(history.data?.sessions ?? []).slice(0, 3).map((s, i) => (
+              {(history.data ?? []).slice(0, 3).map((s, i) => (
                 <RecentRow key={s.id} s={s} first={i === 0} />
               ))}
-              {history.isSuccess && history.data.sessions.length === 0 && <p className="m-0 p-4 text-[15px] text-muted">No checks yet.</p>}
+              {history.isSuccess && history.data.length === 0 && <p className="m-0 p-4 text-[15px] text-muted">No checks yet.</p>}
             </div>
           </section>
           <section className="flex min-w-0 flex-col gap-2.5 md:flex-[1_1_0] md:gap-3.5">
@@ -105,8 +106,8 @@ export default function Home() {
                 <div key={p.id} className="flex items-center gap-3">
                   <span className={`grid size-10 flex-none place-items-center rounded-full text-[14px] font-bold ${i === 0 ? "bg-acc-soft text-acc-ink" : "bg-fill"}`}>{initials(p.name)}</span>
                   <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-[15px] font-semibold">{p.relation === "You" ? "You" : `${p.name.split(" ")[0]}, ${p.age}`}</span>
-                    <span className="text-[13px] text-muted">{p.isChild ? "Kids mode" : (p.relation ?? "Family")}</span>
+                    <span className="text-[15px] font-semibold">{isOwner(p) ? "You" : `${p.name.split(" ")[0]}, ${p.age}`}</span>
+                    <span className="text-[13px] text-muted">{p.isChild ? "Kids mode" : relationLabel(p)}</span>
                   </span>
                 </div>
               ))}
@@ -138,7 +139,7 @@ function ShortcutCard({ href, icon, title, sub, accent }: { href: string; icon: 
   );
 }
 
-function LastCheck({ last, today, pending, trend }: { last?: SessionListItem; today: Date | null; pending: boolean; trend?: { label: string; months: string[]; values: number[] } }) {
+function LastCheck({ last, today, pending, trend }: { last?: SessionSummary; today: Date | null; pending: boolean; trend?: Trend }) {
   const pts = trend?.values.map((n, i) => [8 + i * (312 / Math.max(1, trend.values.length - 1)), 100 - ((n - 60) / 40) * 90]) ?? [];
   const line = pts.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
   const delta = trend ? trend.values[trend.values.length - 1] - trend.values[0] : 0;
@@ -150,7 +151,7 @@ function LastCheck({ last, today, pending, trend }: { last?: SessionListItem; to
       </div>
       <span className="mt-1.5 text-[26px] font-bold leading-[1.1] tracking-[-0.02em] md:text-[34px]">{last ? fmtShort(last.date) : pending ? "…" : "None yet"}</span>
       <span className="text-[13px] text-muted md:text-[14px]">
-        {last && today ? `${daysAgo(last.date, today)} · ${last.testCount} ${last.testCount === 1 ? "test" : "tests"}` : "Take your first check"}
+        {last && today ? `${daysAgo(last.date, today)} · ${sessionSub(last)}` : "Take your first check"}
       </span>
       {trend && pts.length > 1 && (
         <div className="mt-4 hidden flex-col gap-2 md:flex">
@@ -174,7 +175,7 @@ function LastCheck({ last, today, pending, trend }: { last?: SessionListItem; to
   );
 }
 
-function RecentRow({ s, first }: { s: SessionListItem; first: boolean }) {
+function RecentRow({ s, first }: { s: SessionSummary; first: boolean }) {
   const d = new Date(s.date);
   return (
     <Link href={`/results/${s.id}`} className={`flex min-h-16 items-center gap-3.5 px-4 py-2.5 transition-colors hover:bg-card-hover md:min-h-[68px] md:gap-4 md:px-5 ${first ? "" : "border-t border-divider"}`}>
@@ -183,8 +184,8 @@ function RecentRow({ s, first }: { s: SessionListItem; first: boolean }) {
         <span className="mt-[3px] text-[10px] font-bold tracking-[.04em] text-muted">{MONTHS[d.getMonth()].toUpperCase()}</span>
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-[16px] font-semibold">{s.title}</span>
-        <span className="text-[13px] text-muted">{s.mode === "single" ? s.categoryLabel : `${s.testCount} tests`}</span>
+        <span className="text-[16px] font-semibold">{sessionTitle(s)}</span>
+        <span className="text-[13px] text-muted">{sessionSub(s)}</span>
       </span>
       <StatusBadge status={s.status} label={s.status === "good" ? "All clear" : undefined} className="self-center" />
     </Link>

@@ -52,15 +52,17 @@ export const useCheck = create<CheckState>()(
         set({ ...empty, sessionId: session.sessionId, summary: session.summary, plan: session.plan, mode, intake, startedAt: Date.now() }),
       recordStep: (step) =>
         set((s) => {
-          const plan =
-            step.type === "next_test" && !s.plan.some((p) => p.testId === step.testId)
-              ? [...s.plan, { testId: step.testId, reason: step.reason }]
-              : s.plan;
+          let plan = s.plan;
+          if (step.type === "next_test" && step.added && !s.plan.some((p) => p.testId === step.testId)) {
+            const at = s.plan.findIndex((p) => p.testId === step.result.testId) + 1;
+            plan = [...s.plan.slice(0, at), { testId: step.testId, reason: step.reason }, ...s.plan.slice(at)];
+          }
           return {
             plan,
             lastStep: step,
             done: [...s.done.filter((id) => id !== step.result.testId), step.result.testId],
-            results: [...s.results.filter((r) => r.testId !== step.result.testId), step.result],
+            // A glasses check has Tumbling E twice (without, then with glasses): keep both.
+            results: s.mode === "glasses" ? [...s.results, step.result] : [...s.results.filter((r) => r.testId !== step.result.testId), step.result],
           };
         }),
       saveAnswers: (testId, answers) => set((s) => ({ answers: { ...s.answers, [testId]: answers } })),

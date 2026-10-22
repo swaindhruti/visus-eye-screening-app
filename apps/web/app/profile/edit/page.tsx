@@ -11,15 +11,18 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { ErrorState, LoadingState } from "@/components/States";
 import {
   CONDITION_OPTIONS,
+  eyewearLabel,
+  EYEWEAR_OPTIONS,
   GENDER_OPTIONS,
   initials,
   listProfiles,
+  pastLabel,
   PAST_OPTIONS,
   SCREEN_TIME_OPTIONS,
   screenHours,
-  SPECS_OPTIONS,
+  screenLabel,
   updateProfile,
-  type ProfileDetails,
+  type Profile,
 } from "@/services/profiles";
 
 export default function EditProfile() {
@@ -32,16 +35,16 @@ export default function EditProfile() {
   return <EditForm key={p.id} profile={p} />;
 }
 
-function EditForm({ profile }: { profile: ProfileDetails }) {
+function EditForm({ profile }: { profile: Profile }) {
   const qc = useQueryClient();
   const [d, setD] = useState({
     name: profile.name,
     gender: profile.gender ?? null,
     age: profile.age,
-    specs: profile.specs ?? (profile.wearsGlasses ? "Glasses" : "Neither"),
-    past: profile.pastEyeTest?.startsWith("Yes") ? "Yes" : (profile.pastEyeTest ?? null),
+    specs: eyewearLabel(profile.eyewear) ?? (profile.wearsGlasses ? "Glasses" : "Neither"),
+    past: pastLabel(profile.pastEyeTest) ?? null,
     cond: profile.healthConditions,
-    screen: profile.screenTime ?? null,
+    screen: profile.screenHoursPerDay ? screenLabel(profile.screenHoursPerDay) : null,
   });
   const set = (patch: Partial<typeof d>) => {
     setD((x) => ({ ...x, ...patch }));
@@ -53,11 +56,10 @@ function EditForm({ profile }: { profile: ProfileDetails }) {
         name: d.name.trim(),
         gender: d.gender ?? undefined,
         age: d.age,
-        specs: d.specs,
+        eyewear: EYEWEAR_OPTIONS.find(([, l]) => l === d.specs)?.[0],
         wearsGlasses: d.specs !== "Neither",
-        pastEyeTest: d.past ?? undefined,
-        healthConditions: d.cond,
-        screenTime: d.screen ?? undefined,
+        pastEyeTest: PAST_OPTIONS.find(([, l]) => l === d.past)?.[0],
+        healthConditions: d.cond.filter((c) => c !== "None of these"),
         screenHoursPerDay: screenHours(d.screen),
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["profiles"] }),
@@ -84,8 +86,8 @@ function EditForm({ profile }: { profile: ProfileDetails }) {
         </div>
         <ChoiceGroup label="Gender">{one("gender", GENDER_OPTIONS)}</ChoiceGroup>
         <AgeField value={d.age} onChange={(age) => set({ age })} min={5} />
-        <ChoiceGroup label="Glasses or lenses">{one("specs", SPECS_OPTIONS)}</ChoiceGroup>
-        <ChoiceGroup label="Past eye test or diagnosis">{one("past", PAST_OPTIONS)}</ChoiceGroup>
+        <ChoiceGroup label="Glasses or lenses">{one("specs", EYEWEAR_OPTIONS.map(([, l]) => l))}</ChoiceGroup>
+        <ChoiceGroup label="Past eye test or diagnosis">{one("past", PAST_OPTIONS.map(([, l]) => l))}</ChoiceGroup>
         <ChoiceGroup label="Health conditions">
           {CONDITION_OPTIONS.map((label) => (
             <Chip key={label} compact label={label} selected={d.cond.includes(label)} onClick={() => toggleCond(label)} />

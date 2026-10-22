@@ -1,50 +1,70 @@
-import type { Profile } from "@visus/shared";
+import type { Eyewear, Prescription, Profile, Relation } from "@visus/shared";
 
 import { api, USE_MOCK } from "./api";
 import * as mock from "./mock/profiles";
 
-export type Prescription = { rS: string; rC: string; rA: string; lS: string; lC: string; lA: string; updatedAt: string };
+export type { Profile, Prescription };
+export type NewProfile = Omit<Profile, "id">;
 
-/**
- * Profile plus the fields the design shows that the shared `Profile` type doesn't have yet
- * (relation, glasses type, past eye test, prescription). Asked for in progress/sidhartha.md.
- */
-export type ProfileDetails = Profile & {
-  relation?: string;
-  specs?: string;
-  pastEyeTest?: string;
-  screenTime?: string;
-  prescription?: Prescription | null;
-};
-
-export type NewProfile = Omit<ProfileDetails, "id">;
-
-export async function listProfiles(): Promise<ProfileDetails[]> {
+/** GET /me → profiles of this account, owner first. */
+export async function listProfiles(): Promise<Profile[]> {
   if (USE_MOCK) return mock.list();
-  return api<ProfileDetails[]>("/profiles");
+  return (await api<{ profiles: Profile[] }>("/me")).profiles;
 }
 
-export async function createProfile(input: NewProfile): Promise<ProfileDetails> {
+/** POST /profiles: the owner (onboarding) or a family member. */
+export async function createProfile(input: NewProfile): Promise<Profile> {
   if (USE_MOCK) return mock.create(input);
-  return api<ProfileDetails>("/profiles", { body: input });
+  return api<Profile>("/profiles", { body: input });
 }
 
-export async function updateProfile(id: string, patch: Partial<NewProfile>): Promise<ProfileDetails> {
+/** PATCH /profiles/:id */
+export async function updateProfile(id: string, patch: Partial<NewProfile>): Promise<Profile> {
   if (USE_MOCK) return mock.update(id, patch);
-  return api<ProfileDetails>(`/profiles/${id}`, { method: "PATCH", body: patch });
+  return api<Profile>(`/profiles/${id}`, { method: "PATCH", body: patch });
 }
 
-/** Screen-time answer from onboarding → hours per day for the shared Profile. */
-export const SCREEN_TIME_OPTIONS = ["Under 2 hours", "2–4 hours", "4–6 hours", "6–8 hours", "More than 8 hours"];
-export const screenHours = (label: string | null | undefined) => {
-  const i = SCREEN_TIME_OPTIONS.indexOf(label ?? "");
-  return i < 0 ? 0 : [1, 3, 5, 7, 9][i];
-};
+// ---------- Labels the screens show for the shared Profile fields ----------
+
+export const RELATION_LABEL: Record<Relation, string> = { self: "You", child: "Child", partner: "Partner", parent: "Parent", sibling: "Sibling", other: "Family" };
+export const FAMILY_RELATIONS: Relation[] = ["child", "partner", "parent", "sibling", "other"];
+export const relationLabel = (p: Profile) => RELATION_LABEL[p.relation ?? (p.isChild ? "child" : "other")];
+export const isOwner = (p: Profile) => p.relation === "self";
 
 export const GENDER_OPTIONS = ["Female", "Male", "Non-binary", "Prefer not to say"];
-export const SPECS_OPTIONS = ["Glasses", "Contact lenses", "Both", "Neither"];
-export const PAST_OPTIONS = ["Yes", "No", "Not sure"];
+
+export const EYEWEAR_OPTIONS: [Eyewear, string][] = [
+  ["glasses", "Glasses"],
+  ["contacts", "Contact lenses"],
+  ["both", "Both"],
+  ["none", "Neither"],
+];
+export const eyewearLabel = (e?: Eyewear) => EYEWEAR_OPTIONS.find(([k]) => k === e)?.[1];
+
+export const PAST_OPTIONS: [NonNullable<Profile["pastEyeTest"]>, string][] = [
+  ["yes", "Yes"],
+  ["no", "No"],
+  ["not_sure", "Not sure"],
+];
+export const pastLabel = (v?: Profile["pastEyeTest"]) => PAST_OPTIONS.find(([k]) => k === v)?.[1];
+
 export const CONDITION_OPTIONS = ["Diabetes", "High blood pressure", "Thyroid", "Migraines", "Dry eyes", "Allergies", "Other", "None of these"];
+
+/** Screen-time answers and the hours each one is saved as. */
+export const SCREEN_TIME: [string, number][] = [
+  ["Under 2 hours", 1],
+  ["2–4 hours", 3],
+  ["4–6 hours", 5],
+  ["6–8 hours", 7],
+  ["More than 8 hours", 9],
+];
+export const SCREEN_TIME_OPTIONS = SCREEN_TIME.map(([l]) => l);
+export const screenHours = (label: string | null | undefined) => SCREEN_TIME.find(([l]) => l === label)?.[1] ?? 0;
+export const screenLabel = (hours: number) => (hours < 2 ? SCREEN_TIME[0] : hours < 4 ? SCREEN_TIME[1] : hours < 6 ? SCREEN_TIME[2] : hours < 8 ? SCREEN_TIME[3] : SCREEN_TIME[4])[0];
+
+/** −1.25 style: a real minus sign, two decimals, a plus for positive powers. */
+export const fmtPower = (n: number) => (n === 0 ? "0.00" : `${n > 0 ? "+" : "−"}${Math.abs(n).toFixed(2)}`);
+export const parsePower = (s: string) => Number(s.replace(/[−–]/g, "-").replace(/[^\d.+-]/g, "")) || 0;
 
 export const initials = (name: string) =>
   name

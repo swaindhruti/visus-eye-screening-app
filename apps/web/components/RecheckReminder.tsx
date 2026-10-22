@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { CATEGORIES } from "@/lib/tests";
 import { fmtFull, fmtShort } from "@/lib/dates";
-import { getSession, type SessionListItem } from "@/services/sessions";
+import { getSession, type SessionSummary } from "@/services/sessions";
 import { useSettings } from "@/store/settings";
 
 import { Button } from "./Button";
@@ -17,7 +17,7 @@ import { HeaderButton } from "./ScreenHeader";
 const months = (from: string, to: Date) => Math.max(1, Math.round((to.getTime() - new Date(from).getTime()) / (30 * 864e5)));
 
 /** Screen 56: full-screen reminder over Home when the last check is old. */
-export function RecheckReminder({ last, today, onClose }: { last: SessionListItem; today: Date; onClose: () => void }) {
+export function RecheckReminder({ last, today, onClose }: { last: SessionSummary; today: Date; onClose: () => void }) {
   const v = useQuery({ queryKey: ["session", last.id], queryFn: () => getSession(last.id) });
   const [snoozed, setSnoozed] = useState<string | null>(null);
   const m = months(last.date, today);

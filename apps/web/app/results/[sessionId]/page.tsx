@@ -12,6 +12,7 @@ import { Screen } from "@/components/Screen";
 import { HeaderButton, ScreenHeader } from "@/components/ScreenHeader";
 import { ErrorState, LoadingState } from "@/components/States";
 import { TestIcon } from "@/components/TestArt";
+import { fmtShort } from "@/lib/dates";
 import { CATEGORIES, TEST_COPY, testInfo } from "@/lib/tests";
 import { useVerdict } from "@/lib/useVerdict";
 import { useCheck } from "@/store/check";
@@ -29,8 +30,8 @@ export default function Results() {
   if (q.isError) return <ErrorState onRetry={() => q.refetch()} retrying={q.isFetching} />;
 
   const v = q.data;
-  const isCurrent = check.sessionId === sessionId && check.startedAt > 0;
-  const minutes = v.results.reduce((n, r) => n + testInfo(r.testId).minutes, 0);
+  const isToday = v.date ? new Date(v.date).toDateString() === new Date().toDateString() : check.sessionId === sessionId;
+  const minutes = v.minutes ?? v.results.reduce((n, r) => n + testInfo(r.testId).minutes, 0);
   const areas = CATEGORIES.filter((c) => v.areas[c.id]);
   const ordered = [...v.results].sort((a, b) => ORDER.indexOf(a.status) - ORDER.indexOf(b.status));
   const doctor = v.results.some((r) => r.status === "see_doctor");
@@ -48,7 +49,7 @@ export default function Results() {
       <section className="mt-4 flex flex-none flex-col gap-1 rounded-[24px] bg-night px-5 py-[18px] text-white md:mt-6 md:flex-row md:flex-wrap md:items-end md:justify-between md:gap-6 md:rounded-[28px] md:p-8">
         <div className="flex flex-col gap-1 md:flex-[1_1_480px] md:gap-2">
           <span className="text-[13px] font-semibold text-white/70 md:text-[14px]">
-            {isCurrent ? "Today · " : ""}
+            {isToday ? "Today · " : v.date ? `${fmtShort(v.date)} · ` : ""}
             {v.results.length} {v.results.length === 1 ? "test" : "tests"} · {minutes} min
           </span>
           <h1 className="m-0 mt-1 text-[24px] font-bold leading-[1.2] tracking-[-0.02em] md:mt-0 md:text-[36px] md:leading-[1.15] md:tracking-[-0.025em]">{v.headline}</h1>

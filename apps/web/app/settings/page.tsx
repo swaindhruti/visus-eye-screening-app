@@ -121,7 +121,7 @@ export default function Settings() {
         </Link>
       )}
       <span className="mt-2.5 flex-none text-center text-[12px] text-[#8A8A85]">
-        Visus 1.0 · {user.data ? `Signed in as ${mask(user.data.identifier)}` : "Not signed in"}
+        Visus 1.0 · {user.data ? `Signed in as ${mask(user.data.user.identifier)}` : "Not signed in"}
       </span>
     </Screen>
   );

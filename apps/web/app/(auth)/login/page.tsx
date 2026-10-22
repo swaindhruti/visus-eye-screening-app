@@ -10,6 +10,7 @@ import { PasswordField, TextField } from "@/components/Field";
 import { Screen, Spacer } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { login } from "@/services/auth";
+import { listProfiles } from "@/services/profiles";
 import { useSettings } from "@/store/settings";
 
 export default function LogIn() {
@@ -19,10 +20,14 @@ export default function LogIn() {
   const ok = id.trim().length >= 3 && pw.length > 0;
 
   const m = useMutation({
-    mutationFn: () => login({ identifier: id.trim(), password: pw }),
-    onSuccess: () => {
-      useSettings.getState().set({ onboarded: true });
-      router.push("/home");
+    mutationFn: async () => {
+      await login({ identifier: id.trim(), password: pw });
+      return listProfiles();
+    },
+    onSuccess: (profiles) => {
+      // An account without a profile yet (signed up, left onboarding) finishes onboarding first.
+      useSettings.getState().set({ onboarded: profiles.length > 0 });
+      router.push(profiles.length ? "/home" : "/onboarding");
     },
   });
   const submit = () => ok && !m.isPending && m.mutate();
@@ -47,9 +52,6 @@ export default function LogIn() {
       {m.isError && <p className="m-0 mb-3 text-center text-[14px] text-doc">{m.error.message || "Couldn't log you in. Check your details."}</p>}
       <Button disabled={!ok || m.isPending} onClick={submit}>
         {m.isPending ? "Logging in…" : "Log in"}
-      </Button>
-      <Button href="/home" variant="secondary" className="mt-2.5">
-        Continue as guest
       </Button>
       <p className="m-0 mt-3.5 text-center text-[15px] text-muted">
         New to Visus?{" "}

@@ -2,7 +2,7 @@
 // Mobile: { trials: [{ angleDeg, xMm, yMm, seen }], falseTaps }. Web: { seen: boolean[24], falseTaps } (positions from FIELD_POINTS).
 import type { Eye } from '@visus/shared';
 
-import { arr, eyesLabel, num, scoreEachEye, type Answers, type Scored } from './helpers';
+import { arr, num, scoreEachEye, yourEyes, type Answers, type Scored } from './helpers';
 
 type Dot = { angleDeg: number; xMm: number; yMm: number; seen: boolean };
 
@@ -64,7 +64,7 @@ export function scorePeripheral(answers: Answers, eye: Eye): Scored {
         ? `${counts} Your side vision looks healthy.`
         : status === 'mild'
           ? `${counts} A few missed dots are often just a blink or a moment of lost focus.`
-          : `${counts} Your ${eyesLabel(flagged)} missed several dots at the side. Gaps in side vision can be an early sign of glaucoma and should be checked by an eye doctor.`,
+          : `${counts} ${yourEyes(flagged)} missed several dots at the side. Gaps in side vision can be an early sign of glaucoma and should be checked by an eye doctor.`,
     ...(status === 'mild' ? { tip: 'Repeat the test in a quiet moment, keeping your eye on the centre dot.' } : {}),
     ...(status === 'see_doctor' ? { tip: 'Book an eye exam and ask for a visual field test.' } : {}),
   };

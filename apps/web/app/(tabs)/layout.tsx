@@ -1,4 +1,4 @@
-import { TabBar, TopNav } from "@/components/TabBar";
+import { GuestBar, TabBar, TopNav } from "@/components/TabBar";
 
 export default function TabsLayout({ children }: LayoutProps<"/">) {
   return (
@@ -6,6 +6,7 @@ export default function TabsLayout({ children }: LayoutProps<"/">) {
       <TopNav />
       {children}
       <TabBar />
+      <GuestBar />
     </>
   );
 }

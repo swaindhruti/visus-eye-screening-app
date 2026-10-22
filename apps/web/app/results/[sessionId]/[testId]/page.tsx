@@ -30,15 +30,15 @@ export default function ResultDetail() {
       <ScoreRow result={result} />
 
       <h3 className="m-0 mt-[22px] text-[17px] font-bold">What it means</h3>
-      <p className="m-0 mt-1.5 text-[16px] leading-normal text-ink-soft text-pretty">{result.summary}.</p>
+      <p className="m-0 mt-1.5 text-[16px] leading-normal text-ink-soft text-pretty">{result.meaning ?? `${result.summary}.`}</p>
 
-      {testId === "peripheral_field" ? <PeripheralMap /> : <EyeCompare result={result} />}
+      {testId === "peripheral_field" ? <PeripheralMap result={result} /> : <EyeCompare result={result} />}
 
       <div className="mt-3 flex flex-none gap-3 rounded-[20px] bg-acc-soft px-4 py-3.5">
         <Icon name="sparkle" size={22} color="#194F81" className="mt-px flex-none" />
         <div className="flex flex-col gap-[3px]">
           <span className="text-[14px] font-bold text-acc-ink">Tip</span>
-          <span className="text-[15px] leading-[1.45] text-ink-soft text-pretty">{TIPS[result.status]}</span>
+          <span className="text-[15px] leading-[1.45] text-ink-soft text-pretty">{result.tip ?? TIPS[result.status]}</span>
         </div>
       </div>
 

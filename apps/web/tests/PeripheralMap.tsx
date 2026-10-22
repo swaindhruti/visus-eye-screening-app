@@ -1,5 +1,7 @@
 "use client";
 
+import type { ScoredResult } from "@visus/shared";
+
 import { useCheck } from "@/store/check";
 
 /** 24 test points: 3 rings × 8 directions. Index = ring * 8 + direction (0 = up, clockwise). */
@@ -37,12 +39,16 @@ function FieldSvg({ seen }: { seen?: boolean[] }) {
 
 type EyeAnswers = { seen?: boolean[] };
 
-/** Screen 58: what each eye noticed, drawn from the answers this device sent. */
-export function PeripheralMap() {
+/** Screen 58: what each eye noticed, from the answers this device sent, else the dots the server echoed. */
+export function PeripheralMap({ result }: { result?: ScoredResult }) {
   const raw = useCheck((s) => s.answers.peripheral_field) as { right?: EyeAnswers; left?: EyeAnswers } | undefined;
+  const fromServer = (side: "left" | "right") => {
+    const dots = result?.field?.[side];
+    return dots?.length === FIELD_POINTS.length ? dots.map((d) => d.seen) : undefined;
+  };
   const eyes = [
-    ["Left eye", raw?.left?.seen],
-    ["Right eye", raw?.right?.seen],
+    ["Left eye", raw?.left?.seen ?? fromServer("left")],
+    ["Right eye", raw?.right?.seen ?? fromServer("right")],
   ] as const;
   return (
     <>

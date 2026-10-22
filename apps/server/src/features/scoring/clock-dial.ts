@@ -1,5 +1,5 @@
 // Scorer for clock_dial (astigmatism). Per eye: { darker: ["3-9"], allSame }.
-import { arr, eachEyeSummary, eyesLabel, scoreEachEye, type Answers, type Scored } from './helpers';
+import { arr, eachEyeSummary, scoreEachEye, yourEyes, type Answers, type Scored } from './helpers';
 import type { Eye } from '@visus/shared';
 
 export function scoreClockDial(answers: Answers, eye: Eye): Scored {
@@ -15,7 +15,7 @@ export function scoreClockDial(answers: Answers, eye: Eye): Scored {
     status,
     summary: `Some lines look darker: ${eachEyeSummary(eyes)}`,
     eyes: result,
-    meaning: `In your ${eyesLabel(flagged)} some lines looked darker than others. This is a common sign of astigmatism, which blurs edges and makes lights streak at night. Lenses with a cylinder correction fix it.`,
+    meaning: `In ${yourEyes(flagged).toLowerCase()} some lines looked darker than others. This is a common sign of astigmatism, which blurs edges and makes lights streak at night. Lenses with a cylinder correction fix it.`,
     tip: 'Ask for an eye test that checks for astigmatism (the "cylinder" in a prescription).',
   };
 }

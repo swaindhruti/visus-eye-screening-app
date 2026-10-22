@@ -11,9 +11,12 @@ import { AgeStepper } from "@/components/Field";
 import { Icon } from "@/components/Icon";
 import { Spacer } from "@/components/Screen";
 import { HeaderButton } from "@/components/ScreenHeader";
-import { CONDITION_OPTIONS, createProfile, GENDER_OPTIONS, PAST_OPTIONS, SCREEN_TIME_OPTIONS, screenHours, SPECS_OPTIONS } from "@/services/profiles";
+import { CONDITION_OPTIONS, createProfile, EYEWEAR_OPTIONS, GENDER_OPTIONS, PAST_OPTIONS, SCREEN_TIME_OPTIONS, screenHours } from "@/services/profiles";
 import { useCheck } from "@/store/check";
 import { useSettings } from "@/store/settings";
+
+const SPECS_LABELS = EYEWEAR_OPTIONS.map(([, l]) => l);
+const PAST_LABELS = PAST_OPTIONS.map(([, l]) => l);
 
 type Data = { name: string; gender: string | null; age: number | ""; specs: string | null; past: string | null; note: string; cond: string[]; screen: string | null };
 
@@ -38,10 +41,10 @@ export default function Onboarding() {
         wearsGlasses: d.specs != null && d.specs !== "Neither",
         healthConditions: d.cond.filter((c) => c !== "None of these"),
         screenHoursPerDay: screenHours(d.screen),
-        relation: "You",
-        specs: d.specs ?? undefined,
-        pastEyeTest: d.past === "Yes" && d.note.trim() ? `Yes — ${d.note.trim()}` : (d.past ?? undefined),
-        screenTime: d.screen ?? undefined,
+        relation: "self",
+        eyewear: EYEWEAR_OPTIONS.find(([, l]) => l === d.specs)?.[0],
+        pastEyeTest: PAST_OPTIONS.find(([, l]) => l === d.past)?.[0],
+        pastEyeNote: d.past === "Yes" && d.note.trim() ? d.note.trim() : undefined,
       }),
     onSuccess: (p) => {
       useCheck.getState().setProfile(p.id);
@@ -63,11 +66,12 @@ export default function Onboarding() {
     set({ cond: base.includes(label) ? base.filter((x) => x !== label) : [...base, label] });
   };
 
-  const next = () => {
-    if (!canNext) return;
+  // The last question saves the profile, whether answered or skipped.
+  const advance = () => {
     if (step === 6) save.mutate();
     go(step + 1);
   };
+  const next = () => canNext && advance();
 
   const rows: [string, string | null][] = [
     ["Gender", d.gender],
@@ -91,7 +95,7 @@ export default function Onboarding() {
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-line-option" role="progressbar" aria-valuenow={step + 1} aria-valuemax={8}>
             <div className="h-full rounded-full bg-acc transition-[width] duration-400 ease-[cubic-bezier(.2,.7,.3,1)]" style={{ width: `${Math.round(((step + 1) / 8) * 100)}%` }} />
           </div>
-          <button type="button" onClick={() => go(step + 1)} className={cn("h-11 px-1.5 text-[16px] font-semibold text-muted hover:text-ink", (step === 0 || step === 7) && "invisible")}>
+          <button type="button" onClick={advance} className={cn("h-11 px-1.5 text-[16px] font-semibold text-muted hover:text-ink", (step === 0 || step === 7) && "invisible")}>
             Skip
           </button>
         </div>
@@ -132,13 +136,13 @@ export default function Onboarding() {
           {step === 3 && (
             <>
               <Q>Do you wear glasses or lenses?</Q>
-              {single("specs", SPECS_OPTIONS)}
+              {single("specs", SPECS_LABELS)}
             </>
           )}
           {step === 4 && (
             <>
               <Q>Had an eye test or diagnosis before?</Q>
-              {single("past", PAST_OPTIONS)}
+              {single("past", PAST_LABELS)}
               {d.past === "Yes" && (
                 <textarea
                   value={d.note}
@@ -198,7 +202,10 @@ export default function Onboarding() {
             <Button onClick={() => (save.isError ? save.mutate() : router.push("/permissions"))} disabled={save.isPending}>
               {save.isPending ? "Saving…" : save.isError ? "Try again" : "Start my first eye check"}
             </Button>
-            <div className="mt-3 text-center text-[14px] text-muted">You can change these anytime in Profile.</div>
+            <Button variant="ghost" className="mt-1" disabled={!save.isSuccess} onClick={() => router.push("/home")}>
+              Later
+            </Button>
+            <div className="mt-2 text-center text-[14px] text-muted">You can change these anytime in Profile.</div>
           </>
         )}
       </main>

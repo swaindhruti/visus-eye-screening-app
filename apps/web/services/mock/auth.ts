@@ -1,4 +1,5 @@
 import type { AuthResult, User } from "../auth";
+import { list } from "./profiles";
 import { delay, load, save, uid } from "./store";
 
 export async function signup(name: string, identifier: string): Promise<AuthResult> {
@@ -15,7 +16,7 @@ export async function login(identifier: string): Promise<AuthResult> {
   return { token: "mock-" + user.id, user };
 }
 
-export async function me(): Promise<User | null> {
-  await delay(100);
-  return load<User | null>("user", null);
+export async function me() {
+  const user = load<User | null>("user", null) ?? { id: "u1", name: "Asha Sharma", identifier: "asha@example.com" };
+  return { user, profiles: await list() };
 }

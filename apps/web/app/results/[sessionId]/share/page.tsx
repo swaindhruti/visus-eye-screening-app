@@ -15,7 +15,7 @@ import { qrPath } from "@/lib/qr";
 import { CATEGORIES } from "@/lib/tests";
 import { useVerdict } from "@/lib/useVerdict";
 import { listProfiles } from "@/services/profiles";
-import { shareSession } from "@/services/sessions";
+import { listSessions, shareSession } from "@/services/sessions";
 import { useCheck } from "@/store/check";
 
 export default function Share() {
@@ -23,7 +23,9 @@ export default function Share() {
   const q = useVerdict(sessionId);
   const link = useQuery({ queryKey: ["share", sessionId], queryFn: () => shareSession(sessionId), staleTime: Infinity });
   const profiles = useQuery({ queryKey: ["profiles"], queryFn: listProfiles });
-  const profileId = useCheck((s) => s.profileId);
+  const sessions = useQuery({ queryKey: ["sessions"], queryFn: listSessions });
+  const current = useCheck((s) => s.profileId);
+  const profileId = sessions.data?.find((s) => s.id === sessionId)?.profileId ?? current;
   const today = useToday();
 
   if (q.isPending) return <LoadingState />;
@@ -45,7 +47,7 @@ export default function Share() {
             <span className="text-[18px] font-bold">{who ? `${who.name}, ${who.age}` : "Eye check"}</span>
           </div>
           <span className="text-right text-[12px] text-muted">
-            {today ? fmtFull(today) : ""}
+            {v.date ? fmtFull(v.date) : today ? fmtFull(today) : ""}
             <br />
             {v.results.length} {v.results.length === 1 ? "test" : "tests"}
           </span>

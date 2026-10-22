@@ -22,6 +22,12 @@ export function eyesLabel(sides: ('right' | 'left')[]) {
   return sides.length === 1 ? `${sides[0]} eye` : 'your eyes';
 }
 
+/** "Your right eye", "Both your eyes" or "Your eyes", to start a sentence (never "Your both eyes"). */
+export function yourEyes(sides: ('right' | 'left')[]) {
+  if (sides.length === 2) return 'Both your eyes';
+  return sides.length === 1 ? `Your ${sides[0]} eye` : 'Your eyes';
+}
+
 type Side = 'right' | 'left';
 export type EyeScore = EyeResult & { note?: string };
 

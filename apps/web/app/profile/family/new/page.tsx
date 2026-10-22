@@ -10,9 +10,8 @@ import { AgeField, ChoiceGroup, TextField } from "@/components/Field";
 import { Icon } from "@/components/Icon";
 import { Screen, Spacer } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { createProfile, initials } from "@/services/profiles";
+import { createProfile, FAMILY_RELATIONS, initials, RELATION_LABEL } from "@/services/profiles";
 
-const RELATIONS = ["Child", "Partner", "Parent", "Sibling", "Other"];
 
 export default function AddFamily() {
   const router = useRouter();
@@ -32,7 +31,7 @@ export default function AddFamily() {
         wearsGlasses: false,
         healthConditions: [],
         screenHoursPerDay: 0,
-        relation: RELATIONS[rel],
+        relation: FAMILY_RELATIONS[rel],
         prescription: null,
       }),
     onSuccess: () => {
@@ -51,8 +50,8 @@ export default function AddFamily() {
         <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Their name" />
         <AgeField value={age} onChange={setAge} />
         <ChoiceGroup label="Relation">
-          {RELATIONS.map((r, i) => (
-            <Chip key={r} compact label={r} selected={rel === i} onClick={() => setRel(i)} />
+          {FAMILY_RELATIONS.map((r, i) => (
+            <Chip key={r} compact label={r === "other" ? "Other" : RELATION_LABEL[r]} selected={rel === i} onClick={() => setRel(i)} />
           ))}
         </ChoiceGroup>
         <div className="flex min-h-[72px] items-center gap-3 rounded-[20px] border border-line bg-white px-4 py-3">
