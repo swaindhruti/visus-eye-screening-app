@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Visus web
 
-## Getting Started
+The web app, built with Next.js (App Router) and Tailwind CSS. It has the same screens and routes as the mobile app ([`docs/SCREENS.md`](../../docs/SCREENS.md)), except the mobile-only Screen Coach. It also serves the shared report page at `/r/<token>`. For the full stack, see [`docs/SETUP.md`](../../docs/SETUP.md). For rules and structure, see [`CLAUDE.md`](CLAUDE.md).
 
-First, run the development server:
+## Setup
+
+All commands run in `apps/web`, after a `bun install` at the repo root.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| Key | Value |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8787`. Run the server in `apps/server` with `bun run dev:phone`, or use the deployed Worker URL. |
+| `NEXT_PUBLIC_USE_MOCK` | `0` = real API, `1` = mock data from `services/mock` (no server needed) |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Run
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+bun dev          # http://localhost:3000
+bun run build    # production build
+bun run lint
+```
 
-## Learn More
+- **Phone camera:** phone browsers allow the camera (MediaPipe camera distance) only on HTTPS. Test it on the Vercel preview URL.
+- **Voice input:** uses the browser's Web Speech API, which works in Chrome and Edge.
 
-To learn more about Next.js, take a look at the following resources:
+## Deploy
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Vercel, with root directory `apps/web`. Set `NEXT_PUBLIC_API_URL` (the Worker URL) and `NEXT_PUBLIC_USE_MOCK=0`. Every push to `main` deploys.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Layout
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+app/          routes, same as the mobile app (+ /r/[token] shared report)
+components/   shared UI
+lib/          hooks and helpers (tests copy, guest mode, voice input)
+services/     api.ts + one file per server area; mock/ for USE_MOCK
+store/        zustand stores (check, calibration)
+tests/        one component per test
+```

@@ -2,7 +2,7 @@
 
 Hono on Cloudflare Workers. Types come from `packages/shared` (`@visus/shared`).
 
-- Local: `http://localhost:8787` (phone: `bunx wrangler dev --ip 0.0.0.0`, then use your Mac's Wi-Fi IP)
+- Local: `cd apps/server && bun run dev:phone` → `http://localhost:8787` (phone: your Mac's Wi-Fi IP). Full setup: `docs/SETUP.md`
 - Auth: send `Authorization: Bearer <token>` on every route except `/health`, `/auth/signup`, `/auth/login`
 - Errors: `{ "error": "message" }` with a 4xx/5xx status
 

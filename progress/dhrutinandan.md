@@ -4,6 +4,7 @@ Area: mobile app + server (setup, auth, agent). Claude updates this file at the 
 
 ## Now
 - Mobile now has every web feature (`feat/mobile-web-parity`, 2026-10-23): guest mode, voice input, onboarding "Later", skip-saves-profile fix, more distance-watched tests; server Gemini calls are hedged. Pushed for a PR. **Needs a new EAS development build** (voice input adds a native package), then a phone check.
+- Docs (2026-10-24): new root `README.md` (banner `docs/assets/banner.png`), `docs/SETUP.md` (run server + web + mobile together, EAS build, network changes, troubleshooting, deploy), `docs/ARCHITECTURE.md`, and README per app.
 - Remaining for Dhrutinandan: the deployment, later. Everything else is Sidhartha's.
 
 ## Next
