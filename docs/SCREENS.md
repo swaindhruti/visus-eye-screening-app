@@ -10,7 +10,7 @@ Platform: **Both**, **Mobile** (native-only, web leaves it out), or **Part of** 
 
 | # | Screen | Route | Platform | Data |
 |---|---|---|---|---|
-| 1 | Entry | `/(auth)/welcome` | Both | — |
+| 1 | Entry | `/(auth)/welcome` | Both (with "Continue as guest": Tests library only, scored by `POST /reports/guest-score`, nothing saved) | — |
 | 39 | Sign up | `/(auth)/signup` | Both | `POST /auth/signup` |
 | 40 | Log in | `/(auth)/login` | Both | `POST /auth/login` |
 | 2 | Onboarding (7 steps + summary) | `/onboarding` | Both | `POST /profiles` |

@@ -1,4 +1,4 @@
-import { router, useFocusEffect } from 'expo-router';
+import { Redirect, router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -14,13 +14,20 @@ import { daysAgo, daysSince, elapsed, RECHECK_DAYS } from '@/constants/report';
 import { Colors, Fonts, Radius, Type } from '@/constants/theme';
 import { getScreenTimeToday, type ScreenTime } from '@/services/coach';
 import { listSessions, type SessionSummary } from '@/services/sessions';
+import { useAuth } from '@/store/auth';
 import { newCheckRoute } from '@/store/check';
 import { useSettings } from '@/store/settings';
 
 const hm = (min: number) => `${Math.floor(min / 60)}h ${min % 60}m`;
 
 /** Screen 3: Home. */
+/** Guests only have the Tests library (every "Go to Home" lands there). */
 export default function Home() {
+  const guest = useAuth((s) => s.guest);
+  return guest ? <Redirect href="/tests" /> : <HomeScreen />;
+}
+
+function HomeScreen() {
   const [last, setLast] = useState<SessionSummary | null>(null);
   const [screenTime, setScreenTime] = useState<ScreenTime | null>(null);
 

@@ -57,9 +57,19 @@ export async function createSession(input: NewSession): Promise<Session> {
   return request<Session>('/sessions', { method: 'POST', body: input });
 }
 
+/** Guest checks never reach the server's sessions: one test, scored by POST /reports/guest-score, nothing saved. */
+export const GUEST_SESSION = 'guest';
+
+export const guestSession = (testId: SubmitResult['testId']): Session => ({
+  sessionId: GUEST_SESSION,
+  summary: 'The test you picked.',
+  plan: [{ testId, reason: 'Picked by you' }],
+});
+
 /** POST /sessions/:id/results: raw answers of one test. The server scores them and says what comes next. */
 export async function submitResult(sessionId: string, input: SubmitResult): Promise<NextStep> {
   if (USE_MOCK) return mockDelay(mockSubmitResult(sessionId, input), 900);
+  if (sessionId === GUEST_SESSION) return request<NextStep>('/reports/guest-score', { method: 'POST', body: input });
   return request<NextStep>(`/sessions/${sessionId}/results`, { method: 'POST', body: input });
 }
 

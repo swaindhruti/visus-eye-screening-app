@@ -1,9 +1,11 @@
+import { router } from 'expo-router';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/Icon';
 import { Text } from '@/components/Text';
-import { Colors, Radius, Sizes, Type } from '@/constants/theme';
+import { Colors, Fonts, Radius, Sizes, Type } from '@/constants/theme';
+import { useAuth } from '@/store/auth';
 
 const TABS: Record<string, { label: string; icon: IconName }> = {
   home: { label: 'Home', icon: 'home' },
@@ -20,6 +22,25 @@ export const tabBarSpace = (insetBottom: number) => tabBarBottom(insetBottom) + 
 
 /** Floating pill tab bar from the design. Used as the `tabBar` of (tabs). */
 export function BottomTabBar({ state, navigation, insets }: BottomTabBarProps) {
+  const guest = useAuth((s) => s.guest);
+  // Guests only have the Tests library: a Guest mode bar with the way to the full app.
+  if (guest)
+    return (
+      <View style={[styles.bar, styles.guestBar, { bottom: tabBarBottom(insets.bottom) }]}>
+        <View style={styles.guestText}>
+          <Text style={styles.guestTitle}>Guest mode</Text>
+          <Text style={styles.guestSub} numberOfLines={1}>
+            Results aren&apos;t saved
+          </Text>
+        </View>
+        <Pressable accessibilityRole="button" onPress={() => router.push('/login')} style={({ pressed }) => [styles.guestLink, pressed && styles.pressed]}>
+          <Text style={styles.guestLinkText}>Log in</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" onPress={() => router.push('/signup')} style={[styles.guestLink, styles.guestSignup]}>
+          <Text style={[styles.guestLinkText, { color: Colors.white }]}>Sign up</Text>
+        </Pressable>
+      </View>
+    );
   return (
     <View style={[styles.bar, { bottom: tabBarBottom(insets.bottom) }]}>
       {state.routes.map((route, index) => {
@@ -74,4 +95,11 @@ const styles = StyleSheet.create({
   },
   active: { backgroundColor: Colors.ink },
   pressed: { backgroundColor: Colors.pressed },
+  guestBar: { alignItems: 'center', paddingLeft: 16 },
+  guestText: { flex: 1, minWidth: 0 },
+  guestTitle: { fontFamily: Fonts.bold, fontSize: 14, color: Colors.ink },
+  guestSub: { fontFamily: Fonts.regular, fontSize: 12, color: Colors.muted },
+  guestLink: { height: '100%', paddingHorizontal: 12, borderRadius: Radius.tile, justifyContent: 'center' },
+  guestSignup: { paddingHorizontal: 16, backgroundColor: Colors.ink },
+  guestLinkText: { fontFamily: Fonts.semibold, fontSize: 15, color: Colors.inkSoft },
 });

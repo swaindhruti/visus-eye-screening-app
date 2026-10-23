@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import { create } from 'zustand';
 
 import { cameraDistanceAvailable, TEST_DISTANCE_CM } from '@/components/DistanceCamera';
+import { isGuest } from '@/services/auth';
 import { getMyProfile, listProfiles } from '@/services/profiles';
 import { isOnline } from '@/services/network';
-import { createSession, getSession } from '@/services/sessions';
+import { createSession, getSession, guestSession } from '@/services/sessions';
 import { useCalibration } from '@/store/calibration';
 import { OFFLINE_PREFIX } from '@/store/offline';
 
@@ -115,6 +116,11 @@ export function glassesRound(): 'glasses_off' | 'glasses_on' | undefined {
 
 /** Starts a one-test check (mode "single") and returns where to go first. */
 export async function startSingleTest(testId: TestId): Promise<Href> {
+  // Guests have no profile: the session stays on this phone and only the score comes from the server.
+  if (isGuest()) {
+    useCheck.getState().start('single', guestSession(testId));
+    return firstStep();
+  }
   const profile = await getMyProfile();
   // Offline (54): the test still runs; its answers wait on the phone (store/offline.ts).
   const session = (await isOnline())

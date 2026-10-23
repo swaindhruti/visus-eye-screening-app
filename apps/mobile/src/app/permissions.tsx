@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Linking, PermissionsAndroid, Platform, Pressable, StyleSheet, View } from 'react-native';
 
@@ -43,6 +43,7 @@ const askCamera = cameraDistanceAvailable && Platform.OS === 'android';
  * in the installed app, the camera for face-distance tracking.
  */
 export default function Permissions() {
+  const { then } = useLocalSearchParams<{ then?: string }>();
   const reminderOn = useSettings((s) => s.reminders.check);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ReminderResult | null>(null);
@@ -68,6 +69,8 @@ export default function Permissions() {
   }
 
   async function next() {
+    // "Later" on the onboarding summary: Home instead of a first check.
+    if (then === 'home') return router.replace('/home');
     try {
       router.replace(await newCheckRoute());
     } catch {

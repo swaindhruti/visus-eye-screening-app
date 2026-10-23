@@ -13,7 +13,7 @@ import { Screen } from '@/components/Screen';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { CATEGORIES, testInfo } from '@/constants/tests';
 import { Colors, Fonts } from '@/constants/theme';
-import { getVerdict } from '@/services/sessions';
+import { getVerdict, GUEST_SESSION } from '@/services/sessions';
 import { startSingleTest, useCheck } from '@/store/check';
 
 /** Ends the single test and goes to the Tests tab. */
@@ -77,9 +77,12 @@ function Scored() {
   const [attempt, setAttempt] = useState(0);
   const [starting, setStarting] = useState(false);
 
+  const guest = sessionId === GUEST_SESSION;
+
   // The server saves each result as it comes in; the verdict closes the check so it shows in Results.
+  // Guest results are only scored, never saved.
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId || guest) return;
     let live = true;
     getVerdict(sessionId)
       .then((v) => {
@@ -91,7 +94,7 @@ function Scored() {
     return () => {
       live = false;
     };
-  }, [sessionId, attempt]);
+  }, [sessionId, attempt, guest]);
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -164,7 +167,13 @@ function Scored() {
         )}
 
         <View style={styles.spacer} />
-        {saved === 'failed' ? (
+        {guest ? (
+          <Pressable accessibilityRole="button" onPress={() => router.push('/signup')} style={styles.saved}>
+            <Text style={styles.savedText}>
+              Guest mode: this result isn&apos;t saved. <Text style={styles.signup}>Sign up</Text> to keep it.
+            </Text>
+          </Pressable>
+        ) : saved === 'failed' ? (
           <Pressable accessibilityRole="button" onPress={() => (setSaved('saving'), setAttempt(attempt + 1))} style={styles.saved}>
             <Text style={[styles.savedText, styles.retry]}>Couldn&apos;t save to Results. Try again</Text>
           </Pressable>
@@ -212,6 +221,7 @@ const styles = StyleSheet.create({
   spacer: { flex: 1, minHeight: 16 },
   saved: { marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   savedText: { fontFamily: Fonts.regular, fontSize: 13, color: Colors.muted },
+  signup: { fontFamily: Fonts.semibold, color: Colors.ink },
   retry: { fontFamily: Fonts.semibold, color: Colors.ink, textDecorationLine: 'underline' },
   actions: { flexDirection: 'row', gap: 10 },
   action: { flex: 1 },

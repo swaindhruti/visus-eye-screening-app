@@ -49,6 +49,13 @@
             "usesCleartextTraffic": true
           }
         }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Visus uses the microphone so you can speak instead of typing in the eye check chat.",
+          "speechRecognitionPermission": "Visus turns your speech into text for the eye check chat."
+        }
       ]
     ],
     "experiments": {
