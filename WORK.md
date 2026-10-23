@@ -55,6 +55,7 @@ Dhrutinandan:
 
 - [x] D: Camera distance tracking (EAS development build): Distance setup (12), Distance warning (47), live distance in Near point
 - [x] D: Screen Coach (Android native module + overlay, screens 7, 21, 22, 23) + real screen time on Home; reminders in the installed app
+- [x] D: Mobile parity with the web (2026-10-23): guest mode, voice input in the intake chat, onboarding "Later" + skip-saves-profile fix, distance warning also on clock dial / duochrome / Amsler; server: hedged Gemini calls
 - [ ] D: Deploy the server (later, not started): Hyperdrive for Aiven, 4 secrets, `wrangler deploy`, smoke test on the live URL (`apps/server/CLAUDE.md` → Deploy)
 - [ ] D: Final APK (EAS `preview`) pointing at the live API (after the deploy)
 

@@ -24,6 +24,9 @@ export function DistanceCamera(props: FaceCameraProps) {
 export const TEST_DISTANCE_CM: Partial<Record<string, number>> = {
   tumbling_e: 40,
   kids_tumbling_e: 40,
+  clock_dial: 40,
+  duochrome: 40,
+  amsler: 40,
   contrast: 40,
   near_reading: 40,
   peripheral_field: 30,

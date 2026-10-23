@@ -8,6 +8,9 @@ import type { Auth, User } from '@/services/auth';
 type AuthState = {
   token: string | null;
   user: User | null;
+  /** Guest mode: the Tests library only, results scored but not saved. Not kept after a restart. */
+  guest: boolean;
+  setGuest: (on: boolean) => void;
   signIn: (auth: Auth) => void;
   signOut: () => void;
 };
@@ -28,8 +31,10 @@ export const useAuth = create<AuthState>()(
     (set) => ({
       token: null,
       user: null,
-      signIn: (auth) => set({ token: auth.token, user: auth.user }),
-      signOut: () => set({ token: null, user: null }),
+      guest: false,
+      setGuest: (guest) => set({ guest }),
+      signIn: (auth) => set({ token: auth.token, user: auth.user, guest: false }),
+      signOut: () => set({ token: null, user: null, guest: false }),
     }),
     { name: 'visus-auth', storage: secureStorage, partialize: ({ token, user }) => ({ token, user }) },
   ),

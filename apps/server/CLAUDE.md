@@ -63,4 +63,4 @@ src/
 - Aiven CA: download it (Aiven console → service → Connection information → CA certificate) to `apps/server/aiven-ca.pem` (gitignored). `bun run dev` trusts it via `NODE_EXTRA_CA_CERTS`; without it the local Worker can't open TLS to Aiven.
 - Tables: `bun run db:push` (drizzle-kit reads `DATABASE_URL` from `.dev.vars`, or from the environment).
 - Smoke test of every route: `bun run smoke` (server running), or `API=https://… bun run smoke` for the deployed Worker.
-- Gemini models: `GEMINI_MODELS` in `src/lib/gemini.ts` (Flash-Lite first for speed, bigger Flash models as backup, 10 s budget, then rule fallbacks).
+- Gemini models: `GEMINI_MODELS` in `src/lib/gemini.ts` (hedged: Flash-Lite first, the next model joins after 2.5 s, first valid answer wins, rule fallback after 7 s; busy models skipped for 60 s).

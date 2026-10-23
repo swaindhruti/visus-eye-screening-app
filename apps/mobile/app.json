@@ -10,7 +10,9 @@
     "ios": {
       "icon": "./assets/expo.icon",
       "infoPlist": {
-        "NSCameraUsageDescription": "Visus uses the front camera to measure how far your face is from the screen during eye tests. Nothing is saved."
+        "NSCameraUsageDescription": "Visus uses the front camera to measure how far your face is from the screen during eye tests. Nothing is saved.",
+        "NSSpeechRecognitionUsageDescription": "Visus turns your speech into text for the eye check chat.",
+        "NSMicrophoneUsageDescription": "Visus uses the microphone so you can speak instead of typing in the eye check chat."
       }
     },
     "android": {
@@ -23,7 +25,8 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.visus.app",
       "permissions": [
-        "android.permission.CAMERA"
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -49,11 +52,25 @@
             "usesCleartextTraffic": true
           }
         }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Visus uses the microphone so you can speak instead of typing in the eye check chat.",
+          "speechRecognitionPermission": "Visus turns your speech into text for the eye check chat."
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "dda5ba54-42b5-4c00-8ed9-13ab73b18224"
+      }
+    },
+    "owner": "dhruti_expo"
   }
 }

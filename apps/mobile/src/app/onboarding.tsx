@@ -58,7 +58,11 @@ export default function Onboarding() {
   async function next() {
     if (!canNext || saving) return;
     if (step < STEPS - 1) return go(step + 1);
-    // Last question: save the profile, then show the summary.
+    await save();
+  }
+
+  /** After the last question (answered or skipped): save the profile, then show the summary. */
+  async function save() {
     setSaving(true);
     try {
       await createProfile({
@@ -101,8 +105,8 @@ export default function Onboarding() {
           <View style={[styles.fill, { width: `${Math.round(((step + 1) / (STEPS + 1)) * 100)}%` }]} />
         </View>
         <Pressable
-          onPress={() => go(step + 1)}
-          disabled={step === 0 || done}
+          onPress={() => (step === STEPS - 1 ? void save() : go(step + 1))}
+          disabled={step === 0 || done || saving}
           style={[styles.skip, (step === 0 || done) && styles.hidden]}>
           <Text style={styles.skipText}>Skip</Text>
         </Pressable>
@@ -236,6 +240,7 @@ export default function Onboarding() {
       {done ? (
         <>
           <Button title="Start my first eye check" onPress={() => router.replace('/permissions')} style={styles.cta} />
+          <Button title="Later" variant="ghost" onPress={() => router.replace({ pathname: '/permissions', params: { then: 'home' } })} style={styles.later} />
           <Text style={styles.footnote}>You can change these anytime in Profile.</Text>
         </>
       ) : (
@@ -359,5 +364,6 @@ const styles = StyleSheet.create({
   summaryKey: { fontFamily: Fonts.regular, fontSize: 15, color: Colors.muted },
   summaryValue: { flex: 1, fontFamily: Fonts.semibold, fontSize: 15, textAlign: 'right', color: Colors.ink },
   cta: { marginTop: 20 },
+  later: { marginTop: 4 },
   footnote: { fontFamily: Fonts.regular, fontSize: 14, color: Colors.muted, textAlign: 'center', marginTop: 12 },
 });

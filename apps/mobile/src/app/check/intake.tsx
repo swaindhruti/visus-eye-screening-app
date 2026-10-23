@@ -10,6 +10,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Text, TextInput } from '@/components/Text';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useOnline } from '@/services/network';
+import { startListening, voiceAvailable } from '@/services/voice';
 import { listProfiles } from '@/services/profiles';
 import { createSession, intakeChat, intakeText, type IntakeMessage, type Session } from '@/services/sessions';
 import { useCheck } from '@/store/check';
@@ -38,6 +39,29 @@ export default function Intake() {
   const [session, setSession] = useState<Session | null>(null);
   const [failed, setFailed] = useState<'chat' | 'plan' | null>(null);
   const [text, setText] = useState('');
+  const [listening, setListening] = useState(false);
+  const stopVoice = useRef<(() => void) | null>(null);
+
+  // Voice input: the words fill the box live (after anything already typed); the user checks and sends.
+  async function toggleVoice() {
+    if (listening) return stopVoice.current?.();
+    const before = text.trim();
+    try {
+      setListening(true);
+      stopVoice.current = await startListening({
+        onText: (words) => setText(before ? `${before} ${words}` : words),
+        onEnd: () => setListening(false),
+        onError: (message) => {
+          setListening(false);
+          alertError(new Error(message), 'Voice input');
+        },
+      });
+    } catch (e) {
+      setListening(false);
+      alertError(e, 'Voice input');
+    }
+  }
+  useEffect(() => () => stopVoice.current?.(), []);
 
   // Whose check (Who is this for); the account owner by default.
   const params = useLocalSearchParams<{ profileId?: string }>();
@@ -90,6 +114,7 @@ export default function Intake() {
   function send(value: string) {
     const v = value.trim();
     if (!v || typing || done) return;
+    stopVoice.current?.();
     setText('');
     setChips([]);
     const next: IntakeMessage[] = [...chat, { from: 'me', text: v }];
@@ -204,14 +229,22 @@ export default function Intake() {
             value={text}
             onChangeText={setText}
             onSubmitEditing={() => send(text)}
-            placeholder={!online ? 'Chat is offline' : done ? 'Add anything else…' : 'Type your answer…'}
+            placeholder={!online ? 'Chat is offline' : listening ? 'Listening…' : done ? 'Add anything else…' : 'Type your answer…'}
             placeholderTextColor={Colors.faint}
             returnKeyType="send"
             style={styles.input}
           />
-          <View accessibilityLabel="Voice input, coming soon" style={[styles.round, styles.mic]}>
-            <Icon name="mic" size={20} strokeWidth={1.9} />
-          </View>
+          {voiceAvailable && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={listening ? 'Stop listening' : 'Speak instead of typing'}
+              accessibilityState={{ selected: listening }}
+              disabled={!online || typing || done}
+              onPress={() => void toggleVoice()}
+              style={[styles.round, styles.mic, listening && styles.micOn]}>
+              <Icon name={listening ? 'stop' : 'mic'} size={20} color={listening ? Colors.white : Colors.ink} strokeWidth={1.9} />
+            </Pressable>
+          )}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Send"
@@ -297,6 +330,7 @@ const styles = StyleSheet.create({
   },
   input: { flex: 1, minWidth: 0, fontFamily: Fonts.regular, fontSize: 16, color: Colors.ink },
   round: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  mic: { opacity: 0.3 },
+  mic: { backgroundColor: Colors.fill },
+  micOn: { backgroundColor: Colors.ink },
   disclaimer: { fontFamily: Fonts.regular, fontSize: 12, lineHeight: 17, color: '#8A8A85', textAlign: 'center', marginTop: 10 },
 });

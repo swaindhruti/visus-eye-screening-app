@@ -3,14 +3,22 @@
 Area: mobile app + server (setup, auth, agent). Claude updates this file at the end of every task. Newest entry on top.
 
 ## Now
-- Parts 1–3 are done and merged (server, mobile ↔ API with AI intake, native camera distance + Screen Coach). Pushed as `feat/mobile-native` for a PR to `main` (2026-10-22).
-- Remaining for Dhrutinandan: the deployment, **later, not started**. Everything else is Sidhartha's (`WORK.md` → Phase 3, his handover in `progress/sidhartha.md`).
+- Mobile now has every web feature (`feat/mobile-web-parity`, 2026-10-23): guest mode, voice input, onboarding "Later", skip-saves-profile fix, more distance-watched tests; server Gemini calls are hedged. Pushed for a PR. **Needs a new EAS development build** (voice input adds a native package), then a phone check.
+- Docs (2026-10-24): new root `README.md` (banner `docs/assets/banner.png`), `docs/SETUP.md` (run server + web + mobile together, EAS build, network changes, troubleshooting, deploy), `docs/ARCHITECTURE.md`, and README per app.
+- Remaining for Dhrutinandan: the deployment, later. Everything else is Sidhartha's.
 
 ## Next
-- EAS development build on the phone (commands in `apps/mobile/CLAUDE.md`): `bunx eas-cli login`, `bunx eas-cli init` (commit the projectId), `bunx eas-cli build --profile development --platform android`. If the first native build fails, give Claude the build ID.
-- Later: deployment (`apps/server/CLAUDE.md` → Deploy), then the `preview` APK with `EXPO_PUBLIC_API_URL` = the workers.dev URL in `eas.json`.
+- New development build: `cd apps/mobile && bunx eas-cli build --profile development --platform android` (first time: `bunx eas-cli login`, `bunx eas-cli init`).
+- Later: deployment (`apps/server/CLAUDE.md` → Deploy).
 
 ## Notes for Dhrutinandan
+- 2026-10-23, mobile ↔ web parity (`feat/mobile-web-parity`):
+  - **Guest mode**: Welcome "Continue as guest" → `GuestDialog` (same text as the web) → Tests library; a "Guest mode · Results aren't saved · Log in / Sign up" bar replaces the tabs; Home redirects guests to Tests (so every "Go to Home" lands there). Single tests use the local session `guest` and `POST /reports/guest-score`; Single test complete says "Guest mode: this result isn't saved. Sign up to keep it." Log in / sign up end guest mode; it isn't kept after a restart.
+  - **Voice input**: mic in the intake chat (`expo-speech-recognition`, `services/voice.ts`): tap to talk, words fill the box live after what's typed, tap again to stop; the user sends. Needs the microphone permission; hidden in Expo Go.
+  - **Onboarding**: Skip on the last question now saves the profile (before, the summary showed but the account had no profile). "Later" on the summary → Permissions → Home.
+  - **Distance warning** now also during Astigmatism dial, Red-green and Amsler (40 cm), like the web.
+  - **Gemini (server)**: hedged requests: Flash-Lite first, 3.6 Flash joins after 2.5 s (or on failure), then 3.8 Flash; first valid answer wins, rules after 7 s. Gemini latency is spiky (1 s usually, 10–100 s at times on 2026-10-23); hedging got AI answers in all 9 test calls, slow ones in 4–5 s.
+  - For Sidhartha: `POST /reports/guest-score` is now in `docs/API.md`; the long Gemini waits are fixed by the hedging above.
 - Part 3 (2026-10-22, `feat/mobile-native`):
   - **Camera distance:** VisionCamera v5 + ML Kit face detector. Distance = 63 mm eye spacing (54 mm for kids tests) × focal length in px ÷ eye spacing in px; focal length from the device's 35 mm-equivalent `focalLength` (26 mm if unknown), corrected for head turn, smoothed. **Distance setup (12, `/check/distance`)** once per check after calibration when the plan has a distance test (Tumbling E, Kids E, Contrast, Near reading at 40 cm; Peripheral at 30 cm), "Continue without the camera" always possible. **Distance warning (47)**: out of ±5 cm for 1.5 s during those tests → full-screen pause (dark card, no second camera), Resume when back in range; a lost face (hand over one eye) never triggers it. **Near point**: live cm badge, "It's blurry now" takes the camera reading (`distanceSource: "camera"`), the slider can still correct it (`"manual"`). Permissions (41) shows a Camera card in the installed app.
   - **Screen Coach:** local Expo module `apps/mobile/modules/screen-coach` (Kotlin, framework APIs only). Screen time per day from usage events (SCREEN_INTERACTIVE/NON_INTERACTIVE; needs "Usage access"), foreground service counting continuous screen-on time (resets on screen off), full-screen break overlay after 15/20 min (needs "Display over other apps"; otherwise a notification), breaks taken/skipped per day in SharedPreferences. Screens: Screen Coach (7, `/coach`, from the Home tile), Coach permission (21, `/coach/permission`), Break overlay (22, native), Weekly report (23, `/coach/weekly`, compares with the week before, share text). Child mode = 2h limit. Settings → Break reminders drives the service. Home screen time is measured once Usage access is on.
@@ -29,7 +37,7 @@ Area: mobile app + server (setup, auth, agent). Claude updates this file at the 
 - Workers can't skip TLS verification (`rejectUnauthorized` is ignored), so the local Worker needs Aiven's CA in `apps/server/aiven-ca.pem` (`bun run dev` sets `NODE_EXTRA_CA_CERTS`).
 - Onboarding now also saves eyewear, past eye test and its note (`Profile.eyewear`, `.pastEyeTest`, `.pastEyeNote`, `.relation: "self"`).
 - Login (token + user), settings and calibration are saved on the phone with AsyncStorage (`store/auth.ts`, `store/settings.ts`, `store/calibration.ts`), so a restart stays logged in and calibrated. The token is stored unencrypted; `expo-secure-store` would encrypt it (not added). Settings → Offline data → Clear forgets the calibration. Mock data (profiles, history) still resets on restart, as it stands in for the server.
-- No guest mode: every user needs an account ("Continue as guest" removed from Welcome and Log in). Screens can assume `currentUser()` is set.
+- Guest mode (since 2026-10-23, same as the web): Welcome → "Continue as guest" → dialog → Tests library only. `currentUser()` is null for guests; screens a guest can't reach still assume it.
 - "Start my first eye check" (onboarding) goes to Home until Issue intake (group 3) exists.
 - Mock auth accepts any credentials.
 - Test detail text for 13 of the 14 tests is written by Claude (the design only has Distance acuity). It lives in `apps/mobile/src/constants/tests.ts`; edit freely. Non-E tests show their category icon as the illustration.
@@ -77,6 +85,7 @@ Area: mobile app + server (setup, auth, agent). Claude updates this file at the 
 - None in mobile. Every group is checked by typecheck, lint and an Android bundle build; groups 1–9 also on the phone in Expo Go.
 
 ## Log
+- 2026-10-23: Mobile parity with the web (guest mode, voice input, onboarding Later + skip fix, distance tests), hedged Gemini client, API.md guest-score row. Smoke 37/37 (local DB, real Gemini). Typecheck, lint, Android bundle, prebuild (RECORD_AUDIO) OK.
 - 2026-10-22: Part 3 accepted ("ok"). Docs updated for the handover; deployment postponed. Branch pushed for a PR.
 - 2026-10-22: Part 3 (`feat/mobile-native`): camera distance (12, 47, Near point, Permissions camera card), Screen Coach native module + screens 7, 21, 22, 23, Home/Settings wired, eas.json. Typecheck, lint, Android bundle, `expo prebuild` config check OK. Native compile pending the first EAS build.
 - 2026-10-22: Part 2 merged. Handover: `WORK.md` Phase 3 split (D: native + deploy; T: everything else), Sidhartha's handover in `progress/sidhartha.md`, docs updated. Server: web glasses summary `Right eye A → B, left eye C → D`.

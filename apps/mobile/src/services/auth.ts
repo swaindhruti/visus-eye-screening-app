@@ -32,6 +32,10 @@ export function currentUser() {
   return useAuth.getState().user;
 }
 
+/** Guest mode (Welcome → Continue as guest): single tests from the library, nothing saved. Log in / sign up ends it. */
+export const isGuest = () => useAuth.getState().guest;
+export const setGuest = (on: boolean) => useAuth.getState().setGuest(on);
+
 /** Forgets the account on this phone (the saved token too). Screens also reset the check (see Settings). */
 export function logout() {
   useAuth.getState().signOut();
