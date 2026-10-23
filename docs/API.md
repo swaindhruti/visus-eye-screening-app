@@ -25,6 +25,7 @@ Hono on Cloudflare Workers. Types come from `packages/shared` (`@visus/shared`).
 | `GET /sessions/:id` | — | `Verdict` (with `date`, `minutes`). 404 until finished | T | live |
 | `POST /sessions/:id/share` | — | `ShareLink` (`{ url: WEB_URL/r/<token>, expiresAt }`, 24 h) | T | live |
 | `GET /reports/:token` | — (no login) | `Verdict` behind a share link, 404 when expired. For the web report page `/r/<token>` | T | live |
+| `POST /reports/guest-score` | — (no login) `SubmitResult` + optional `age` | `NextStep` (`red_flag` or `done`). Guest mode (web + mobile): same scorer and red-flag rules, nothing saved | T | live |
 
 Server code: `apps/server` (feature folders, see `apps/server/CLAUDE.md`). Smoke test of every route: `apps/server/scripts/smoke.sh`.
 
@@ -61,7 +62,7 @@ Server code: `apps/server` (feature folders, see `apps/server/CLAUDE.md`). Smoke
 ## How `POST /sessions` plans
 
 - `single`, `quick`, `glasses` and a child's `full` check get fixed plans (see Check modes).
-- An adult's `full` check: Gemini reads the intake and picks 3–5 tests from `TEST_CATALOG` (only tests the person is old enough for). If Gemini fails or is slow (10 s budget), a keyword plan is used instead.
+- An adult's `full` check: Gemini reads the intake and picks 3–5 tests from `TEST_CATALOG` (only tests the person is old enough for). If Gemini fails or is slow (5 s per model, 7 s in total), a keyword plan is used instead.
 - If the intake mentions flashes, floaters, a shadow, sudden change, pain, double vision or a red eye (rules, not AI), the summary starts with "Please see an eye doctor soon about what you described." and `amsler` is added.
 
 ## How `POST /sessions/:id/results` works
