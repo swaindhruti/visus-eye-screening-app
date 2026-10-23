@@ -4,14 +4,23 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "base": {
+      "bun": "1.4.2"
+    },
     "development": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
-      "android": { "buildType": "apk" }
+      "android": {
+        "buildType": "apk"
+      }
     },
     "preview": {
+      "extends": "base",
       "distribution": "internal",
-      "android": { "buildType": "apk" },
+      "android": {
+        "buildType": "apk"
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "http://10.127.103.57:8787",
         "EXPO_PUBLIC_USE_MOCK": "0",
