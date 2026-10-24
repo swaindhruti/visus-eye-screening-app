@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "../cn";
 import { ContinueAsGuest } from "../GuestDialog";
 import { Icon } from "../Icon";
-import { scrollToId } from "./Motion";
+import { onScrollFrame, scrollToId } from "./Motion";
 
 const LINKS = [
   ["about", "About"],
@@ -27,18 +27,11 @@ export function LandingNav() {
   const bar = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    let raf = 0;
-    const update = () => {
-      raf = 0;
+    const off = onScrollFrame(() => {
       const max = document.documentElement.scrollHeight - window.innerHeight;
       setScrolled(window.scrollY > 24);
       bar.current?.style.setProperty("transform", `scaleX(${max > 0 ? (window.scrollY / max).toFixed(4) : 0})`);
-    };
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update);
-    };
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
+    });
 
     const io = new IntersectionObserver(
       (entries) => {
@@ -51,8 +44,7 @@ export function LandingNav() {
       if (el) io.observe(el);
     }
     return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("scroll", onScroll);
+      off();
       io.disconnect();
     };
   }, []);
@@ -63,10 +55,10 @@ export function LandingNav() {
     <div className="pointer-events-none fixed inset-x-0 top-0 z-30 flex animate-nav justify-center px-3 pt-3 [animation-delay:1300ms] md:px-5 md:pt-5">
       <header
         className={cn(
-          "pointer-events-auto relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-full border transition-[max-width,background-color,border-color,box-shadow,padding] duration-700 ease-[cubic-bezier(.16,1,.3,1)]",
+          "pointer-events-auto relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-full border transition-[max-width,background-color,border-color,box-shadow,padding] duration-500 ease-[cubic-bezier(.16,1,.3,1)]",
           scrolled
-            ? "max-w-[1400px] border-white/70 bg-white/75 py-1.5 pl-5 pr-1.5 shadow-[0_18px_50px_-14px_rgba(10,22,38,.28),inset_0_1px_0_rgba(255,255,255,.9)] backdrop-blur-2xl backdrop-saturate-150 md:pl-7"
-            : "max-w-[1720px] border-white/10 bg-white/[.04] py-2 pl-5 pr-2 backdrop-blur-md md:pl-8",
+            ? "max-w-[1400px] border-white/70 bg-white/75 py-1.5 pl-5 pr-1.5 shadow-[0_18px_50px_-14px_rgba(10,22,38,.28),inset_0_1px_0_rgba(255,255,255,.9)] backdrop-blur-lg md:pl-7"
+            : "max-w-[1720px] border-white/10 bg-white/[.06] py-2 pl-5 pr-2 md:pl-8",
         )}
       >
         <a href="#top" onClick={(e) => scrollToId("top", e)} aria-label="Visus, back to top" className={cn("text-[22px] font-semibold tracking-[-0.03em] transition-colors duration-500", dark ? "text-white" : "text-ink")}>

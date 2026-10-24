@@ -89,7 +89,7 @@ export function HeroStage() {
               style={{ left: `${(50 + 48 * Math.cos(a)).toFixed(2)}%`, top: `${(50 + 48 * Math.sin(a)).toFixed(2)}%` }}
             >
               <span
-                className="flex animate-pop items-center gap-1.5 whitespace-nowrap rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[12px] font-medium text-white shadow-[0_8px_24px_rgba(0,0,0,.25)] backdrop-blur-md md:px-3.5 md:py-2 md:text-[13px]"
+                className="flex animate-pop items-center gap-1.5 whitespace-nowrap rounded-full border border-white/15 bg-[#12304f]/90 px-3 py-1.5 text-[12px] font-medium text-white shadow-[0_8px_24px_rgba(0,0,0,.25)] md:px-3.5 md:py-2 md:text-[13px]"
                 style={{ animationDelay: `${1500 + i * 110}ms` }}
               >
                 <span className="size-1.5 rounded-full bg-acc-bright" />

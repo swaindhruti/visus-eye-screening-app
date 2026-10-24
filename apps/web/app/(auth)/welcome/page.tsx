@@ -7,6 +7,7 @@ import { cn } from "@/components/cn";
 import { ContinueAsGuest } from "@/components/GuestDialog";
 import { Icon, type IconName } from "@/components/Icon";
 import { CountUp } from "@/components/landing/CountUp";
+import { Eyelids } from "@/components/landing/Eyelids";
 import { HeroStage } from "@/components/landing/HeroStage";
 import { Iris } from "@/components/landing/Iris";
 import { JumpLink, Motion } from "@/components/landing/Motion";
@@ -96,7 +97,7 @@ export default function Welcome() {
               </div>
               <p data-scroll className="m-0 text-[clamp(30px,3.7vw,66px)] font-medium leading-[1.12] tracking-[-0.035em] lg:col-span-9">
                 {STATEMENT.map((w, i) => (
-                  <span key={i} className="transition-opacity duration-300" style={{ opacity: `clamp(0.13, calc((var(--p, 1) - 0.12) / 0.38 * ${STATEMENT.length} - ${i}), 1)` }}>
+                  <span key={i} data-fx="word" data-i={i} data-n={STATEMENT.length}>
                     {w}{" "}
                   </span>
                 ))}
@@ -291,7 +292,7 @@ export default function Welcome() {
         <section className="px-3 pt-3 md:px-5 md:pt-5">
           <div data-scroll className="relative overflow-hidden rounded-[28px] bg-[radial-gradient(80%_100%_at_80%_60%,#123a63_0%,#0a1b30_45%,#05080e_100%)] text-white md:rounded-[40px]">
             <div aria-hidden className="absolute -right-[30%] top-1/2 aspect-square w-[110vw] max-w-[1000px] -translate-y-1/2 sm:-right-[8%] sm:w-[62vw]">
-              <div className="size-full opacity-85" style={{ transform: "rotate(calc(var(--p, .5) * 60deg)) scale(calc(0.85 + var(--p, .5) * 0.3))" }}>
+              <div data-fx="cta-iris" className="size-full opacity-85 will-change-transform">
                 <div className="absolute inset-0 rounded-full border border-white/10" />
                 <div className="absolute inset-[8%] rounded-full border border-dashed border-white/10" />
                 <div className="absolute inset-[16%]">
@@ -315,7 +316,7 @@ export default function Welcome() {
                 <ArrowLink href="/signup" tone="light">
                   Get started
                 </ArrowLink>
-                <Link href="/login" className="flex h-[54px] w-fit items-center justify-center rounded-full border border-white/20 bg-white/[.06] px-7 text-[16px] font-medium backdrop-blur-md transition-colors hover:bg-white/15">
+                <Link href="/login" className="flex h-[54px] w-fit items-center justify-center rounded-full border border-white/20 bg-white/[.06] px-7 text-[16px] font-medium transition-colors hover:bg-white/15">
                   I have an account
                 </Link>
               </div>
@@ -338,7 +339,7 @@ function Hero() {
         <div aria-hidden className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,.07)_1px,transparent_0)] [background-size:30px_30px] [mask-image:radial-gradient(60%_60%_at_70%_50%,black,transparent)]" />
 
         <div className="absolute left-1/2 top-[6%] aspect-square w-[122vw] max-w-[700px] -translate-x-1/2 lg:left-auto lg:right-[-2%] lg:top-[47%] lg:w-[min(100vh,54vw)] lg:max-w-none lg:-translate-y-1/2 lg:translate-x-0">
-          <div className="size-full" style={{ transform: "translateY(calc(var(--p, 0) * 22%)) scale(calc(1 + var(--p, 0) * 0.15))", opacity: "calc(1 - var(--p, 0) * 0.7)" }}>
+          <div data-fx="hero-stage" className="size-full will-change-transform">
             <HeroStage />
           </div>
         </div>
@@ -346,8 +347,8 @@ function Hero() {
         <div aria-hidden className="absolute inset-x-0 bottom-0 h-[64%] bg-gradient-to-t from-[#05080e] via-[#05080e]/85 to-transparent lg:inset-y-0 lg:left-0 lg:right-auto lg:h-auto lg:w-[58%] lg:bg-gradient-to-r lg:via-[#05080e]/50" />
 
         <div className="relative z-10 flex min-h-[inherit] flex-col px-5 md:px-12 xl:px-20">
-          <div className="flex flex-1 flex-col justify-end pb-10 pt-28 lg:max-w-[56%] lg:justify-center lg:pb-6 lg:pt-32" style={{ transform: "translateY(calc(var(--p, 0) * -90px))", opacity: "calc(1 - var(--p, 0) * 1.8)" }}>
-            <span className="flex h-8 w-fit animate-rise items-center gap-2 rounded-full border border-white/15 bg-white/[.07] px-3.5 text-[13px] font-medium text-white/85 backdrop-blur-md [animation-delay:800ms]">
+          <div data-fx="hero-text" className="flex flex-1 flex-col justify-end pb-10 pt-28 will-change-transform lg:max-w-[56%] lg:justify-center lg:pb-6 lg:pt-32">
+            <span className="flex h-8 w-fit animate-rise items-center gap-2 rounded-full border border-white/15 bg-white/[.07] px-3.5 text-[13px] font-medium text-white/85 [animation-delay:800ms]">
               <Icon name="lock" size={14} strokeWidth={1.7} />
               Screening, not diagnosis
             </span>
@@ -370,7 +371,7 @@ function Hero() {
               </ArrowLink>
               <Link
                 href="/login"
-                className="flex h-[54px] w-fit animate-rise items-center justify-center whitespace-nowrap rounded-full border border-white/20 bg-white/[.06] px-7 text-[16px] font-medium backdrop-blur-md transition-colors [animation-delay:1680ms] hover:bg-white/15"
+                className="flex h-[54px] w-fit animate-rise items-center justify-center whitespace-nowrap rounded-full border border-white/20 bg-white/[.06] px-7 text-[16px] font-medium transition-colors [animation-delay:1680ms] hover:bg-white/15"
               >
                 I have an account
               </Link>
@@ -402,15 +403,7 @@ function Hero() {
         </div>
 
         {/* Intro: the "eyelids" open on load, revealing the hero. */}
-        <svg aria-hidden className="pointer-events-none absolute inset-0 z-20 size-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <defs>
-            <mask id="eyelid-mask">
-              <rect width="100" height="100" fill="white" />
-              <path d="M-2 50Q50 8 102 50Q50 92 -2 50Z" fill="black" className="animate-eye-open" style={{ transformBox: "view-box", transformOrigin: "50px 50px", transform: "scale(3.2)" }} />
-            </mask>
-          </defs>
-          <rect width="100" height="100" fill="#03050a" mask="url(#eyelid-mask)" />
-        </svg>
+        <Eyelids />
       </div>
     </section>
   );
@@ -538,7 +531,7 @@ function Footer() {
         {"Visus".split("").map((c, i) => (
           <span
             key={i}
-            data-reveal
+            data-reveal="plain"
             style={delay(i * 80)}
             className="inline-block bg-gradient-to-b from-ink via-ink/70 to-ink/0 bg-clip-text text-[27vw] font-semibold leading-[0.8] tracking-[-0.07em] text-transparent"
           >
@@ -559,16 +552,15 @@ function Footer() {
 
 /* ───────────── Result: 3D stack ───────────── */
 
-/** Three result cards in 3D. They sit stacked, then fan out as the section scrolls into view (--p from Motion). */
+/** Three result cards in 3D. They sit stacked, then fan out as the section scrolls into view (FX in Motion.tsx). */
 function ResultStack() {
-  const fan = { "--f": "clamp(0, calc((var(--p, 0.6) - 0.15) / 0.35), 1)" } as CSSProperties;
   const card = "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2";
   return (
-    <div data-scroll style={fan} className="relative h-[480px] scale-[.8] [perspective:1600px] sm:scale-100 md:h-[600px]">
+    <div data-scroll className="relative h-[480px] scale-[.8] [perspective:1600px] sm:scale-100 md:h-[600px]">
       <div className="absolute inset-0 rounded-full bg-[radial-gradient(closest-side,rgba(122,189,255,.35),transparent)]" />
-      <div className="absolute inset-0 [transform-style:preserve-3d]" style={{ transform: "rotateX(calc(22deg - var(--f) * 14deg)) rotateY(calc(-18deg + var(--f) * 12deg))" }}>
+      <div data-fx="stack-tilt" className="absolute inset-0 [transform-style:preserve-3d]">
         {/* Back: report */}
-        <div className={cn(card, "w-[290px] rounded-[26px] border border-line bg-white p-5 shadow-[0_30px_60px_-30px_rgba(17,17,17,.3)]")} style={{ transform: "translate3d(calc(var(--f) * -170px), calc(var(--f) * -160px), -140px) rotate(calc(var(--f) * -9deg))" }}>
+        <div className={cn(card, "w-[290px] rounded-[26px] border border-line bg-white p-5 shadow-[0_30px_60px_-30px_rgba(17,17,17,.3)]")} data-fx="stack-back">
           <div className="flex items-center justify-between">
             <span className="grid size-10 place-items-center rounded-full bg-fill">
               <Icon name="doc" size={20} />
@@ -580,7 +572,7 @@ function ResultStack() {
         </div>
 
         {/* Middle: lens */}
-        <div className={cn(card, "w-[300px] rounded-[26px] bg-night p-5 text-white shadow-[0_30px_60px_-24px_rgba(5,8,14,.55)]")} style={{ transform: "translate3d(calc(var(--f) * 170px), calc(var(--f) * -70px), -60px) rotate(calc(var(--f) * 7deg))" }}>
+        <div className={cn(card, "w-[300px] rounded-[26px] bg-night p-5 text-white shadow-[0_30px_60px_-24px_rgba(5,8,14,.55)]")} data-fx="stack-mid">
           <div className="flex items-center justify-between">
             <span className="grid size-10 place-items-center rounded-full bg-white/10">
               <Icon name="glasses" size={20} />
@@ -592,7 +584,7 @@ function ResultStack() {
         </div>
 
         {/* Front: result */}
-        <div className={cn(card, "w-[340px] rounded-[28px] border border-line bg-white p-5 shadow-[0_40px_80px_-30px_rgba(17,17,17,.4)]")} style={{ transform: "translate3d(0, calc(var(--f) * 80px), 40px)" }}>
+        <div className={cn(card, "w-[340px] rounded-[28px] border border-line bg-white p-5 shadow-[0_40px_80px_-30px_rgba(17,17,17,.4)]")} data-fx="stack-front">
           <div className="flex items-center justify-between">
             <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-faint">Example result</span>
             <span className="flex h-7 items-center gap-1.5 rounded-full bg-fill px-2.5 text-[12px] font-semibold text-ink-soft">

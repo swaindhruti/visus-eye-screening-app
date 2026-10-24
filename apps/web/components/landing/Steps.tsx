@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "../cn";
 import { Icon } from "../Icon";
 import { Iris } from "./Iris";
+import { onScrollFrame } from "./Motion";
 
 const STEPS = [
   ["Describe", "Tell us what's bothering your eyes, in your own words or by voice. Like “road signs look blurry at night”."],
@@ -24,9 +25,7 @@ export function Steps() {
   const [step, setStep] = useState(0);
 
   useEffect(() => {
-    let raf = 0;
-    const update = () => {
-      raf = 0;
+    return onScrollFrame(() => {
       const el = box.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
@@ -34,18 +33,7 @@ export function Steps() {
       const f = p * (STEPS.length - 1);
       arc.current?.style.setProperty("transform", `rotate(${(-f * GAP).toFixed(2)}deg)`);
       setStep(Math.round(f));
-    };
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update);
-    };
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
+    });
   }, []);
 
   return (
