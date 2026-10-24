@@ -26,10 +26,18 @@ export default function Tests() {
 
   return (
     <>
-      <Screen tabs gap="gap-0">
+      <Screen tabs full gap="gap-0">
         {/* Header */}
         <header className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between md:gap-10">
           <div className="flex flex-col gap-3">
+            {/* Phones have no top bar: the way back to the landing page lives here. */}
+            <Link
+              href="/welcome"
+              className="mb-2 flex h-9 w-fit items-center gap-1 rounded-full border border-line-strong bg-white pl-2 pr-3.5 text-[14px] font-medium text-ink-soft hover:text-ink md:hidden"
+            >
+              <Icon name="chevronLeft" size={16} strokeWidth={2.2} />
+              Landing page
+            </Link>
             <span className="text-[12px] font-semibold uppercase tracking-[0.16em] text-faint md:text-[13px]">
               {TEST_CATALOG.length} tests · {CATEGORIES.length} groups
             </span>
@@ -68,7 +76,7 @@ export default function Tests() {
         {/* Groups: one row of pills, pinned under the top bar while scrolling */}
         <nav
           aria-label="Test groups"
-          className="no-scrollbar sticky top-0 z-10 -mx-5 mt-7 flex gap-2 overflow-x-auto border-b border-line bg-pearl/90 px-5 py-3 backdrop-blur md:top-[73px] md:-mx-8 md:mt-10 md:px-8"
+          className="no-scrollbar sticky top-0 z-10 -mx-5 mt-7 flex gap-2 overflow-x-auto border-b border-line bg-pearl/90 px-5 py-3 backdrop-blur md:top-[73px] md:-mx-10 md:mt-10 md:px-10 xl:-mx-16 xl:px-16"
         >
           {groups.map((g, i) => {
             const on = sel === i - 1;
@@ -116,7 +124,7 @@ export default function Tests() {
 
         {/* Tests (key replays the entrance when the group or filters change) */}
         {tests.length > 0 ? (
-          <div key={`${sel}-${JSON.stringify(filters)}`} className="mt-5 grid grid-cols-1 gap-3 md:mt-6 md:grid-cols-2 md:gap-5 lg:grid-cols-3">
+          <div key={`${sel}-${JSON.stringify(filters)}`} className="mt-5 grid grid-cols-1 gap-3 md:mt-6 md:grid-cols-2 md:gap-5 lg:grid-cols-3 xl:grid-cols-4">
             {tests.map((t, i) => (
               <TestCard key={t.id} t={t} i={i} />
             ))}

@@ -49,20 +49,33 @@ export function TabBar() {
   );
 }
 
-/** Desktop: top bar with the same four tabs, Start eye check and the profile avatar. */
+/** Desktop: top bar with a way back to the landing page, the same four tabs, Start eye check and the profile avatar. */
 export function TopNav() {
   const pathname = usePathname();
   const guest = useGuest();
   const profiles = useQuery({ queryKey: ["profiles"], queryFn: listProfiles, enabled: !guest });
   const tabs = guest ? TABS.filter((t) => t.href === "/tests") : TABS;
   const me = profiles.data?.find((p) => p.relation === "self") ?? profiles.data?.[0];
+  // The Tests library uses the full screen width; match it.
+  const full = pathname === "/tests";
 
   return (
     <header className="sticky top-0 z-20 hidden border-b border-line bg-white/95 backdrop-blur md:block">
-      <div className="mx-auto flex max-w-[1200px] items-center gap-6 px-8 py-3.5">
-        <Link href={guest ? "/tests" : "/home"} className="text-[22px] font-bold tracking-[-0.01em]">
-          Visus
-        </Link>
+      <div className={cn("mx-auto flex items-center gap-6 py-3.5", full ? "max-w-[1760px] px-10 xl:px-16" : "max-w-[1200px] px-8")}>
+        <span className="flex items-center gap-3">
+          <Link
+            href="/welcome"
+            aria-label="Back to the landing page"
+            title="Back to the landing page"
+            className="flex h-10 min-w-10 items-center justify-center gap-1 rounded-full border border-line-strong bg-white px-2.5 text-[14px] font-medium text-ink-soft transition-colors hover:border-ink/30 hover:text-ink lg:pl-2 lg:pr-3.5"
+          >
+            <Icon name="chevronLeft" size={16} strokeWidth={2.2} />
+            <span className="hidden lg:inline">Landing page</span>
+          </Link>
+          <Link href={guest ? "/tests" : "/home"} className="text-[22px] font-bold tracking-[-0.01em]">
+            Visus
+          </Link>
+        </span>
         <nav aria-label="Main" className="flex flex-1 flex-wrap gap-1">
           {tabs.map((tab) => {
             const active = pathname === tab.href;
