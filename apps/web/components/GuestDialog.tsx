@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 
 import { setGuest } from "@/services/auth";
 import { useCheck } from "@/store/check";
@@ -53,24 +54,31 @@ export function GuestDialog({ onBack, onContinue }: { onBack: () => void; onCont
 }
 
 /** Welcome: "Continue as guest" → the dialog → the Tests library. */
-export function ContinueAsGuest() {
+export function ContinueAsGuest({ className }: { className?: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="h-11 self-center whitespace-nowrap text-[15px] font-semibold text-muted underline-offset-4 hover:text-ink hover:underline md:self-auto md:px-2">
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={className ?? "h-11 self-center whitespace-nowrap text-[15px] font-semibold text-muted underline-offset-4 hover:text-ink hover:underline md:self-auto md:px-2"}
+      >
         Continue as guest
       </button>
-      {open && (
-        <GuestDialog
-          onBack={() => setOpen(false)}
-          onContinue={() => {
-            setGuest(true);
-            useCheck.getState().reset();
-            router.push("/tests");
-          }}
-        />
-      )}
+      {/* Portalled, so a transformed ancestor (landing animations) can't trap the fixed dialog. */}
+      {open &&
+        createPortal(
+          <GuestDialog
+            onBack={() => setOpen(false)}
+            onContinue={() => {
+              setGuest(true);
+              useCheck.getState().reset();
+              router.push("/tests");
+            }}
+          />,
+          document.body,
+        )}
     </>
   );
 }
