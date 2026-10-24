@@ -516,24 +516,17 @@ function Footer() {
           </div>
         </div>
 
-        <div data-reveal className="mt-16 flex items-start gap-4 rounded-[24px] border border-line bg-white p-5 md:mt-20 md:items-center md:px-7">
-          <span className="grid size-11 flex-none place-items-center rounded-full bg-doc-bg text-doc">
-            <Icon name="alert" size={20} />
-          </span>
-          <p className="m-0 text-[15px] leading-relaxed text-ink-soft">
-            <span className="font-semibold text-ink">Visus is a screening tool, not a diagnosis.</span> Sudden vision loss, flashes of light or eye pain? See a doctor now.
-          </p>
-        </div>
       </div>
 
-      {/* Giant wordmark, letters rising one by one. */}
-      <div aria-hidden className="mt-10 flex select-none justify-center px-3 md:mt-16">
+      {/* Giant wordmark, letters rising one by one. Tight spacing comes from a negative margin, not
+          letter-spacing: each letter's box must stay as wide as its glyph, or the clipped gradient cuts it off. */}
+      <div aria-hidden className="mt-16 flex select-none justify-center px-3 md:mt-24">
         {"Visus".split("").map((c, i) => (
           <span
             key={i}
-            data-reveal="plain"
-            style={delay(i * 80)}
-            className="inline-block bg-gradient-to-b from-ink via-ink/70 to-ink/0 bg-clip-text text-[27vw] font-semibold leading-[0.8] tracking-[-0.07em] text-transparent"
+            data-reveal
+            style={{ ...delay(i * 80), marginLeft: i ? "-0.07em" : undefined }}
+            className="inline-block bg-gradient-to-b from-ink via-ink/70 to-ink/0 bg-clip-text py-[0.04em] text-[25vw] font-semibold leading-[0.8] text-transparent"
           >
             {c}
           </span>

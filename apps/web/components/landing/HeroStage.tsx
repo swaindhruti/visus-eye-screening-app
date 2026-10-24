@@ -2,18 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-import { cn } from "../cn";
 import { Iris } from "./Iris";
-
-// Label, angle on the ring (0° = right, negative = up), shown on phones too.
-const CHIPS: [string, number, boolean][] = [
-  ["Sharpness", -100, true],
-  ["Focus", -62, true],
-  ["Contrast", -26, false],
-  ["Colour", 10, false],
-  ["Amsler grid", 46, false],
-  ["Kids mode", 82, false],
-];
 
 const f2 = (n: number) => +n.toFixed(2);
 const TICKS = Array.from({ length: 120 }, (_, i) => {
@@ -23,7 +12,7 @@ const TICKS = Array.from({ length: 120 }, (_, i) => {
 });
 
 /**
- * Hero picture: rings, iris and chips on separate depth layers inside a 3D stage.
+ * Hero picture: rings, dial and iris on separate depth layers inside a 3D stage.
  * The stage tilts towards the pointer (eased), so the layers slide past each other.
  */
 export function HeroStage() {
@@ -78,26 +67,6 @@ export function HeroStage() {
         <div className="absolute inset-[11%] [transform:translateZ(40px)]">
           <Iris id="hero-iris" className="size-full animate-iris [animation-delay:300ms]" />
         </div>
-
-        {/* Front layer: floating chips on the outer ring. */}
-        {CHIPS.map(([label, deg, phone], i) => {
-          const a = (deg * Math.PI) / 180;
-          return (
-            <div
-              key={label}
-              className={cn("absolute [transform:translate(-50%,-50%)_translateZ(120px)]", !phone && "hidden lg:block")}
-              style={{ left: `${(50 + 48 * Math.cos(a)).toFixed(2)}%`, top: `${(50 + 48 * Math.sin(a)).toFixed(2)}%` }}
-            >
-              <span
-                className="flex animate-pop items-center gap-1.5 whitespace-nowrap rounded-full border border-white/15 bg-[#12304f]/90 px-3 py-1.5 text-[12px] font-medium text-white shadow-[0_8px_24px_rgba(0,0,0,.25)] md:px-3.5 md:py-2 md:text-[13px]"
-                style={{ animationDelay: `${1500 + i * 110}ms` }}
-              >
-                <span className="size-1.5 rounded-full bg-acc-bright" />
-                {label}
-              </span>
-            </div>
-          );
-        })}
       </div>
     </div>
   );
