@@ -49,13 +49,13 @@ export function Steps() {
   }, []);
 
   return (
-    <section id="how" ref={box} className="relative h-[380vh] scroll-mt-0 px-3">
-      <div className="sticky top-3 h-[calc(100dvh-24px)] overflow-hidden rounded-[28px] bg-[radial-gradient(120%_80%_at_50%_100%,#123a63_0%,#0a1a2e_45%,#06090f_100%)] text-white md:rounded-[36px]">
+    <section id="how" ref={box} className="relative h-[380vh] scroll-mt-0 px-3 md:px-5">
+      <div className="sticky top-3 h-[calc(100dvh-24px)] overflow-hidden rounded-[28px] md:top-5 md:h-[calc(100dvh-40px)] bg-[radial-gradient(120%_80%_at_50%_100%,#123a63_0%,#0a1a2e_45%,#06090f_100%)] text-white md:rounded-[40px]">
         {/* Arc with step labels, centred on the iris below. */}
         <div className="absolute left-1/2 top-[20%] size-[min(1180px,175vw)] -translate-x-1/2 md:top-[17%]">
           <div className="absolute inset-0 rounded-full border border-white/15" />
           <div className="absolute inset-[6%] rounded-full border border-dashed border-white/[.07]" />
-          <div ref={arc} className="absolute inset-0 transition-transform duration-150 ease-out">
+          <div ref={arc} className="absolute inset-0">
             {STEPS.map(([label], i) => (
               <div key={label} className="absolute inset-0" style={{ transform: `rotate(${i * GAP}deg)` }}>
                 <span

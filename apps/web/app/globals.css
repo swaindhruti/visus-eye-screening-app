@@ -47,33 +47,64 @@
   --spacing-opt: 58px;
   --spacing-chip: 44px;
 
-  /* Landing page motion (the app's own screens don't animate). */
-  --animate-rise: rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-  --animate-line: line-up 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-  --animate-iris: iris-in 1.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-  --animate-pop: pop 0.8s cubic-bezier(0.3, 1.5, 0.5, 1) both;
-  --animate-draw: draw 2.4s cubic-bezier(0.5, 0, 0.2, 1) both;
+  /* Landing page motion (the app's own screens don't animate). Base state = end state, so no-motion shows everything. */
+  --animate-rise: rise 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-focus: focus-in 1.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-iris: iris-in 2.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-panel: panel-in 1.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-eye-open: eye-open 2s cubic-bezier(0.65, 0, 0.25, 1) 0.15s both;
+  --animate-nav: nav-in 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-pop: pop 0.9s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+  --animate-draw: draw 2.6s cubic-bezier(0.5, 0, 0.2, 1) both;
   --animate-float: float 7s ease-in-out infinite;
   --animate-spin-slow: turn 140s linear infinite;
-  --animate-spin-rev: turn 90s linear infinite reverse;
+  --animate-spin-rev: turn 200s linear infinite reverse;
   --animate-pupil: pupil 8s ease-in-out infinite;
+  --animate-blink: blink 1.4s ease-in-out infinite;
 
   @keyframes rise {
     from {
       opacity: 0;
-      transform: translateY(24px);
+      transform: translateY(28px);
+      filter: blur(8px);
     }
   }
-  @keyframes line-up {
+  @keyframes focus-in {
     from {
-      transform: translateY(110%);
+      opacity: 0;
+      transform: translateY(35%);
+      filter: blur(14px);
     }
   }
   @keyframes iris-in {
     from {
       opacity: 0;
-      transform: scale(0.78);
-      filter: blur(18px);
+      transform: scale(1.18);
+      filter: blur(24px);
+    }
+  }
+  @keyframes panel-in {
+    from {
+      transform: scale(0.94);
+      border-radius: 64px;
+    }
+  }
+  /* The hero's eyelid mask: closed, a sleepy half-open peek, then wide open (its base scale). */
+  @keyframes eye-open {
+    0% {
+      transform: scale(1, 0);
+    }
+    30% {
+      transform: scale(1, 0.3);
+    }
+    45% {
+      transform: scale(1, 0.24);
+    }
+  }
+  @keyframes nav-in {
+    from {
+      opacity: 0;
+      transform: translateY(-24px);
     }
   }
   @keyframes pop {
@@ -106,36 +137,55 @@
       transform: scale(0.8);
     }
   }
+  @keyframes blink {
+    50% {
+      opacity: 0.25;
+    }
+  }
 }
 
 /* Scroll reveal: components/landing/Motion.tsx adds .is-in once the element is on screen. */
 [data-reveal] {
   opacity: 0;
-  transform: translateY(48px);
+  transform: translateY(56px);
+  filter: blur(6px);
   transition:
-    opacity 1s cubic-bezier(0.2, 0.7, 0.2, 1),
-    transform 1.1s cubic-bezier(0.2, 0.7, 0.2, 1);
+    opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 1.4s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 1.2s cubic-bezier(0.16, 1, 0.3, 1);
   transition-delay: var(--d, 0ms);
 }
 [data-reveal="tilt"] {
-  transform: perspective(1200px) rotateX(22deg) translateY(80px) scale(0.96);
+  transform: perspective(1400px) rotateX(24deg) translateY(90px) scale(0.95);
   transform-origin: 50% 100%;
 }
 [data-reveal="zoom"] {
   transform: scale(0.9);
 }
-[data-reveal="left"] {
-  transform: translateX(-48px);
-}
 [data-reveal].is-in {
   opacity: 1;
   transform: none;
+  filter: none;
+}
+
+/* Lenis smooth scrolling (landing page only). */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis:not(.lenis-autoToggle).lenis-stopped {
+  overflow: clip;
+}
+.lenis [data-lenis-prevent],
+.lenis [data-lenis-prevent-horizontal] {
+  overscroll-behavior: contain;
 }
 
 @media (prefers-reduced-motion: reduce) {
   [data-reveal] {
     opacity: 1;
     transform: none;
+    filter: none;
     transition: none;
   }
   .landing [class*="animate-"] {

@@ -19,6 +19,7 @@ export function GuestDialog({ onBack, onContinue }: { onBack: () => void; onCont
       <div className="fixed inset-0 z-30 bg-[rgba(17,17,17,.42)]" onClick={onBack} />
       <div
         role="alertdialog"
+        data-lenis-prevent
         aria-modal
         aria-labelledby="guest-title"
         className="fixed inset-x-5 top-1/2 z-40 mx-auto flex max-h-[90dvh] max-w-[440px] -translate-y-1/2 flex-col overflow-y-auto rounded-[28px] bg-white px-5 pb-5 pt-6 shadow-[0_20px_50px_rgba(0,0,0,.2)] md:px-7 md:pt-7"
