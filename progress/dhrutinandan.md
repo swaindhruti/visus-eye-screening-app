@@ -28,7 +28,9 @@ Area: mobile app + server (setup, auth, agent). Claude updates this file at the 
 3. **Phase 2 docs:** README, SCREENS, ARCHITECTURE; tick in `WORK.md`.
 4. **Then:** Phase 3 (faster AI + `packages/engine` + offline checks), then Phase 4 (web accessibility). Details are in `WORK.md` → Phase 4 and the plan file `~/.claude/plans/we-will-deplot-it-happy-cookie.md`.
 
-How to test the server without Aiven (as used on 2026-11-08):
+**Reminder before the final PR:** delete PGlite from the laptop (see the last task in `WORK.md` → Phase 4). Don't install anything else outside the three apps.
+
+How the server was tested without Aiven on 2026-11-08 (PGlite, to be deleted at the end):
 - PGlite was installed in the job temp folder. Run `bunx --package @electric-sql/pglite-socket pglite-server -p 55432 -m 10`, or install it again with `bun add` in any temp folder.
 - Then run `DATABASE_URL='postgres://postgres:pw@127.0.0.1:55432/postgres?sslmode=disable' bunx drizzle-kit push --force`, and start `bun src/local.ts` with the same `DATABASE_URL`.
 - Then `bun run smoke`.

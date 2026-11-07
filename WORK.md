@@ -104,3 +104,7 @@ New priority order agreed on 2026-11-08 (replaces "Visus: Plan to 15 November").
 - [ ] D: Reduced motion respected (landing smooth scroll, 3D iris, reveals)
 - [ ] D: High-contrast theme and a dyslexia-friendly font option; `<html lang>` follows the language
 - [ ] D or T: 44 px targets, contrast check, axe audit fixes
+
+Before the final PR (cleanup on Dhrutinandan's laptop):
+
+- [ ] D: Delete PGlite (the throwaway test Postgres from 2026-11-08): `rm -rf ~/.claude/jobs/3d970588/tmp/pg` and `bun pm cache rm`. It was never in the repo.
