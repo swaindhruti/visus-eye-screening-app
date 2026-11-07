@@ -64,6 +64,7 @@ export const sessions = pgTable(
       .notNull()
       .references(() => profiles.id, { onDelete: 'cascade' }),
     mode: text('mode').notNull(), // SessionMode
+    language: text('language').notNull().default('en'), // Language: AI text and plan reasons are written in it
     intake: text('intake').notNull().default(''),
     summary: text('summary').notNull().default(''),
     plan: jsonb('plan').$type<{ testId: TestId; reason: string; added?: boolean }[]>().notNull(), // grows when tests are added

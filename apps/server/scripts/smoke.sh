@@ -141,9 +141,28 @@ check "single test without testId → 400" 400
 call POST /sessions '{"profileId":"00000000-0000-0000-0000-000000000000","intake":"","mode":"quick"}'
 check "someone else's profile → 404" 404
 
+echo "Languages (Hindi and Odia)"
+call POST /intake/chat "{\"profileId\":\"$ME\",\"language\":\"hi\",\"messages\":[{\"from\":\"ai\",\"text\":\"नमस्ते\"}]}"
+check "first question in Hindi" 200 "d['language'] == 'hi' and any('ऀ' <= ch <= 'ॿ' for ch in d['reply'])"
+call POST /intake/chat "{\"profileId\":\"$ME\",\"language\":\"hi\",\"messages\":[{\"from\":\"ai\",\"text\":\"आज आपकी आँखों में क्या परेशानी है?\"},{\"from\":\"me\",\"text\":\"रात में गाड़ी चलाते समय धुंधला दिखता है\"}]}"
+check "Hindi follow-up (AI or fallback)" 200 "not d['done'] and d['language'] == 'hi' and any('ऀ' <= ch <= 'ॿ' for ch in d['reply'])"
+echo "        AI: $(get "d['reply']")  chips: $(get "', '.join(d['chips'])")"
+call POST /intake/chat "{\"profileId\":\"$ME\",\"language\":\"hi\",\"messages\":[{\"from\":\"me\",\"text\":\"मुझे अचानक एक आँख से दिखना कम हो गया\"}]}"
+check "Hindi urgent words → doctor note (rule)" 200 "'आँखों के डॉक्टर' in d['reply']"
+call POST /intake/chat "{\"profileId\":\"$ME\",\"language\":\"or\",\"messages\":[{\"from\":\"me\",\"text\":\"ଆଖିରେ ଯନ୍ତ୍ରଣା ନାହିଁ, ଦୂରର ଜିନିଷ ଝାପସା ଦେଖାଯାଉଛି\"}]}"
+check "Odia, negated pain → no doctor note" 200 "d['language'] == 'or' and 'ଡାକ୍ତର' not in d['reply']"
+echo "        AI: $(get "d['reply']")"
+call POST /sessions "{\"profileId\":\"$ME\",\"intake\":\"\",\"mode\":\"quick\",\"language\":\"or\"}"
+check "quick check in Odia → Odia summary and reasons" 201 "any('଀' <= ch <= '୿' for ch in d['summary'] + d['plan'][0]['reason'])"
+call POST /sessions "{\"profileId\":\"$ME\",\"intake\":\"\",\"mode\":\"single\",\"testId\":\"tumbling_e\",\"language\":\"hi\"}"
+LSID=$(get "d['sessionId']")
+call POST "/sessions/$LSID/results" "{\"testId\":\"tumbling_e\",\"eye\":\"both\",\"durationSec\":60,\"answers\":{\"right\":$E_GOOD,\"left\":$E_GOOD}}"
+call POST "/sessions/$LSID/verdict"
+check "single test in Hindi → Hindi verdict text" 200 "any('ऀ' <= ch <= 'ॿ' for ch in d['headline'])"
+
 echo "History and sharing"
 call GET /sessions
-check "GET /sessions (newest first)" 200 "len(d) == 2 and d[0]['id'] == '$GID' and d[1]['id'] == '$SID' and d[1]['status'] == 'see_doctor' and d[1]['scores']['tumbling_e'] > 0"
+check "GET /sessions (newest first)" 200 "len(d) == 3 and d[0]['id'] == '$LSID' and d[1]['id'] == '$GID' and d[2]['id'] == '$SID' and d[2]['status'] == 'see_doctor' and d[2]['scores']['tumbling_e'] > 0"
 call GET "/sessions/$SID"
 check "GET /sessions/:id" 200 "d['sessionId'] == '$SID' and d['date'] and d['minutes'] >= 1"
 call POST "/sessions/$SID/share"

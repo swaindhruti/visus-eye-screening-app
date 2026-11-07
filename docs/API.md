@@ -18,8 +18,8 @@ Hono on Cloudflare Workers. Types come from `packages/shared` (`@visus/shared`).
 | `GET /profiles` | — | `Profile[]`, owner first | D | live |
 | `POST /profiles` | `Profile` without `id` | `Profile` (201). The first profile is the owner (`relation: "self"`) | D | live |
 | `PATCH /profiles/:id` | partial `Profile` | `Profile` | D | live |
-| `POST /intake/chat` | `IntakeChatRequest` (`{ profileId, messages: [{ from: "ai" \| "me", text }] }`, the whole chat so far) | `IntakeChatResponse` (`{ reply, chips, done }`) | D | live |
-| `POST /sessions` | `CreateSessionRequest` | `CreateSessionResponse` (201) | D | live |
+| `POST /intake/chat` | `IntakeChatRequest` (`{ profileId, messages: [{ from: "ai" \| "me", text }], language? }`, the whole chat so far) | `IntakeChatResponse` (`{ reply, chips, done, language }`): reply and chips in the language the person writes in | D | live |
+| `POST /sessions` | `CreateSessionRequest` (+ optional `language`) | `CreateSessionResponse` (201). Summary and reasons in `language` | D | live |
 | `POST /sessions/:id/results` | `SubmitResult` | `NextStep`. 409 after the verdict | D (route) + T (scoring, rules) | live |
 | `POST /sessions/:id/verdict` | — | `Verdict` (saved; calling again returns the same one) | D (route) + T (lens) | live |
 | `GET /sessions` | — | `SessionSummary[]`, finished checks, newest first | T | live |
@@ -38,6 +38,17 @@ Hono on Cloudflare Workers. Types come from `packages/shared` (`@visus/shared`).
 | `DELETE /me/shops/:id` | — | `{ ok: true }`. The shop loses access (it keeps the checks it ran) | D | live |
 
 Server code: `apps/server` (feature folders, see `apps/server/CLAUDE.md`). Smoke test of every route: `apps/server/scripts/smoke.sh`.
+
+## Languages (English, Hindi, Odia)
+
+- `Language` is `"en" | "hi" | "or"`; `SPEECH_LOCALE` maps it to `en-IN`, `hi-IN`, `or-IN` for speech in the apps.
+- **Intake chat:**
+  - The app sends the language the user picked.
+  - Gemini replies in the language of the person's last message and returns it as `language`. Romanised Hindi or Odia counts as that language.
+  - The app keeps the returned `language` for the next turn, the voice and `POST /sessions`.
+- **Saved on the check:** `sessions.language` stores it. The plan summary and reasons, the re-plan reason and the verdict `headline` and `advice` are written in it, by Gemini or by the rule fallbacks in `features/agent/i18n.ts`.
+- **What stays English:** test ids, scores, statuses and the per-test `summary` from the scorers. Screens are not translated.
+- **Red flags stay rules:** `rules/red-flags.ts` also knows Hindi and Odia urgent words (अचानक, दर्द, चमक, ହଠାତ୍, ଯନ୍ତ୍ରଣା…), including romanised spellings. A clause with a negation (नहीं, ନାହିଁ, nahi) doesn't count.
 
 ## Shop portal
 

@@ -50,8 +50,32 @@ const URGENT: [RegExp, string][] = [
   [/\bred eyes?\b|\bredness\b/i, 'a red eye'],
 ];
 
+/**
+ * The same in Hindi and Odia (scripts and common romanised spellings). Indic scripts have no
+ * \b word boundaries in JS regex, so these match anywhere in the text.
+ */
+const URGENT_INDIC: [RegExp, string][] = [
+  [/चमक|रोशनी.{0,12}(चमक|फ्लैश)|धब्बे|मक्खि|ଝଲସ|ଝଲକ|ଚମକ|ଦାଗ|\bchamak\b|\bdhabb/i, 'flashes or floaters'],
+  [/पर्दा|परदा|परछाई|छाया|ପରଦା|ଛାଇ|\bparda\b/i, 'a shadow over your vision'],
+  [/अचानक|एकदम से|ହଠାତ୍|ହଠାତ|\bachanak\b|\bhathat\b/i, 'a sudden change'],
+  [/दर्द|दुख|चुभ|ଯନ୍ତ୍ରଣା|ବିନ୍ଧୁଛି|ବିନ୍ଧା|\bdard\b|\bdukh/i, 'eye pain'],
+  [/दो-दो|दो दो|दोहरा|ଦୁଇଟା ଦେଖା|ଦୁଇଟି ଦେଖା|\bdo do dikh/i, 'double vision'],
+  [/आँख.{0,6}लाल|आंख.{0,6}लाल|लाल.{0,6}आँख|ଆଖି.{0,6}ଲାଲ|ଲାଲ.{0,6}ଆଖି|\baankh.{0,6}lal\b/i, 'a red eye'],
+];
+
 /** "No pain", "I don't see flashes", "none of those": the words after a negation (up to "but" or punctuation) don't count. */
 const NEGATED = /\b(no|not|none|never|without|nothing|don'?t|do not|haven'?t|didn'?t|isn'?t|aren'?t)\b(?:(?!\bbut\b)[^.,;!?\n])*/gi;
+
+/**
+ * Hindi and Odia put the negation after the word ("दर्द नहीं है", "ଯନ୍ତ୍ରଣା ନାହିଁ"): a clause with
+ * a negation doesn't count. Clauses end at punctuation or "but" (लेकिन, पर, ମାତ୍ର, କିନ୍ତୁ).
+ */
+const INDIC_NEGATION = /नहीं|नही|(^|\s)(ना|मत)(\s|$)|ନାହିଁ|ନାହି|ନୁହେଁ|\bnahi[n]?\b|\bna\b/i;
+const dropNegatedClauses = (text: string) =>
+  text
+    .split(/[.,;!?।\n]|लेकिन|\bpar\b|ମାତ୍ର|କିନ୍ତୁ|\blekin\b/)
+    .filter((clause) => !INDIC_NEGATION.test(`${clause} `))
+    .join('. ');
 
 /** Urgent words in what the user said (not the AI's questions). The plan summary warns about them. */
 export function intakeRedFlag(intake: string): string | null {
@@ -60,6 +84,8 @@ export function intakeRedFlag(intake: string): string | null {
     .replace(/Pain, redness or flashes:\s*(No|None)[^\n]*/gi, '')
     .replace(/Pain, redness or flashes:/gi, '')
     .replace(NEGATED, '');
+  const indic = dropNegatedClauses(text);
   const found = URGENT.filter(([re]) => re.test(text)).map(([, label]) => label);
+  for (const [re, label] of URGENT_INDIC) if (re.test(indic) && !found.includes(label)) found.push(label);
   return found.length ? found.join(', ') : null;
 }

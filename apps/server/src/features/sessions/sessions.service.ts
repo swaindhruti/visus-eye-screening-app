@@ -1,7 +1,7 @@
 // Ties the check together:
 // create session (agent plan) → for each result: scoring → rules → agent (only if rules can't decide)
 // → NextStep; verdict: results + lens suggestions.
-import { TEST_CATALOG, type CreateSessionRequest, type NextStep, type SessionMode, type Status, type SubmitResult, type Verdict } from '@visus/shared';
+import { Language, TEST_CATALOG, type CreateSessionRequest, type NextStep, type SessionMode, type Status, type SubmitResult, type Verdict } from '@visus/shared';
 import { and, asc, eq } from 'drizzle-orm';
 import type { z } from 'zod';
 
@@ -10,13 +10,17 @@ import { results, sessions } from '../../db/schema';
 import type { Bindings } from '../../lib/env';
 import { fail } from '../../lib/errors';
 import { isUuid } from '../../lib/validate';
-import { aiReplan, planTests, REASONS, ruleVerdictText, verdictText } from '../agent/agent.service';
+import { aiReplan, planTests, ruleVerdictText, verdictText } from '../agent/agent.service';
+import { TEXT } from '../agent/i18n';
 import { recommendLenses } from '../lens/recommend';
 import { getProfileById } from '../profiles/profiles.service';
 import { nextTestRule } from '../rules/next-test';
 import { redFlag } from '../rules/red-flags';
 import { scoreTest } from '../scoring';
 import { checkTarget, sessionAccess } from '../shops/access';
+
+/** A session's language (older rows and unknown values: English). */
+const langOf = (session: { language: string }) => Language.catch('en').parse(session.language);
 
 /** The agent may add at most this many tests to a full check. */
 const MAX_ADDED = 2;
@@ -36,10 +40,11 @@ export async function createSession(db: Db, env: Bindings, userId: string, input
   if (input.mode === 'single' && !input.testId) fail(400, 'testId: pick a test for a single-test check');
   // A shop's check for a linked patient is saved in the patient's account, marked with the shop.
   const { ownerId, profile, shopId } = await checkTarget(db, userId, input.profileId);
-  const { summary, plan } = await planTests({ mode: input.mode, testId: input.testId, intake: input.intake, person: profile, apiKey: env.GEMINI_API_KEY });
+  const language = input.language ?? 'en';
+  const { summary, plan } = await planTests({ mode: input.mode, testId: input.testId, intake: input.intake, person: profile, apiKey: env.GEMINI_API_KEY, language });
   const [row] = await db
     .insert(sessions)
-    .values({ userId: ownerId, profileId: profile.id, shopId, mode: input.mode, intake: input.intake, summary, plan })
+    .values({ userId: ownerId, profileId: profile.id, shopId, mode: input.mode, language, intake: input.intake, summary, plan })
     .returning({ id: sessions.id });
   return { sessionId: row.id, summary, plan: plan.map(({ testId, reason }) => ({ testId, reason })) };
 }
@@ -75,7 +80,7 @@ export async function submitResult(db: Db, env: Bindings, userId: string, sessio
       rule === 'undecided'
         ? result.status === 'good'
           ? null
-          : await aiReplan({ result, taken, intake: session.intake, person: profile, apiKey: env.GEMINI_API_KEY })
+          : await aiReplan({ result, taken, intake: session.intake, person: profile, apiKey: env.GEMINI_API_KEY, language: langOf(session) })
         : rule;
     if (added) {
       plan.splice(position, 0, { ...added, added: true });
@@ -85,19 +90,17 @@ export async function submitResult(db: Db, env: Bindings, userId: string, sessio
   }
   const next = plan[position];
   if (!next) return { type: 'done', result };
-  return { type: 'next_test', result, testId: next.testId, reason: next.reason ?? REASONS[next.testId], added: false };
+  return { type: 'next_test', result, testId: next.testId, reason: next.reason ?? TEXT[langOf(session)].reasons[next.testId], added: false };
 }
 
 const RANK: Record<Status, number> = { good: 0, mild: 1, see_doctor: 2 };
 const worse = (a: Status | undefined, b: Status): Status => (a && RANK[a] >= RANK[b] ? a : b);
 
 /** Glasses check: is everything sharp with the glasses on (the last result)? */
-function glassesText(withGlasses?: Verdict['results'][number]) {
+function glassesText(withGlasses: Verdict['results'][number] | undefined, lang: Language) {
   const sides = Object.values(withGlasses?.eyes ?? {}).filter(Boolean);
   const fine = sides.length > 0 && sides.every((e) => e!.status === 'good');
-  return fine
-    ? { headline: 'Your glasses still work well', advice: 'Both eyes see sharply with them on. No update needed for now.' }
-    : { headline: 'Your glasses may need an update', advice: "Your vision isn't fully sharp with them on. An optician can check your prescription." };
+  return { ...TEXT[lang].glassesVerdict[fine ? 'fine' : 'update'] };
 }
 
 export async function createVerdict(db: Db, env: Bindings, userId: string, sessionId: string): Promise<Verdict> {
@@ -114,12 +117,13 @@ export async function createVerdict(db: Db, env: Bindings, userId: string, sessi
     if (category) areas[category] = worse(areas[category], r.status);
   }
   const mode = session.mode as SessionMode;
+  const lang = langOf(session);
   const text =
     mode === 'glasses'
-      ? glassesText(scored[scored.length - 1])
+      ? glassesText(scored[scored.length - 1], lang)
       : mode === 'single'
-        ? ruleVerdictText(scored)
-        : await verdictText({ results: scored, intake: session.intake, person: profile, apiKey: env.GEMINI_API_KEY });
+        ? ruleVerdictText(scored, lang)
+        : await verdictText({ results: scored, intake: session.intake, person: profile, apiKey: env.GEMINI_API_KEY, language: lang });
   const seconds = rows.reduce((n, r) => n + r.durationSec, 0);
   const verdict: Verdict = {
     sessionId,

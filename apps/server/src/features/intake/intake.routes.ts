@@ -12,7 +12,7 @@ export const intakeRoutes = new Hono<AppEnv>();
 intakeRoutes.use('*', requireAuth);
 
 intakeRoutes.post('/chat', validate('json', IntakeChatRequest), async (c) => {
-  const { profileId, messages } = c.req.valid('json');
+  const { profileId, messages, language } = c.req.valid('json');
   const { profile: person } = await checkTarget(c.var.db, c.var.userId, profileId); // own profile, or a shop's patient
-  return c.json(await intakeTurn({ messages, person, apiKey: c.env.GEMINI_API_KEY }));
+  return c.json(await intakeTurn({ messages, person, apiKey: c.env.GEMINI_API_KEY, language }));
 });
