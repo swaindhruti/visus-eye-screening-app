@@ -73,10 +73,24 @@ export const LoginRequest = z.object({
   identifier: z.string().min(3),
   password: z.string().min(1).max(128),
 });
+/** "shop" accounts open the shop portal (web) instead of the personal app. */
+export const Role = z.enum(["user", "shop"]);
+export type Role = z.infer<typeof Role>;
+
 export const AuthResponse = z.object({
   token: z.string(),
-  user: z.object({ id: z.string(), name: z.string(), identifier: z.string() }),
+  user: z.object({
+    id: z.string(),
+    name: z.string(),
+    identifier: z.string(),
+    role: Role.optional(), // missing = "user"
+    shopName: z.string().optional(), // shop accounts only
+    phone: z.string().optional(), // 10 digits; shops find a patient's account by it
+  }),
 });
+
+/** PATCH /me: add or change the phone number shops can find you by. */
+export const UpdateMeRequest = z.object({ phone: z.string().min(10).max(16) });
 
 export const Relation = z.enum(["self", "child", "partner", "parent", "sibling", "other"]);
 export type Relation = z.infer<typeof Relation>;
@@ -215,9 +229,70 @@ export const SessionSummary = z.object({
   status: Status, // worst status of the check
   tests: z.array(TestId),
   scores: z.partialRecord(TestId, z.number().min(0).max(100)), // for the Results trend chart
+  shopName: z.string().optional(), // set when an optical shop ran the check
 });
 export type SessionSummary = z.infer<typeof SessionSummary>;
 
 /** POST /sessions/:id/share: a read-only report link for a doctor. */
 export const ShareLink = z.object({ url: z.string(), expiresAt: z.string() });
 export type ShareLink = z.infer<typeof ShareLink>;
+
+// ---------- Shop portal (web) ----------
+// An optical shop registers, adds walk-in patients and runs checks for them. A patient with a
+// Visus account can be linked by phone number once they approve it in their app; the shop then
+// sees their past checks, and the checks the shop runs show up in the patient's account.
+
+export const ShopRegisterRequest = z.object({
+  shopName: z.string().min(2).max(100),
+  address: z.string().max(200).default(""),
+  city: z.string().max(80).default(""),
+  ownerName: z.string().min(1).max(100),
+  identifier: z.string().min(3), // login: phone or email
+  password: z.string().min(8).max(128),
+});
+
+export const Shop = z.object({ id: z.string(), name: z.string(), address: z.string(), city: z.string() });
+export type Shop = z.infer<typeof Shop>;
+
+/** none = no Visus account with this phone yet; pending = waiting for the patient's answer. */
+export const LinkStatus = z.enum(["none", "pending", "approved", "declined"]);
+export type LinkStatus = z.infer<typeof LinkStatus>;
+
+export const CreatePatientRequest = z.object({
+  name: z.string().min(1).max(100),
+  age: z.number().int().min(3).max(120),
+  gender: z.string().optional(),
+  phone: z.string().max(16).default(""), // optional: needed only to link a Visus account
+  wearsGlasses: z.boolean().default(false),
+});
+
+/** One row of GET /shop/patients. */
+export const ShopPatient = z.object({
+  id: z.string(),
+  name: z.string(),
+  age: z.number(),
+  phone: z.string(),
+  wearsGlasses: z.boolean(),
+  linkStatus: LinkStatus,
+  /** Start checks with this profile: the patient's own profile once linked, else the shop's record. */
+  checkProfileId: z.string(),
+  lastCheck: z.string().nullable(), // ISO date
+  createdAt: z.string(),
+});
+export type ShopPatient = z.infer<typeof ShopPatient>;
+
+/** GET /shop/patients/:id: the patient and their finished checks (all of them once linked). */
+export const PatientDetail = ShopPatient.extend({ sessions: z.array(SessionSummary) });
+export type PatientDetail = z.infer<typeof PatientDetail>;
+
+/** A shop asking to see your records (GET /me/shop-requests), or a linked shop (GET /me/shops). */
+export const ShopRequest = z.object({
+  id: z.string(),
+  shopName: z.string(),
+  city: z.string(),
+  status: LinkStatus,
+  createdAt: z.string(),
+});
+export type ShopRequest = z.infer<typeof ShopRequest>;
+
+export const ShopRequestAnswer = z.object({ approve: z.boolean() });
