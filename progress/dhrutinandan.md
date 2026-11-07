@@ -5,6 +5,8 @@ Area: mobile app + server (setup, auth, agent). Claude updates this file at the 
 ## Now
 - **Phase 4 (Nov) on `feat/visus-next`** (plan in `WORK.md` → Phase 4): shop portal, multilingual voice, faster AI + offline, web accessibility. Deploy is postponed.
   - 2026-11-08: shop portal backend done: `users.role`/`users.phone`, `shops`, `shop_patients`, `sessions.shop_id`; routes in `docs/API.md` → Shop portal; smoke test 66/66 on a local Postgres (PGlite). **Aiven needs `bun run db:push`** before the shop routes work there (only adds tables and columns).
+  - 2026-11-08: shop portal web screens (`/shop/register`, `/shop/login`, `/shop`, `/shop/patients/new`, `/shop/patients/[id]`) and the patient side on web + mobile (request card on Home, Optical shops in Settings, "At <shop>" on past checks). Typecheck, lint and `next build` pass. **Not looked at in a browser yet** (no browser on this Mac for Claude): check the shop pages by eye.
+  - `feat/visus-next` is based on `feat/web-landing` (the landing branch restyles login/signup, which the portal touches). Merge the landing PR first.
 - Mobile now has every web feature (`feat/mobile-web-parity`, 2026-10-23): guest mode, voice input, onboarding "Later", skip-saves-profile fix, more distance-watched tests; server Gemini calls are hedged. Pushed for a PR. **Needs a new EAS development build** (voice input adds a native package), then a phone check.
 - Docs (2026-10-24): new root `README.md` (banner `docs/assets/banner.png`), `docs/SETUP.md` (run server + web + mobile together, EAS build, network changes, troubleshooting, deploy), `docs/ARCHITECTURE.md`, and README per app.
 - Remaining for Dhrutinandan: the deployment, later. Everything else is Sidhartha's.

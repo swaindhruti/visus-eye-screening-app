@@ -111,6 +111,7 @@ apps/server/src/
     rules/        red flags + rule plans
     lens/         ZEISS lens and coating catalog + recommendation
     history/      past checks, share links (24 h), guest scoring
+    shops/        shop portal: register, patients, link by phone, who may see a check
 ```
 
 ## Data model
@@ -121,12 +122,32 @@ erDiagram
   users ||--o{ sessions : runs
   profiles ||--o{ sessions : "check is for"
   sessions ||--o{ results : has
+  users ||--o| shops : "owns (role shop)"
+  shops ||--o{ shop_patients : "walk-ins"
+  shop_patients }o--|| profiles : "details in"
+  shop_patients }o--o| users : "linked account"
+  shops ||--o{ sessions : "ran"
 
-  users { uuid id  text name  text identifier  text password_hash }
+  users { uuid id  text name  text identifier  text role  text phone  text password_hash }
+  shops { uuid id  uuid owner_id  text name  text city }
+  shop_patients { uuid id  uuid shop_id  uuid profile_id  text phone  uuid linked_user_id  text link_status }
   profiles { uuid id  text name  int age  text relation  bool is_child  bool wears_glasses  jsonb prescription  jsonb saved_lens }
-  sessions { uuid id  text mode  text intake  jsonb plan  jsonb verdict  text share_token  timestamp finished_at }
+  sessions { uuid id  uuid shop_id  text mode  text intake  jsonb plan  jsonb verdict  text share_token  timestamp finished_at }
   results { uuid id  text test_id  text eye  jsonb answers  jsonb scored  text red_flag }
 ```
+
+### Shop portal and linking
+
+- A shop is a user with `role = "shop"` plus a `shops` row.
+- **Walk-ins:** each one is a `shop_patients` row whose details live in a profile owned by the shop account. Every check route works unchanged for them.
+- **Linking:**
+  - When the shop enters a phone number that matches a personal account (`users.phone`, the last 10 digits), the link becomes `pending`.
+  - On **Allow**, the shop's earlier checks move into the patient's own profile.
+  - From then on the shop starts checks on the patient's profile (`checkTarget`), so they are saved in the patient's account with `sessions.shop_id` set.
+- **Who may use a check** is decided in one place, `features/shops/access.ts` (`sessionAccess`):
+  - your own checks;
+  - the checks your shop ran;
+  - read only: every check of a patient who linked to your shop.
 
 ## Clients
 

@@ -102,6 +102,26 @@ A single test from the library runs `/check/[testId]/instructions` → `/check/[
 | 24 | Settings | `/settings` | Both | local |
 | 25 | About & disclaimer | `/settings/about` | Both | — |
 
+## Shop portal (web only, added 2026-11-08)
+
+Not in the Claude Design handoff: built from the existing components and auth layout.
+
+| # | Screen | Route | Platform | Data |
+|---|---|---|---|---|
+| S1 | Shop register | `/shop/register` | Web | `POST /shops/register` |
+| S2 | Shop log in | `/shop/login` (the normal `/login` also sends shops to `/shop`) | Web | `POST /auth/login` |
+| S3 | Patients (dashboard: stats, search) | `/shop` | Web | `GET /shop/patients?q=` |
+| S4 | New patient | `/shop/patients/new` | Web | `POST /shop/patients` |
+| S5 | Patient (link status, start a check, past checks) | `/shop/patients/[id]` | Web | `GET /shop/patients/:id`, `POST /shop/patients/:id/link` |
+| — | The check itself | the normal `/check/*` and `/results/*` screens, for the patient's profile | Web | as a normal check |
+
+Patient side:
+
+| # | Screen | Route | Platform | Data |
+|---|---|---|---|---|
+| S6 | Shop request card (Allow / Decline) | on Home | Both | `GET /me/shop-requests`, `POST /me/shop-requests/:id` |
+| S7 | Optical shops: mobile number, linked shops, Remove | web: section in `/settings`; mobile: `/settings/shops` | Both | `PATCH /me`, `GET /me/shops`, `DELETE /me/shops/:id` |
+
 ## States
 
 | # | Screen | Where | Platform |

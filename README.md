@@ -41,6 +41,10 @@ You describe your eye problem in a short chat. An AI agent then picks the right 
   - 20-20-20 break reminders shown over other apps;
   - a daily goal (2 h in child mode).
 - **Guest mode:** take any single test without an account. Results are scored but not saved.
+- **Shop portal** (web, `/shop`): an optical shop registers and keeps a record of walk-in patients.
+  - It can run any check for a patient (full AI, quick, glasses, single test).
+  - It can link a patient's own Visus account by mobile number. The patient allows it in their app.
+  - Once linked, the shop sees the patient's past checks, and the checks the shop runs show up in the patient's Results ("At <shop>").
 - **Accessible:** adjustable text size, large touch targets, clinical white test screens, and simple wording.
 
 ## Tech
