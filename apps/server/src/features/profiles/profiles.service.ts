@@ -48,6 +48,18 @@ export async function getProfile(db: Db, userId: string, id: string) {
   return toProfile(row);
 }
 
+/** Any profile by id, after the caller's access was checked (e.g. through its session). */
+export async function getProfileById(db: Db, id: string) {
+  const [row] = await db.select().from(profiles).where(eq(profiles.id, id));
+  if (!row) fail(404, 'Profile not found');
+  return toProfile(row);
+}
+
+/** The account owner's own profile ("self", else the first one), or null before onboarding. */
+export async function selfProfile(db: Db, userId: string) {
+  return (await listProfiles(db, userId))[0] ?? null;
+}
+
 /** The first profile of an account is the owner ("self"). */
 export async function createProfile(db: Db, userId: string, input: NewProfile) {
   const relation = input.relation ?? ((await listProfiles(db, userId)).length === 0 ? 'self' : 'other');

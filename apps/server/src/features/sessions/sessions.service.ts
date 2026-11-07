@@ -12,32 +12,34 @@ import { fail } from '../../lib/errors';
 import { isUuid } from '../../lib/validate';
 import { aiReplan, planTests, REASONS, ruleVerdictText, verdictText } from '../agent/agent.service';
 import { recommendLenses } from '../lens/recommend';
-import { getProfile } from '../profiles/profiles.service';
+import { getProfileById } from '../profiles/profiles.service';
 import { nextTestRule } from '../rules/next-test';
 import { redFlag } from '../rules/red-flags';
 import { scoreTest } from '../scoring';
+import { checkTarget, sessionAccess } from '../shops/access';
 
 /** The agent may add at most this many tests to a full check. */
 const MAX_ADDED = 2;
 
-/** A session of this account, or 404. */
-export async function getOwnSession(db: Db, userId: string, id: string) {
+/** A session of this account (or run by its shop), or 404. `read`: also a linked patient's check. */
+export async function getOwnSession(db: Db, userId: string, id: string, read = false) {
   if (!isUuid(id)) fail(404, 'Check not found');
   const [row] = await db
     .select()
     .from(sessions)
-    .where(and(eq(sessions.id, id), eq(sessions.userId, userId)));
+    .where(and(eq(sessions.id, id), sessionAccess(db, userId, read)));
   if (!row) fail(404, 'Check not found');
   return row;
 }
 
 export async function createSession(db: Db, env: Bindings, userId: string, input: z.infer<typeof CreateSessionRequest>) {
   if (input.mode === 'single' && !input.testId) fail(400, 'testId: pick a test for a single-test check');
-  const profile = await getProfile(db, userId, input.profileId);
+  // A shop's check for a linked patient is saved in the patient's account, marked with the shop.
+  const { ownerId, profile, shopId } = await checkTarget(db, userId, input.profileId);
   const { summary, plan } = await planTests({ mode: input.mode, testId: input.testId, intake: input.intake, person: profile, apiKey: env.GEMINI_API_KEY });
   const [row] = await db
     .insert(sessions)
-    .values({ userId, profileId: profile.id, mode: input.mode, intake: input.intake, summary, plan })
+    .values({ userId: ownerId, profileId: profile.id, shopId, mode: input.mode, intake: input.intake, summary, plan })
     .returning({ id: sessions.id });
   return { sessionId: row.id, summary, plan: plan.map(({ testId, reason }) => ({ testId, reason })) };
 }
@@ -45,7 +47,7 @@ export async function createSession(db: Db, env: Bindings, userId: string, input
 export async function submitResult(db: Db, env: Bindings, userId: string, sessionId: string, input: SubmitResult): Promise<NextStep> {
   const session = await getOwnSession(db, userId, sessionId);
   if (session.verdict) fail(409, 'This check is already finished. Start a new one to test again.');
-  const profile = await getProfile(db, userId, session.profileId);
+  const profile = await getProfileById(db, session.profileId);
   const done = await db.select({ testId: results.testId, redFlag: results.redFlag }).from(results).where(eq(results.sessionId, sessionId));
 
   const result = scoreTest(input.testId, input.eye, input.answers, { age: profile.age, isChild: profile.isChild });
@@ -103,7 +105,7 @@ export async function createVerdict(db: Db, env: Bindings, userId: string, sessi
   if (session.verdict) return session.verdict;
   const rows = await db.select().from(results).where(eq(results.sessionId, sessionId)).orderBy(asc(results.createdAt));
   if (!rows.length) fail(400, 'No test results yet. Finish at least one test first.');
-  const profile = await getProfile(db, userId, session.profileId);
+  const profile = await getProfileById(db, session.profileId);
   const scored = rows.map((r) => r.scored);
 
   const areas: Verdict['areas'] = {};

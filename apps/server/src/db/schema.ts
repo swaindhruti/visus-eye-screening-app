@@ -10,6 +10,21 @@ export const users = pgTable('users', {
   name: text('name').notNull(),
   identifier: text('identifier').notNull().unique(), // phone or email, lower-cased
   passwordHash: text('password_hash').notNull(), // "salt:hash", base64
+  role: text('role').notNull().default('user'), // Role: "user" | "shop"
+  phone: text('phone'), // last 10 digits; shops find a patient's account by it
+  createdAt: createdAt(),
+});
+
+/** An optical shop (shop portal). Its owner logs in as a "shop" user. */
+export const shops = pgTable('shops', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ownerId: uuid('owner_id')
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  address: text('address').notNull().default(''),
+  city: text('city').notNull().default(''),
   createdAt: createdAt(),
 });
 
@@ -53,12 +68,13 @@ export const sessions = pgTable(
     summary: text('summary').notNull().default(''),
     plan: jsonb('plan').$type<{ testId: TestId; reason: string; added?: boolean }[]>().notNull(), // grows when tests are added
     verdict: jsonb('verdict').$type<Verdict>(), // set by POST /sessions/:id/verdict
+    shopId: uuid('shop_id').references(() => shops.id, { onDelete: 'set null' }), // set when a shop ran the check
     shareToken: text('share_token'),
     shareExpiresAt: timestamp('share_expires_at', { withTimezone: true }),
     createdAt: createdAt(),
     finishedAt: timestamp('finished_at', { withTimezone: true }),
   },
-  (t) => [index('sessions_user_idx').on(t.userId)],
+  (t) => [index('sessions_user_idx').on(t.userId), index('sessions_shop_idx').on(t.shopId)],
 );
 
 export const results = pgTable(
@@ -77,4 +93,27 @@ export const results = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index('results_session_idx').on(t.sessionId)],
+);
+
+/**
+ * A walk-in patient of a shop. The details live in a profile owned by the shop account, so the
+ * normal check routes work for it. linkedUserId is the patient's own Visus account, found by phone;
+ * once they approve, the shop can see and add to their checks (LinkStatus in @visus/shared).
+ */
+export const shopPatients = pgTable(
+  'shop_patients',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    shopId: uuid('shop_id')
+      .notNull()
+      .references(() => shops.id, { onDelete: 'cascade' }),
+    profileId: uuid('profile_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    phone: text('phone').notNull().default(''),
+    linkedUserId: uuid('linked_user_id').references(() => users.id, { onDelete: 'set null' }),
+    linkStatus: text('link_status').notNull().default('none'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('shop_patients_shop_idx').on(t.shopId), index('shop_patients_phone_idx').on(t.phone)],
 );

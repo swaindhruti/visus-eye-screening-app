@@ -156,6 +156,98 @@ TOKEN=$SAVED_TOKEN
 call GET /sessions/not-a-session
 check "unknown check → 404" 404
 
+echo "Shop portal (register, walk-ins, link by phone, approve, unlink)"
+# single_check PROFILE_ID → runs a one-test check (Tumbling E) to its verdict, sets CHECK_ID
+single_check() {
+  call POST /sessions "{\"profileId\":\"$1\",\"intake\":\"\",\"mode\":\"single\",\"testId\":\"tumbling_e\"}"
+  CHECK_ID=$(get "d['sessionId']")
+  call POST "/sessions/$CHECK_ID/results" "{\"testId\":\"tumbling_e\",\"eye\":\"both\",\"durationSec\":60,\"answers\":{\"right\":$E_GOOD,\"left\":$E_GOOD}}"
+  call POST "/sessions/$CHECK_ID/verdict"
+}
+PHONE="9$(printf '%09d' $(( (RANDOM * 32768 + RANDOM) % 1000000000 )))"
+TOKEN=""
+call POST /auth/signup "{\"name\":\"Patient Smoke\",\"identifier\":\"+91 $PHONE\",\"password\":\"secret123\"}"
+check "patient signs up with a phone number" 201 "d['user']['phone'] == '$PHONE' and d['user']['role'] == 'user'"
+PATIENT=$(get "d['token']")
+TOKEN=$PATIENT
+call POST /profiles '{"name":"Patient Smoke","age":52,"isChild":false,"wearsGlasses":true,"healthConditions":[],"screenHoursPerDay":3}'
+PATIENT_ME=$(get "d['id']")
+single_check "$PATIENT_ME"; OWN_CHECK=$CHECK_ID
+check "patient's own check" 200 "d['sessionId'] == '$OWN_CHECK'"
+call GET /shop/patients
+check "personal account can't open the shop portal → 403" 403
+
+TOKEN=""
+call POST /shops/register "{\"shopName\":\"Smoke Optics\",\"city\":\"Bhubaneswar\",\"ownerName\":\"Shop Owner\",\"identifier\":\"shop-$EMAIL\",\"password\":\"secret123\"}"
+check "register a shop" 201 "d['user']['role'] == 'shop' and d['user']['shopName'] == 'Smoke Optics'"
+SHOP=$(get "d['token']")
+TOKEN=$SHOP
+call GET /me
+check "GET /me for a shop" 200 "d['user']['role'] == 'shop' and d['profiles'] == []"
+call POST /shop/patients '{"name":"Walk-in One","age":30,"wearsGlasses":false}'
+check "walk-in without a phone" 201 "d['linkStatus'] == 'none' and d['sessions'] == []"
+WALKIN=$(get "d['id']"); WALKIN_PROFILE=$(get "d['checkProfileId']")
+single_check "$WALKIN_PROFILE"
+check "shop runs a check for the walk-in" 200 "d['sessionId'] == '$CHECK_ID'"
+call GET "/shop/patients/$WALKIN"
+check "walk-in record shows the check" 200 "len(d['sessions']) == 1 and d['sessions'][0]['shopName'] == 'Smoke Optics' and d['lastCheck']"
+call POST /shop/patients '{"name":"Walk-in Bad","age":30,"phone":"12345"}'
+check "bad phone number → 400" 400
+call POST /shop/patients "{\"name\":\"Patient Smoke\",\"age\":52,\"phone\":\"0$PHONE\",\"wearsGlasses\":true}"
+check "patient with a Visus account → link pending" 201 "d['linkStatus'] == 'pending' and d['phone'] == '$PHONE'"
+LINKED=$(get "d['id']"); LINKED_PROFILE=$(get "d['checkProfileId']")
+call POST /shop/patients "{\"name\":\"Again\",\"age\":52,\"phone\":\"$PHONE\"}"
+check "same phone twice → 409" 409
+single_check "$LINKED_PROFILE"; SHOP_CHECK=$CHECK_ID
+check "shop checks the patient before the link" 200 "d['sessionId'] == '$SHOP_CHECK'"
+call GET "/sessions/$OWN_CHECK"
+check "shop can't see the patient's checks yet → 404" 404
+call GET "/shop/patients?q=walk"
+check "search patients" 200 "len(d) == 1 and d[0]['id'] == '$WALKIN'"
+PHONE2="8${PHONE:1}"
+call POST /shop/patients "{\"name\":\"Signs Up Later\",\"age\":40,\"phone\":\"$PHONE2\"}"
+check "phone with no Visus account yet → link none" 201 "d['linkStatus'] == 'none'"
+TOKEN=""
+call POST /auth/signup "{\"name\":\"Later\",\"identifier\":\"$PHONE2\",\"password\":\"secret123\"}"
+TOKEN=$(get "d['token']")
+call GET /me/shop-requests
+check "signing up later with that phone shows the request" 200 "len(d) == 1 and d[0]['shopName'] == 'Smoke Optics'"
+TOKEN=$SHOP
+
+TOKEN=$PATIENT
+call GET /me/shop-requests
+check "patient sees the request" 200 "len(d) == 1 and d[0]['shopName'] == 'Smoke Optics' and d[0]['status'] == 'pending'"
+call POST "/me/shop-requests/$LINKED" '{"approve":true}'
+check "patient allows the shop" 200 "d['status'] == 'approved'"
+call GET /sessions
+check "shop's check moved into the patient's account" 200 "len(d) == 2 and any(s['id'] == '$SHOP_CHECK' and s['shopName'] == 'Smoke Optics' for s in d)"
+call GET /me/shops
+check "linked shops" 200 "len(d) == 1 and d[0]['shopName'] == 'Smoke Optics'"
+
+TOKEN=$SHOP
+call GET "/shop/patients/$LINKED"
+check "shop sees all the patient's checks" 200 "d['linkStatus'] == 'approved' and d['checkProfileId'] == '$PATIENT_ME' and len(d['sessions']) == 2"
+call GET "/sessions/$OWN_CHECK"
+check "shop opens the patient's own check" 200 "d['sessionId'] == '$OWN_CHECK'"
+single_check "$PATIENT_ME"; NEW_CHECK=$CHECK_ID
+check "shop starts a check for the linked patient" 200 "d['sessionId'] == '$NEW_CHECK'"
+call POST "/sessions/$OWN_CHECK/results" "{\"testId\":\"tumbling_e\",\"eye\":\"both\",\"durationSec\":1,\"answers\":{}}"
+check "shop can't add to the patient's own check → 404" 404
+
+TOKEN=$PATIENT
+call GET /sessions
+check "the shop's new check is in the patient's Results" 200 "len(d) == 3 and d[0]['id'] == '$NEW_CHECK' and d[0]['shopName'] == 'Smoke Optics'"
+call DELETE "/me/shops/$LINKED"
+check "patient unlinks the shop" 200 "d['ok']"
+TOKEN=$SHOP
+call GET "/sessions/$OWN_CHECK"
+check "after the unlink: patient's own check hidden → 404" 404
+call GET "/sessions/$NEW_CHECK"
+check "after the unlink: the shop keeps the checks it ran" 200 "d['sessionId'] == '$NEW_CHECK'"
+call POST /sessions "{\"profileId\":\"$PATIENT_ME\",\"intake\":\"\",\"mode\":\"quick\"}"
+check "after the unlink: no new checks → 404" 404
+TOKEN=$SAVED_TOKEN
+
 echo
 echo "$PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]

@@ -17,6 +17,8 @@ export type Bindings = {
 export type Variables = {
   db: Db;
   userId: string;
+  /** The caller's shop, on /shop/* routes (set by requireShop). */
+  shopId: string;
 };
 
 export type AppEnv = { Bindings: Bindings; Variables: Variables };

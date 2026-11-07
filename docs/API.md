@@ -3,7 +3,7 @@
 Hono on Cloudflare Workers. Types come from `packages/shared` (`@visus/shared`).
 
 - Local: `cd apps/server && bun run dev:phone` → `http://localhost:8787` (phone: your Mac's Wi-Fi IP). Full setup: `docs/SETUP.md`
-- Auth: send `Authorization: Bearer <token>` on every route except `/health`, `/auth/signup`, `/auth/login`
+- Auth: send `Authorization: Bearer <token>` on every route except `/health`, `/auth/signup`, `/auth/login`, `/shops/register`, `/reports/*`
 - Errors: `{ "error": "message" }` with a 4xx/5xx status
 
 **D** = Dhrutinandan, **T** = Teammate. Status: planned → mock (apps use mock data) → live.
@@ -11,9 +11,10 @@ Hono on Cloudflare Workers. Types come from `packages/shared` (`@visus/shared`).
 | Route | Request | Response | Owner | Status |
 |---|---|---|---|---|
 | `GET /health` | — | `{ ok: true }` | D | live |
-| `POST /auth/signup` | `SignupRequest` | `AuthResponse` (201). 409 if the phone/email is taken | D | live |
+| `POST /auth/signup` | `SignupRequest` | `AuthResponse` (201). 409 if the phone/email is taken. A phone identifier also fills `user.phone` | D | live |
 | `POST /auth/login` | `LoginRequest` | `AuthResponse`. 401 on a wrong password | D | live |
-| `GET /me` | — | `{ user, profiles: Profile[] }`, owner first | D | live |
+| `GET /me` | — | `{ user, profiles: Profile[] }`, owner first. `user.role` is `"user"` or `"shop"` (+ `shopName`) | D | live |
+| `PATCH /me` | `UpdateMeRequest` (`{ phone }`) | `AuthResponse["user"]`. The number shops can link this account by (email sign-ups) | D | live |
 | `GET /profiles` | — | `Profile[]`, owner first | D | live |
 | `POST /profiles` | `Profile` without `id` | `Profile` (201). The first profile is the owner (`relation: "self"`) | D | live |
 | `PATCH /profiles/:id` | partial `Profile` | `Profile` | D | live |
@@ -26,8 +27,30 @@ Hono on Cloudflare Workers. Types come from `packages/shared` (`@visus/shared`).
 | `POST /sessions/:id/share` | — | `ShareLink` (`{ url: WEB_URL/r/<token>, expiresAt }`, 24 h) | T | live |
 | `GET /reports/:token` | — (no login) | `Verdict` behind a share link, 404 when expired. For the web report page `/r/<token>` | T | live |
 | `POST /reports/guest-score` | — (no login) `SubmitResult` + optional `age` | `NextStep` (`red_flag` or `done`). Guest mode (web + mobile): same scorer and red-flag rules, nothing saved | T | live |
+| `POST /shops/register` | — (no login) `ShopRegisterRequest` | `AuthResponse` (201) with `role: "shop"`, `shopName`. 409 if the login is taken | D | live |
+| `GET /shop/patients?q=` | — (shop accounts; others 403) | `ShopPatient[]`, newest first; `q` matches name or phone | D | live |
+| `POST /shop/patients` | `CreatePatientRequest` | `PatientDetail` (201). `linkStatus: "pending"` when a Visus account has this phone, else `"none"`. 409 for a phone already in the list | D | live |
+| `GET /shop/patients/:id` | — | `PatientDetail`: the patient and their finished checks (all of them once linked) | D | live |
+| `POST /shop/patients/:id/link` | — | `PatientDetail` with `linkStatus: "pending"`. 404 when no account has the phone yet | D | live |
+| `GET /me/shop-requests` | — | `ShopRequest[]`: shops asking to see your records (also ones made before you signed up with that phone) | D | live |
+| `POST /me/shop-requests/:id` | `ShopRequestAnswer` (`{ approve }`) | `ShopRequest` with the new status. 400 before onboarding (no own profile yet) | D | live |
+| `GET /me/shops` | — | `ShopRequest[]`: linked shops | D | live |
+| `DELETE /me/shops/:id` | — | `{ ok: true }`. The shop loses access (it keeps the checks it ran) | D | live |
 
 Server code: `apps/server` (feature folders, see `apps/server/CLAUDE.md`). Smoke test of every route: `apps/server/scripts/smoke.sh`.
+
+## Shop portal
+
+An optical shop registers (`POST /shops/register`) and logs in with the normal `POST /auth/login`; `user.role === "shop"` sends the web app to `/shop`.
+
+- **Walk-ins:** `POST /shop/patients` stores the details in a profile owned by the shop account (`relation: "other"`), so the normal check routes work: start a check with `ShopPatient.checkProfileId` (`/intake/chat`, `/sessions`, `/results`, `/verdict`, `GET /sessions/:id`, share).
+- **Linking an existing account:** the shop enters the patient's phone (10 digits; `+91`, spaces and a leading 0 are fine). If a personal account has that phone, the patient sees the request in `GET /me/shop-requests`; if not, it shows up once someone signs up with that phone.
+- **On approve:**
+  - The shop's earlier checks of that walk-in move into the patient's account (their own "self" profile).
+  - `checkProfileId` becomes the patient's own profile, so the checks the shop runs from then on are saved in the patient's account, with `SessionSummary.shopName` set.
+  - The shop can open all of the patient's checks (read only).
+- **Unlink** (`DELETE /me/shops/:id`): the shop keeps only the checks it ran itself, and can't start new ones on the patient's profile.
+- A check's `sessions.shop_id` records which shop ran it.
 
 ## Check modes
 

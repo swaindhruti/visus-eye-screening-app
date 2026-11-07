@@ -27,13 +27,14 @@ src/
     sessions/               POST /sessions, /results, /verdict: ties features together  Dhrutinandan
     agent/                  Gemini intake chat / plan / re-plan / verdict + prompts  Dhrutinandan
     intake/                 POST /intake/chat (route only; logic in agent/)         Dhrutinandan
+    shops/                  shop portal: register, patients, link by phone, access   Dhrutinandan
     scoring/                one scorer per test: answers → ScoredResult             Teammate
     rules/                  red flags + simple next-test rules                       Teammate
     lens/                   ZEISS lens catalog + recommendation                      Teammate
     history/                GET /sessions, GET /sessions/:id, share link             Teammate
 ```
 
-- Features with routes export a Hono router (`authRoutes`, `profilesRoutes`, `intakeRoutes`, `sessionsRoutes`, `historyRoutes`); `index.ts` mounts them, e.g. `app.route('/auth', authRoutes)`.
+- Features with routes export a Hono router (`authRoutes`, `profilesRoutes`, `intakeRoutes`, `sessionsRoutes`, `historyRoutes`, `shopRoutes`); `index.ts` mounts them, e.g. `app.route('/auth', authRoutes)`.
 - `agent`, `scoring`, `rules` and `lens` have no routes; `sessions` calls them.
 - The DB schema has one owner (Dhrutinandan). Teammate asks for new tables or columns instead of editing it.
 - `scoring/`, `rules/`, `lens/` and `history/` were built by Claude for the teammate (2026-10-21); the teammate owns and tunes them from here.
@@ -63,4 +64,6 @@ src/
 - Aiven CA: download it (Aiven console → service → Connection information → CA certificate) to `apps/server/aiven-ca.pem` (gitignored). `bun run dev` trusts it via `NODE_EXTRA_CA_CERTS`; without it the local Worker can't open TLS to Aiven.
 - Tables: `bun run db:push` (drizzle-kit reads `DATABASE_URL` from `.dev.vars`, or from the environment).
 - Smoke test of every route: `bun run smoke` (server running), or `API=https://… bun run smoke` for the deployed Worker.
+- Test without Aiven: run a throwaway Postgres (e.g. `bunx @electric-sql/pglite-socket` style `pglite-server -p 55432`), then `DATABASE_URL='postgres://postgres:pw@127.0.0.1:55432/postgres?sslmode=disable' bunx drizzle-kit push --force` and the same `DATABASE_URL=… bun src/local.ts`.
+- Who may use a check: `features/shops/access.ts` (`sessionAccess`, `checkTarget`). A shop may run checks for its walk-ins and linked patients and read a linked patient's past checks.
 - Gemini models: `GEMINI_MODELS` in `src/lib/gemini.ts` (hedged: Flash-Lite first, the next model joins after 2.5 s, first valid answer wins, rule fallback after 7 s; busy models skipped for 60 s).

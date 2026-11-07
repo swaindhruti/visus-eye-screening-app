@@ -1,23 +1,24 @@
 // List past checks, load one check, create a 24-hour share link.
 import type { SessionMode, SessionSummary, ShareLink, Status, TestId, Verdict } from '@visus/shared';
-import { and, desc, eq, gt, isNotNull } from 'drizzle-orm';
+import { and, desc, eq, gt, isNotNull, type SQL } from 'drizzle-orm';
 
 import type { Db } from '../../db/client';
-import { sessions } from '../../db/schema';
+import { sessions, shops } from '../../db/schema';
 import { fail } from '../../lib/errors';
 import { getOwnSession } from '../sessions/sessions.service';
 
 const RANK: Record<Status, number> = { good: 0, mild: 1, see_doctor: 2 };
 const SHARE_HOURS = 24;
 
-/** Finished checks of this account, newest first. */
-export async function listSessions(db: Db, userId: string): Promise<SessionSummary[]> {
+/** Finished checks matching `where`, newest first, with the shop that ran each one. */
+export async function summaries(db: Db, where: SQL | undefined): Promise<SessionSummary[]> {
   const rows = await db
-    .select()
+    .select({ s: sessions, shopName: shops.name })
     .from(sessions)
-    .where(and(eq(sessions.userId, userId), isNotNull(sessions.verdict)))
+    .leftJoin(shops, eq(shops.id, sessions.shopId))
+    .where(and(where, isNotNull(sessions.verdict)))
     .orderBy(desc(sessions.createdAt));
-  return rows.map((s) => {
+  return rows.map(({ s, shopName }) => {
     const v = s.verdict!;
     return {
       id: s.id,
@@ -28,12 +29,19 @@ export async function listSessions(db: Db, userId: string): Promise<SessionSumma
       status: v.results.reduce<Status>((w, r) => (RANK[r.status] > RANK[w] ? r.status : w), 'good'),
       tests: v.results.map((r) => r.testId),
       scores: Object.fromEntries(v.results.map((r) => [r.testId, r.score])) as Partial<Record<TestId, number>>,
+      shopName: shopName ?? undefined,
     };
   });
 }
 
+/** Finished checks of this account, newest first. */
+export async function listSessions(db: Db, userId: string): Promise<SessionSummary[]> {
+  return summaries(db, eq(sessions.userId, userId));
+}
+
+/** One finished check. Shops may also open the checks of patients who linked their account. */
 export async function getVerdict(db: Db, userId: string, id: string): Promise<Verdict> {
-  const session = await getOwnSession(db, userId, id);
+  const session = await getOwnSession(db, userId, id, true);
   if (!session.verdict) fail(404, "This check isn't finished yet");
   return session.verdict;
 }
