@@ -28,11 +28,13 @@ const subscribe = (cb: () => void) => {
 export default function Intake() {
   const online = useSyncExternalStore(subscribe, () => navigator.onLine, () => true);
   const profileId = useCheck((s) => s.profileId);
+  const shopPatient = useCheck((s) => s.shopPatient);
   const profiles = useQuery({ queryKey: ["profiles"], queryFn: listProfiles });
-  const name = (profiles.data?.find((p) => p.id === profileId) ?? profiles.data?.[0])?.name.split(" ")[0];
+  // A shop's patient may be a linked account (not in the shop's own profile list).
+  const owner = shopPatient ? undefined : (profiles.data?.find((p) => p.id === profileId) ?? profiles.data?.[0]);
+  const name = (shopPatient?.name ?? owner?.name)?.split(" ")[0];
   const start = useStartCheck();
 
-  const owner = profiles.data?.find((p) => p.id === profileId) ?? profiles.data?.[0];
   const greeting: Msg = { from: "ai", text: `Hi${name ? ` ${name}` : ""}. What's bothering your eyes today?` };
   // The whole chat so far, greeting first; sent to POST /intake/chat every turn.
   const [msgs, setMsgs] = useState<Msg[]>([]);

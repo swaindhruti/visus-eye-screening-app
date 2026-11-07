@@ -19,9 +19,13 @@ export function useStartCheck() {
     mutationFn: async (input: { mode: CheckMode; intake?: string; testId?: TestId }) => {
       // Guests have no profiles: the session stays on this device (services/sessions.ts).
       if (isGuest()) return { session: await createSession({ profileId: "", intake: "", mode: input.mode, testId: input.testId }), ...input };
+      const chosen = useCheck.getState().profileId;
+      // Shop portal: the patient picked on their page (a linked patient's profile isn't in the shop's list).
+      if (useCheck.getState().shopPatient && chosen) {
+        return { session: await createSession({ profileId: chosen, intake: input.intake ?? "", mode: input.mode, testId: input.testId }), ...input };
+      }
       // Who the check is for (chosen on "Who is this check for"), else the account owner.
       const profiles = await listProfiles();
-      const chosen = useCheck.getState().profileId;
       const profileId = profiles.find((p) => p.id === chosen)?.id ?? profiles.find((p) => p.relation === "self")?.id ?? profiles[0]?.id;
       if (!profileId) throw new Error("Finish setting up your profile first.");
       useCheck.getState().setProfile(profileId);

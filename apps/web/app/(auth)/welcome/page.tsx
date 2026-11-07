@@ -500,6 +500,9 @@ function Footer() {
                 Browse tests
               </Link>
               <ContinueAsGuest className={cn(link, "text-left")} />
+              <Link href="/shop/login" className={link}>
+                For optical shops
+              </Link>
             </div>
             <div data-reveal style={delay(180)} className={col}>
               <span className={head}>Legal</span>

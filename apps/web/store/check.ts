@@ -18,8 +18,11 @@ type CheckState = {
   startedAt: number;
   /** Raw answers this device sent, for screens that draw them back (field map). */
   answers: Partial<Record<TestId, Record<string, unknown>>>;
+  /** Shop portal: the walk-in this check is for. "Home" then leads back to their page. */
+  shopPatient: { id: string; name: string } | null;
 
   setProfile: (profileId: string) => void;
+  setShopPatient: (patient: { id: string; name: string; profileId: string } | null) => void;
   start: (session: CreatedSession, mode: CheckMode, intake: string) => void;
   recordStep: (step: NextStep) => void;
   saveAnswers: (testId: TestId, answers: Record<string, unknown>) => void;
@@ -47,7 +50,9 @@ export const useCheck = create<CheckState>()(
     (set) => ({
       ...empty,
       profileId: null,
+      shopPatient: null,
       setProfile: (profileId) => set({ profileId }),
+      setShopPatient: (patient) => set(patient ? { shopPatient: { id: patient.id, name: patient.name }, profileId: patient.profileId } : { shopPatient: null }),
       start: (session, mode, intake) =>
         set({ ...empty, sessionId: session.sessionId, summary: session.summary, plan: session.plan, mode, intake, startedAt: Date.now() }),
       recordStep: (step) =>

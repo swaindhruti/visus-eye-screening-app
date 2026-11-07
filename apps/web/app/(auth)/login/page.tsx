@@ -12,6 +12,7 @@ import { Spacer } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { login } from "@/services/auth";
 import { listProfiles } from "@/services/profiles";
+import { isShop } from "@/services/shops";
 import { useSettings } from "@/store/settings";
 
 export default function LogIn() {
@@ -22,10 +23,12 @@ export default function LogIn() {
 
   const m = useMutation({
     mutationFn: async () => {
-      await login({ identifier: id.trim(), password: pw });
-      return listProfiles();
+      const user = await login({ identifier: id.trim(), password: pw });
+      return isShop(user) ? null : listProfiles();
     },
     onSuccess: (profiles) => {
+      // Optical shops log in here too and go to their portal.
+      if (!profiles) return router.push("/shop");
       // An account without a profile yet (signed up, left onboarding) finishes onboarding first.
       useSettings.getState().set({ onboarded: profiles.length > 0 });
       router.push(profiles.length ? "/home" : "/onboarding");
