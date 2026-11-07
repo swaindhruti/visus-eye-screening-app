@@ -86,7 +86,8 @@ export default function Patient() {
                     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <span className="text-[16px] font-semibold">{sessionTitle(s)}</span>
                       <span className="truncate text-[13px] text-muted">
-                        {sessionSub(s)} · {s.shopName ? `At ${s.shopName}` : "Taken in the Visus app"}
+                        {sessionSub(s)}
+                        {s.shopName ? "" : " · Taken in the Visus app"}
                       </span>
                     </span>
                     <StatusBadge status={s.status} label={s.status === "good" ? "All clear" : undefined} className="self-center" />

@@ -9,10 +9,10 @@ export function sessionTitle(s: SessionSummary) {
   return s.mode === "quick" ? "Quick check" : s.mode === "glasses" ? "Glasses check" : "Full eye check";
 }
 
-/** Second line on a past check: the test's group for a single test, else "4 tests". */
+/** Second line on a past check: the test's group for a single test, else "4 tests"; "At <shop>" when a shop ran it. */
 export function sessionSub(s: SessionSummary) {
-  if (s.mode === "single" && s.tests[0]) return categoryOf(testInfo(s.tests[0]).category).label;
-  return `${s.tests.length} ${s.tests.length === 1 ? "test" : "tests"}`;
+  const what = s.mode === "single" && s.tests[0] ? categoryOf(testInfo(s.tests[0]).category).label : `${s.tests.length} ${s.tests.length === 1 ? "test" : "tests"}`;
+  return s.shopName ? `${what} · At ${s.shopName}` : what;
 }
 
 const TRENDS: [string, TestId][] = [

@@ -9,6 +9,7 @@ import { Segmented, Toggle } from "@/components/Chip";
 import { cn } from "@/components/cn";
 import { Icon } from "@/components/Icon";
 import { Screen, Spacer } from "@/components/Screen";
+import { LinkedShopsSection } from "@/components/ShopLinks";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { logout, me } from "@/services/auth";
 import { useHydrated } from "@/store/hydrated";
@@ -72,6 +73,9 @@ export default function Settings() {
           </div>
         ))}
       </div>
+
+      <Label>Optical shops</Label>
+      <LinkedShopsSection />
 
       <Label>Data</Label>
       <div className="flex flex-none flex-col rounded-[20px] border border-line bg-white px-4">
