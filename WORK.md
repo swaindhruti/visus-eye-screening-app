@@ -83,7 +83,7 @@ New priority order agreed on 2026-11-08 (replaces "Visus: Plan to 15 November").
 
 2. Multilingual voice agent (English, Hindi, Odia)
 
-- [ ] D: Server: `language` on intake chat, sessions and verdict; prompts reply in that language; Hindi / Odia rule fallbacks
+- [x] D: Server: `language` on intake chat, sessions and verdict; prompts reply in that language; Hindi / Odia rule fallbacks; Hindi / Odia urgent words in the red-flag rules
 - [ ] D: Mobile: language picker, talk mode (speak → auto-send → reply read aloud → listen again)
 - [ ] D: Mobile: test instructions, switch-eye and next-test text in Hindi and Odia, read aloud automatically in talk mode
 - [ ] D: Web: same language picker, talk mode and translated instructions
