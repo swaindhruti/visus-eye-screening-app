@@ -76,8 +76,8 @@ New priority order agreed on 2026-11-08 (replaces "Visus: Plan to 15 November").
 
 1. Shop portal (web + server + mobile link requests)
 
-- [ ] D: Server: `users.role` + `users.phone`, `shops`, `shop_patients`, `sessions.shop_id`; `POST /shops/register`; role on `/me` and login
-- [ ] D: Server: shop patients (list, search, add, detail with records), link request by phone, user approve / decline / unlink; shops can run checks for their patients
+- [x] D: Server: `users.role` + `users.phone`, `shops`, `shop_patients`, `sessions.shop_id`; `POST /shops/register`; role on `/me` and login
+- [x] D: Server: shop patients (list, search, add, detail with records), link request by phone, user approve / decline / unlink; shops can run checks for their patients
 - [ ] D: Web: shop register, shop dashboard, new patient, patient detail with records and "Start check"
 - [ ] D: Mobile + web: link requests ("Optics X wants to see your eye records"), Linked shops in Settings, "At <shop>" on shop-run checks
 
