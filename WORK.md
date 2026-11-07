@@ -69,3 +69,38 @@ Sidhartha (details and pointers in `progress/sidhartha.md` → Handover):
 - [ ] T: Tune scoring / rules / lens if the accuracy check shows it (`apps/server/src/features/{scoring,rules,lens}`)
 - [ ] T: Accuracy check with 15–20 people
 - [ ] T: Demo video + presentation
+
+## Phase 4: next features (Nov)
+
+New priority order agreed on 2026-11-08 (replaces "Visus: Plan to 15 November"). One branch: `feat/visus-next`, merged by PR. Deploy stays for later. **D** = built by Dhrutinandan with Claude Code (including web this time); anything left goes to Sidhartha.
+
+1. Shop portal (web + server + mobile link requests)
+
+- [ ] D: Server: `users.role` + `users.phone`, `shops`, `shop_patients`, `sessions.shop_id`; `POST /shops/register`; role on `/me` and login
+- [ ] D: Server: shop patients (list, search, add, detail with records), link request by phone, user approve / decline / unlink; shops can run checks for their patients
+- [ ] D: Web: shop register, shop dashboard, new patient, patient detail with records and "Start check"
+- [ ] D: Mobile + web: link requests ("Optics X wants to see your eye records"), Linked shops in Settings, "At <shop>" on shop-run checks
+
+2. Multilingual voice agent (English, Hindi, Odia)
+
+- [ ] D: Server: `language` on intake chat, sessions and verdict; prompts reply in that language; Hindi / Odia rule fallbacks
+- [ ] D: Mobile: language picker, talk mode (speak → auto-send → reply read aloud → listen again)
+- [ ] D: Mobile: test instructions, switch-eye and next-test text in Hindi and Odia, read aloud automatically in talk mode
+- [ ] D: Web: same language picker, talk mode and translated instructions
+
+3. Faster AI and offline checks
+
+- [ ] D: Server: Gemini timing logs, shorter hedge / budget, minimal thinking for chat and re-plan, plan started when the chat ends, verdict text and lens in parallel
+- [ ] D: `packages/engine`: scoring, rules, rule plan, rule verdict and lens shared by the server and the phone
+- [ ] D: Server: `POST /sessions/import` (an offline check with its own timestamps, re-scored on the server)
+- [ ] D: Mobile: full check offline on rules, saved on the phone, synced when online + background sync every ~15 min
+- [ ] D (stretch): on-device model for the offline intake chat
+
+4. Web accessibility
+
+- [ ] D: Keyboard answers for the tests (arrows for Tumbling E, numbers for plates, space for peripheral)
+- [ ] D: Spoken answers for Tumbling E ("up", "left")
+- [ ] D: Skip link, focus on page change, live region for the AI chat, labels on icon buttons, status not by colour alone
+- [ ] D: Reduced motion respected (landing smooth scroll, 3D iris, reveals)
+- [ ] D: High-contrast theme and a dyslexia-friendly font option; `<html lang>` follows the language
+- [ ] D or T: 44 px targets, contrast check, axe audit fixes
