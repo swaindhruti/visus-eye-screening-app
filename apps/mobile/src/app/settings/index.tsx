@@ -153,6 +153,15 @@ export default function Settings() {
           )
         )}
 
+        <Text style={styles.section}>Optical shops</Text>
+        <View style={styles.card}>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/settings/shops')} style={styles.row}>
+            <Icon name="shieldCheck" size={20} strokeWidth={1.8} />
+            <Text style={styles.rowTitle}>Linked shops and mobile number</Text>
+            <Icon name="chevronRight" size={16} color={Colors.faint} strokeWidth={2.2} />
+          </Pressable>
+        </View>
+
         <Text style={styles.section}>Data</Text>
         <View style={styles.card}>
           <View style={styles.offline}>

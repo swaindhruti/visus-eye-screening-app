@@ -187,9 +187,10 @@ function PastCheck({ session, first }: { session: SessionSummary; first: boolean
   const date = new Date(session.date);
   const single = session.mode === 'single' ? testInfo(session.tests[0]) : undefined;
   const title = single ? single.name : MODE_TITLE[session.mode === 'single' ? 'full' : session.mode];
-  const sub = single
-    ? `${CATEGORIES.find((c) => c.id === single.category)?.tile} · Both eyes`
-    : `${session.tests.length} ${session.tests.length === 1 ? 'test' : 'tests'} · Both eyes`;
+  const what = single
+    ? `${CATEGORIES.find((c) => c.id === single.category)?.tile}`
+    : `${session.tests.length} ${session.tests.length === 1 ? 'test' : 'tests'}`;
+  const sub = `${what} · ${session.shopName ? `At ${session.shopName}` : 'Both eyes'}`;
   return (
     <Pressable
       accessibilityRole="button"
