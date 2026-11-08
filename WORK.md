@@ -84,9 +84,12 @@ New priority order agreed on 2026-11-08 (replaces "Visus: Plan to 15 November").
 2. Multilingual voice agent (English, Hindi, Odia)
 
 - [x] D: Server: `language` on intake chat, sessions and verdict; prompts reply in that language; Hindi / Odia rule fallbacks; Hindi / Odia urgent words in the red-flag rules
-- [ ] D: Mobile: language picker, talk mode (speak → auto-send → reply read aloud → listen again)
-- [ ] D: Mobile: test instructions, switch-eye and next-test text in Hindi and Odia, read aloud automatically in talk mode
-- [ ] D: Web: same language picker, talk mode and translated instructions
+- [x] D: Server: Sarvam AI (Indian voice) `POST /voice/tts` + `/voice/stt`, and `sarvam-105b` next to Gemini (first for Hindi/Odia). LiveKit dropped: our own VoiceOrb visualizer
+- [x] D: Mobile: language picker, talk mode (speak → auto-send → reply read aloud → listen again), `expo-audio`
+- [x] D: Mobile: test instructions, switch-eye and next-test text in Hindi and Odia, read aloud automatically in talk mode
+- [x] D: Web: same language picker, talk mode and translated instructions
+- [ ] D: Add `SARVAM_API_KEY` to `apps/server/.dev.vars` (Dhrutinandan) and try talk mode end to end; native speaker checks the Hindi/Odia text
+- [ ] D: New EAS development build for the installed app (adds `expo-audio`)
 
 3. Faster AI and offline checks
 
@@ -94,7 +97,7 @@ New priority order agreed on 2026-11-08 (replaces "Visus: Plan to 15 November").
 - [ ] D: `packages/engine`: scoring, rules, rule plan, rule verdict and lens shared by the server and the phone
 - [ ] D: Server: `POST /sessions/import` (an offline check with its own timestamps, re-scored on the server)
 - [ ] D: Mobile: full check offline on rules, saved on the phone, synced when online + background sync every ~15 min
-- [ ] D (stretch): on-device model for the offline intake chat
+- [ ] D (stretch, **ask Dhrutinandan first: they have a different plan**): on-device model for the offline intake chat
 
 4. Web accessibility
 

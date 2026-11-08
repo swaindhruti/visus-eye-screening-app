@@ -7,26 +7,26 @@ Area: mobile app + server (setup, auth, agent). Claude updates this file at the 
   - 2026-11-08: shop portal backend done: `users.role`/`users.phone`, `shops`, `shop_patients`, `sessions.shop_id`; routes in `docs/API.md` → Shop portal; smoke test 66/66 on a local Postgres (PGlite). **Aiven needs `bun run db:push`** before the shop routes work there (only adds tables and columns).
   - 2026-11-08: shop portal web screens (`/shop/register`, `/shop/login`, `/shop`, `/shop/patients/new`, `/shop/patients/[id]`) and the patient side on web + mobile (request card on Home, Optical shops in Settings, "At <shop>" on past checks). Typecheck, lint and `next build` pass. **Not looked at in a browser yet** (no browser on this Mac for Claude): check the shop pages by eye.
   - 2026-11-08: Phase 2 backend done: `Language` (`en`/`hi`/`or`) + `SPEECH_LOCALE` in shared, `sessions.language`, Gemini writes the intake, plan, re-plan and verdict text in it (`features/agent/i18n.ts` holds the translated rule fallbacks), the intake chat detects the language the person writes in. Red flags also catch Hindi/Odia/romanised urgent words, ignoring negated clauses. Smoke test 72/72. **The Hindi and Odia wording needs a native speaker's check.**
+  - 2026-11-09: **voice with Sarvam AI** (LiveKit dropped; we built our own `VoiceOrb` visualizer).
+    - **Server:** `POST /voice/tts` (bulbul:v3, speaker priya) and `/voice/stt` (saaras:v3, auto language). `sarvam-105b` sits in the AI hedge, first for Hindi and Odia, second for English. All of it needs the optional `SARVAM_API_KEY`; without it the routes answer 503 and the apps use device voices.
+    - **Web and mobile:** language picker, talk mode (question spoken, the app records until a pause, then transcribes and sends), Hindi and Odia instructions from `@visus/shared`, and spoken plan, next test, switch eye and result.
+    - **Mobile:** added `expo-audio` and `expo-file-system`, loaded lazily so an older development build still runs.
+    - **Checks:** smoke 75/75, `next build`, and typecheck/lint on all three apps.
+    - **Not tested with a real Sarvam key or by ear**, because the key isn't set yet.
   - `feat/visus-next` is based on `feat/web-landing` (the landing branch restyles login/signup, which the portal touches). Merge the landing PR first.
 - Mobile now has every web feature (`feat/mobile-web-parity`, 2026-10-23): guest mode, voice input, onboarding "Later", skip-saves-profile fix, more distance-watched tests; server Gemini calls are hedged. Pushed for a PR. **Needs a new EAS development build** (voice input adds a native package), then a phone check.
 - Docs (2026-10-24): new root `README.md` (banner `docs/assets/banner.png`), `docs/SETUP.md` (run server + web + mobile together, EAS build, network changes, troubleshooting, deploy), `docs/ARCHITECTURE.md`, and README per app.
 - Remaining for Dhrutinandan: the deployment, later. Everything else is Sidhartha's.
 
 ## Next (resume here, Phase 4 on `feat/visus-next`)
-1. **Phase 2, mobile** (nothing written yet):
-   - `packages/shared/src/instructions.ts`: Hindi and Odia test instructions (title, subtitle, 3 steps, tip for all 14 tests, plus the glasses-round tips, switch-eye text and the 20-second rest line). Export it from `index.ts`. Both apps use it when the language isn't English.
-   - `store/settings.ts`: add `language` and `talkMode`. Make the Settings language picker work for English, हिन्दी and ଓଡ଼ିଆ.
-   - `services/sessions.ts`: send the language with `intakeChat` and `createSession`. When the chat returns a different language, update the setting.
-   - `services/voice.ts`: `lang` from `SPEECH_LOCALE`.
-   - New `services/speak.ts` (expo-speech in that language). If the phone has no voice for it (often Odia), show the text instead.
-   - `check/intake.tsx`:
-     - a language chip and a Talk mode toggle;
-     - in talk mode, the AI reply is read aloud, then the mic listens, then the answer sends itself;
-     - the greeting and status lines are translated.
-   - Read aloud in the chosen language: instructions (auto-play in talk mode), `tests/SwitchEye.tsx`, the rest line in `check/next.tsx`.
-2. **Phase 2, web:** the same pieces (`store/settings.ts` language, `lib/useVoiceInput.ts` lang, `speechSynthesis`, `app/check/intake/page.tsx`, `app/check/[testId]/instructions/page.tsx`).
-3. **Phase 2 docs:** README, SCREENS, ARCHITECTURE; tick in `WORK.md`.
-4. **Then:** Phase 3 (faster AI + `packages/engine` + offline checks), then Phase 4 (web accessibility). Details are in `WORK.md` → Phase 4 and the plan file `~/.claude/plans/we-will-deplot-it-happy-cookie.md`.
+Phase 2 (voice) is done in code on all three apps (2026-11-09). Next:
+1. **Dhrutinandan:** add `SARVAM_API_KEY=` to `apps/server/.dev.vars` (dashboard.sarvam.ai, free ₹100 credits). Run `bun run dev:phone`, then try talk mode on the web (`/check/intake`, "Talk instead") and on the phone.
+   - Expo Go has `expo-audio`, so talk mode works there.
+   - The installed app needs a new development build: `cd apps/mobile && bunx eas-cli build --profile development --platform android`.
+2. A native speaker checks the Hindi and Odia text: `packages/shared/src/voice.ts` and `apps/server/src/features/agent/i18n.ts`.
+3. Phase 3: faster AI (`lib/gemini.ts` timings), `packages/engine`, offline checks. **The on-device model needs Dhrutinandan's OK first**, because they have a different plan for it.
+4. Phase 4: web accessibility. Spoken Tumbling E answers are part of it.
+5. Before the final PR: delete PGlite from the laptop (see below).
 
 **Reminder before the final PR:** delete PGlite from the laptop (see the last task in `WORK.md` → Phase 4). Don't install anything else outside the three apps.
 

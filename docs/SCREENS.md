@@ -122,6 +122,19 @@ Patient side:
 | S6 | Shop request card (Allow / Decline) | on Home | Both | `GET /me/shop-requests`, `POST /me/shop-requests/:id` |
 | S7 | Optical shops: mobile number, linked shops, Remove | web: section in `/settings`; mobile: `/settings/shops` | Both | `PATCH /me`, `GET /me/shops`, `DELETE /me/shops/:id` |
 
+## Languages and talk mode (added 2026-11-09)
+
+Not new screens: controls on existing ones, on both web and mobile.
+
+| Where | What |
+|---|---|
+| Issue intake (9) | Language picker (EN / हिं / ଓଡ଼ି) and a "Talk instead" switch. In talk mode, a bar with the voice visualizer (VoiceOrb) and Speak / Done buttons |
+| Test instructions (13) | Hindi and Odia text (`INSTRUCTIONS_I18N`, `WEB_STEPS_I18N` in `@visus/shared`), Listen in the Visus voice, plays by itself in talk mode |
+| Your test plan, Between tests (14), Results (16), Switch eye (44) | Read aloud in talk mode, in the chosen language |
+| Settings (24) | Language (English, हिन्दी, ଓଡ଼ିଆ) and Talk mode |
+
+Screens themselves stay in English. The AI's text (questions, plan reasons, verdict) and every spoken line follow the language.
+
 ## States
 
 | # | Screen | Where | Platform |

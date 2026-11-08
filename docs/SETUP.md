@@ -39,6 +39,7 @@ This installs all workspaces (`apps/*`, `packages/*`).
    | `GEMINI_API_KEY` | Google AI Studio key |
    | `JWT_SECRET` | any long random string, e.g. from `openssl rand -hex 32` |
    | `PASSWORD_PEPPER` | another long random string |
+   | `SARVAM_API_KEY` | optional: Sarvam AI key (dashboard.sarvam.ai, ₹100 free credits). It turns on the Indian voice in talk mode and adds `sarvam-105b` next to Gemini. Without it the apps use the device voice. |
 
    `.dev.vars` is gitignored. Never commit it or paste it anywhere.
 2. Create the tables:

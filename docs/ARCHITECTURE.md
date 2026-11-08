@@ -149,6 +149,36 @@ erDiagram
   - the checks your shop ran;
   - read only: every check of a patient who linked to your shop.
 
+### Voice and languages
+
+- **Languages:** `Language` is `en`, `hi` or `or`.
+  - The intake chat replies in the language the person writes or speaks in.
+  - The check keeps that language (`sessions.language`), so Gemini and Sarvam write the plan and verdict text in it.
+- **Speaking:** the apps send text to `POST /voice/tts`. The server asks Sarvam (bulbul:v3) and returns a WAV for the app to play.
+- **Listening:**
+  1. The apps record until a pause, using a simple level check (Web Audio on the web, `expo-audio` metering on the phone).
+  2. They upload the clip to `POST /voice/stt`, where Sarvam saaras:v3 transcribes it and detects the language.
+- **The key:** it stays on the server. Without it, the apps use the browser's or phone's own speech.
+- **AI model:** `lib/gemini.ts` hedges across Gemini models and `sarvam-105b`, so a busy Gemini free tier doesn't stall a check.
+- **No LiveKit:** the visualizer (`VoiceOrb`) is our own.
+
+```mermaid
+sequenceDiagram
+  participant App
+  participant Server
+  participant Sarvam
+  participant AI as Gemini / sarvam-105b
+  App->>Server: POST /voice/tts (AI question, language)
+  Server->>Sarvam: bulbul:v3
+  Server-->>App: WAV, played aloud
+  App->>App: record until a pause
+  App->>Server: POST /voice/stt (clip)
+  Server->>Sarvam: saaras:v3
+  Server-->>App: transcript + language
+  App->>Server: POST /intake/chat (answer, language)
+  Server->>AI: next question in that language
+```
+
 ## Clients
 
 | | Mobile (`apps/mobile`) | Web (`apps/web`) |
