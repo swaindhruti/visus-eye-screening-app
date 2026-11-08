@@ -310,3 +310,6 @@ export const ShopRequest = z.object({
 export type ShopRequest = z.infer<typeof ShopRequest>;
 
 export const ShopRequestAnswer = z.object({ approve: z.boolean() });
+
+// Hindi and Odia instructions, spoken lines and the voice routes (Sarvam AI via the server).
+export * from "./voice";
