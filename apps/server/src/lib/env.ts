@@ -7,6 +7,8 @@ export type Bindings = {
   GEMINI_API_KEY: string;
   JWT_SECRET: string;
   PASSWORD_PEPPER: string;
+  /** Sarvam AI (Indian voices, speech to text, sarvam-105b). Optional: without it the apps use device voices and Gemini only. */
+  SARVAM_API_KEY?: string;
   /** The web app, for report links (wrangler.jsonc "vars"). */
   WEB_URL?: string;
   /** Cloudflare Hyperdrive in production (pooled Postgres). Missing locally. */

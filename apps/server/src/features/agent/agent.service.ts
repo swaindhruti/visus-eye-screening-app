@@ -29,6 +29,8 @@ export type Plan = { summary: string; plan: PlanItem[] };
 export const REASONS = TEXT.en.reasons;
 
 const item = (testId: TestIdT, lang: Language = 'en', reason = TEXT[lang].reasons[testId]): PlanItem => ({ testId, reason });
+/** Sarvam (Indian-language model) goes first for Hindi and Odia. */
+const preferFor = (lang: Language) => (lang === 'en' ? undefined : ('sarvam' as const));
 /** The line every Gemini prompt ends with: which language to write in. */
 const writeIn = (lang: Language) => `Write every text field in ${LANGUAGE_NAME[lang]}.`;
 const isKid = (p: Person) => p.isChild || p.age < 13;
@@ -69,6 +71,7 @@ export async function intakeTurn(input: { messages: IntakeMessage[]; person: Per
   const ai = await geminiJson({
     apiKey: input.apiKey,
     system: INTAKE_PROMPT,
+    prefer: preferFor(chosen),
     prompt: `Allowed tests for this person: ${allowedFor(person).join(', ')}\nPerson: ${describe(person)}\nPreferred language: ${LANGUAGE_NAME[chosen]}.\nFollow-up questions asked so far: ${answered} of at most ${MAX_QUESTIONS}.\n\nChat so far:\n"""${transcript.slice(-3000)}"""\n\nWrite your next turn.`,
     schema: z.object({ reply: z.string().max(300), chips: z.array(z.string().max(40)).max(6), done: z.boolean(), language: Language }),
   });
@@ -111,6 +114,7 @@ async function aiPlan(intake: string, person: Person, apiKey: string, lang: Lang
   const reply = await geminiJson({
     apiKey,
     system: PLAN_PROMPT,
+    prefer: preferFor(lang),
     prompt: `Allowed tests for this person: ${allowed.join(', ')}\nPerson: ${describe(person)}\n\nChat:\n"""${intake.slice(0, 3000) || '(nothing, plan a general check)'}"""\n\n${writeIn(lang)}`,
     schema,
   });
@@ -166,6 +170,7 @@ export async function aiReplan(input: { result: ScoredResult; taken: TestIdT[]; 
   const reply = await geminiJson({
     apiKey: input.apiKey,
     system: REPLAN_PROMPT,
+    prefer: preferFor(input.language ?? 'en'),
     prompt: `Allowed tests to add: ${allowed.join(', ')}\nAlready planned or done: ${input.taken.join(', ')}\nPerson: ${describe(
       input.person,
     )}\nWhat they said: """${userText(input.intake).slice(0, 800)}"""\n\nResult just now: ${input.result.testId}, status ${input.result.status}, score ${input.result.score}: ${input.result.summary}`,
@@ -196,6 +201,7 @@ export async function verdictText(input: { results: ScoredResult[]; intake: stri
   const reply = await geminiJson({
     apiKey: input.apiKey,
     system: VERDICT_PROMPT,
+    prefer: preferFor(lang),
     prompt: `Person: ${describe(input.person)}\nWhat they said: """${userText(input.intake).slice(0, 800)}"""\n\nResults:\n${input.results
       .map((r) => `- ${r.testId}: ${r.status}, score ${r.score}. ${r.summary}`)
       .join('\n')}\n\n${writeIn(lang)}`,

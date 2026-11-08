@@ -7,8 +7,10 @@ import { historyRoutes, reportRoutes } from './features/history/history.routes';
 import { intakeRoutes } from './features/intake/intake.routes';
 import { profilesRoutes } from './features/profiles/profiles.routes';
 import { sessionsRoutes } from './features/sessions/sessions.routes';
+import { voiceRoutes } from './features/voice/voice.routes';
 import { myShopsRoutes, shopRegisterRoutes, shopRoutes } from './features/shops/shops.routes';
 import { createDb } from './db/client';
+import { setSarvamKey } from './lib/gemini';
 import type { AppEnv } from './lib/env';
 import { errorHandler } from './lib/errors';
 
@@ -29,6 +31,7 @@ app.use(
 app.use('*', async (c, next) => {
   const { db, close } = createDb(c.env);
   c.set('db', db);
+  setSarvamKey(c.env.SARVAM_API_KEY);
   try {
     await next();
   } finally {
@@ -47,6 +50,7 @@ app.route('/sessions', historyRoutes); // list, one check, share
 app.route('/reports', reportRoutes); // shared report, no login
 app.route('/shops', shopRegisterRoutes); // register a shop, no login
 app.route('/shop', shopRoutes); // shop portal: patients, link requests
+app.route('/voice', voiceRoutes); // Indian voice: text to speech, speech to text (Sarvam AI)
 
 app.notFound((c) => c.json({ error: 'Not found' }, 404));
 app.onError(errorHandler);
