@@ -10,6 +10,12 @@ You describe your eye problem in a short chat. An AI agent then picks the right 
 
 > **Screening, not diagnosis.** Visus tells you when to see an eye doctor; it does not replace one.
 
+> **Mid-progress update (9 Nov 2026):** [docs/MID_PROGRESS.md](docs/MID_PROGRESS.md) covers what we added since the first build:
+> - a **shop portal** for optical stores, with patient records and consent-based account linking;
+> - **talk mode in English, Hindi and Odia** with a natural Indian voice (Sarvam AI);
+> - red-flag rules in all three languages;
+> - Sarvam AI working next to Gemini, so a check never stalls.
+
 ## Features
 
 - **AI intake chat:** Visus AI asks up to 3 short follow-up questions, with quick-reply chips. You can type or speak (voice input). Gemini answers, and Sarvam AI's `sarvam-105b` steps in when Gemini is slow or busy (it goes first for Hindi and Odia).
@@ -70,7 +76,7 @@ You describe your eye problem in a short chat. An AI agent then picks the right 
 | [`apps/web`](apps/web/README.md) | Web app (Next.js) |
 | [`apps/server`](apps/server/README.md) | API, AI agent, scoring, rules and lens logic |
 | `packages/shared` | Shared types and test catalog |
-| `docs/` | [Setup](docs/SETUP.md), [Architecture](docs/ARCHITECTURE.md), [API](docs/API.md), [Screens](docs/SCREENS.md) |
+| `docs/` | [Mid-progress update](docs/MID_PROGRESS.md), [Setup](docs/SETUP.md), [Architecture](docs/ARCHITECTURE.md), [API](docs/API.md), [Screens](docs/SCREENS.md) |
 | `design/` | Claude Design handoff |
 
 ## Get started
