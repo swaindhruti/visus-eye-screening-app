@@ -26,7 +26,7 @@ export class ApiError extends Error {
   }
 }
 
-export async function request<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+export async function request<T>(path: string, init: { method?: string; body?: unknown; form?: FormData } = {}): Promise<T> {
   const token = useAuth.getState().token;
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), TIMEOUT_MS);
@@ -35,10 +35,11 @@ export async function request<T>(path: string, init: { method?: string; body?: u
     res = await fetch(`${API_URL}${path}`, {
       method: init.method ?? 'GET',
       headers: {
-        'Content-Type': 'application/json',
+        // A FormData body (a recording) sets its own multipart Content-Type.
+        ...(init.form ? {} : { 'Content-Type': 'application/json' }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: init.body === undefined ? undefined : JSON.stringify(init.body),
+      body: init.form ?? (init.body === undefined ? undefined : JSON.stringify(init.body)),
       signal: abort.signal,
     });
   } catch {

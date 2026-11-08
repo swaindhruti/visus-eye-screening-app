@@ -1,4 +1,4 @@
-import { TEST_CATALOG } from '@visus/shared';
+import { LANGUAGE_OPTIONS, TEST_CATALOG, VOICE_TEXT } from '@visus/shared';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -7,13 +7,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { alertError } from '@/components/alertError';
 import { Icon } from '@/components/Icon';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { VoiceOrb } from '@/components/VoiceOrb';
 import { Text, TextInput } from '@/components/Text';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useOnline } from '@/services/network';
 import { startListening, voiceAvailable } from '@/services/voice';
 import { listProfiles } from '@/services/profiles';
 import { createSession, intakeChat, intakeText, type IntakeMessage, type Session } from '@/services/sessions';
+import { stopSpeaking, useTalk } from '@/services/talk';
 import { useCheck } from '@/store/check';
+import { useSettings } from '@/store/settings';
 
 type Message = { from: 'ai' | 'me'; text: string; chips?: string[]; cta?: boolean };
 
@@ -73,7 +76,10 @@ export default function Intake() {
     }, alertError);
   }, [params.profileId]);
 
-  const greeting = `Hi${name ? ` ${name}` : ''}. What's bothering your eyes today?`;
+  const lang = useSettings((s) => s.language);
+  const talk = useSettings((s) => s.talk);
+  const t = VOICE_TEXT[lang];
+  const greeting = t.greeting(name);
   const withGreeting = (list: IntakeMessage[]): IntakeMessage[] => [{ from: 'ai', text: greeting }, ...list];
 
   async function plan(list: IntakeMessage[]) {
@@ -98,6 +104,8 @@ export default function Intake() {
     setTyping(true);
     try {
       const turn = await intakeChat(profileId, withGreeting(list));
+      // The AI answers in the language the person is using: keep talking in it.
+      if (turn.language && turn.language !== useSettings.getState().language) useSettings.getState().setLanguage(turn.language);
       if (turn.done) {
         setDone(true);
         return void (await plan(list));
@@ -128,20 +136,57 @@ export default function Intake() {
   if (done && session) {
     messages.push({
       from: 'ai',
-      text: `Thanks, that helps. I've picked ${session.plan.length} tests for you, about ${minutes(session)} minutes.`,
+      text: t.planned(session.plan.length, minutes(session)),
       cta: true,
     });
   }
   if (failed && !typing)
     messages.push({
       from: 'ai',
-      text: failed === 'plan' ? "Sorry, I couldn't make your plan just now." : "Sorry, I couldn't reply just now.",
-      chips: ['Try again'],
+      text: failed === 'plan' ? t.sorryPlan : t.sorryReply,
+      chips: [t.tryAgain],
     });
   const retry = () => (failed === 'plan' ? plan(chat) : reply(chat));
 
   // Offline (54): the AI chat needs internet; tests can still be picked by hand.
   const online = useOnline();
+
+  // ---------- Talk mode: Visus reads each question aloud, then listens for the answer ----------
+  const voice = useTalk();
+  const spoken = useRef(-1); // chat length when the last AI line was spoken
+  const lastAi = chat.length === 0 ? greeting : chat[chat.length - 1].from === 'ai' ? chat[chat.length - 1].text : null;
+
+  async function hearAnswer() {
+    const heard = await voice.hear();
+    if (!heard?.text || !useSettings.getState().talk) return;
+    if (heard.language && heard.language !== useSettings.getState().language) useSettings.getState().setLanguage(heard.language);
+    send(heard.text);
+  }
+
+  useEffect(() => {
+    if (!talk || !online || typing || done || !profileId || !lastAi || spoken.current === chat.length) return;
+    spoken.current = chat.length;
+    void (async () => {
+      await voice.say(lastAi);
+      if (useSettings.getState().talk && spoken.current === chat.length) await hearAnswer();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- speak each new AI line once
+  }, [talk, online, typing, done, profileId, lastAi, chat.length]);
+
+  // The plan is ready in talk mode: say so and open it.
+  useEffect(() => {
+    if (!talk || !done || !session) return;
+    void voice.say(t.planned(session.plan.length, minutes(session))).then(() => useSettings.getState().talk && router.push('/check/plan'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the plan arrives
+  }, [talk, done, session]);
+
+  useEffect(() => () => stopSpeaking(), []);
+
+  function toggleTalk() {
+    if (talk) voice.stop();
+    else spoken.current = -1; // read the current question aloud
+    useSettings.getState().setTalk(!talk);
+  }
   const canSend = online && !!profileId && text.trim().length > 0 && !typing && !done;
 
   return (
@@ -152,6 +197,30 @@ export default function Intake() {
           onLeft={() => (router.canGoBack() ? router.back() : router.replace('/home'))}
           title="New check"
         />
+        <View style={styles.voiceRow}>
+          <View accessibilityRole="radiogroup" accessibilityLabel="Language" style={styles.langs}>
+            {LANGUAGE_OPTIONS.map((o) => (
+              <Pressable
+                key={o.code}
+                accessibilityRole="radio"
+                accessibilityLabel={o.name}
+                accessibilityState={{ checked: lang === o.code }}
+                onPress={() => useSettings.getState().setLanguage(o.code)}
+                style={[styles.lang, lang === o.code && styles.langOn]}>
+                <Text style={[styles.langText, lang === o.code && styles.langTextOn]}>{o.short}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityState={{ checked: talk }}
+            disabled={!online}
+            onPress={toggleTalk}
+            style={[styles.talk, talk && styles.talkOn, !online && styles.disabled]}>
+            <Icon name="speaker" size={18} color={talk ? Colors.white : Colors.ink} />
+            <Text style={[styles.talkText, talk && styles.talkTextOn]}>{talk ? 'Talk mode on' : 'Talk instead'}</Text>
+          </Pressable>
+        </View>
         {!online && (
           <View style={styles.offlinePill}>
             <Icon name="wifiOff" size={16} color={Colors.inkSoft} />
@@ -175,7 +244,7 @@ export default function Intake() {
                   {m.chips.map((c) => (
                     <Pressable
                       key={c}
-                      onPress={() => (c === 'Try again' ? void retry() : send(c))}
+                      onPress={() => (c === t.tryAgain ? void retry() : send(c))}
                       style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}>
                       <Text style={styles.chipText}>{c}</Text>
                     </Pressable>
@@ -223,6 +292,27 @@ export default function Intake() {
           )}
         </ScrollView>
 
+        {talk && online && (
+          <View style={styles.talkBar}>
+            <VoiceOrb state={typing ? 'thinking' : voice.state} level={voice.level} size={46} />
+            <Text style={styles.talkHint}>
+              {voice.state === 'listening' ? t.listening : voice.state === 'speaking' || voice.state === 'thinking' || typing ? '…' : t.talkOn}
+            </Text>
+            {voice.state === 'listening' ? (
+              <Pressable accessibilityRole="button" onPress={voice.finish} style={styles.talkBtn}>
+                <Text style={styles.talkBtnText}>Done</Text>
+              </Pressable>
+            ) : (
+              voice.state === 'idle' &&
+              !typing &&
+              !done && (
+                <Pressable accessibilityRole="button" onPress={() => void hearAnswer()} style={[styles.talkBtn, styles.talkBtnDark]}>
+                  <Text style={[styles.talkBtnText, styles.talkTextOn]}>Speak</Text>
+                </Pressable>
+              )
+            )}
+          </View>
+        )}
         <View style={[styles.inputBar, !online && styles.inputOff]}>
           <TextInput
             editable={online}
@@ -261,6 +351,22 @@ export default function Intake() {
 }
 
 const styles = StyleSheet.create({
+  voiceRow: { marginTop: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  langs: { flexDirection: 'row', padding: 3, borderRadius: Radius.pill, backgroundColor: Colors.fill },
+  lang: { minWidth: 44, minHeight: 36, paddingHorizontal: 10, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center' },
+  langOn: { backgroundColor: Colors.white },
+  langText: { fontFamily: Fonts.semibold, fontSize: 14, color: Colors.muted },
+  langTextOn: { color: Colors.ink },
+  talk: { minHeight: 44, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: Radius.pill, borderWidth: 1, borderColor: Colors.borderStrong, backgroundColor: Colors.card },
+  talkOn: { backgroundColor: Colors.ink, borderColor: Colors.ink },
+  talkText: { fontFamily: Fonts.semibold, fontSize: 15, color: Colors.ink },
+  talkTextOn: { color: Colors.white },
+  disabled: { opacity: 0.4 },
+  talkBar: { marginBottom: 10, padding: 8, paddingRight: 12, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 22, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.card },
+  talkHint: { flex: 1, fontFamily: Fonts.regular, fontSize: 15, lineHeight: 20, color: Colors.inkSoft },
+  talkBtn: { minHeight: 40, paddingHorizontal: 16, borderRadius: Radius.pill, borderWidth: 1, borderColor: Colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
+  talkBtnDark: { backgroundColor: Colors.ink, borderColor: Colors.ink },
+  talkBtnText: { fontFamily: Fonts.semibold, fontSize: 14, color: Colors.ink },
   root: { flex: 1, backgroundColor: Colors.bg },
   offlinePill: {
     alignSelf: 'center',

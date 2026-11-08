@@ -1,5 +1,4 @@
-import { TestId } from '@visus/shared';
-import * as Speech from 'expo-speech';
+import { INSTRUCTIONS_I18N, TestId, VOICE_TEXT } from '@visus/shared';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -12,7 +11,9 @@ import { TestArt } from '@/components/TestArt';
 import { Text } from '@/components/Text';
 import { INSTRUCTIONS, testInfo } from '@/constants/tests';
 import { Colors, Fonts, Radius, Sizes } from '@/constants/theme';
+import { speak, stopSpeaking } from '@/services/talk';
 import { glassesRound, useCheck } from '@/store/check';
+import { useSettings } from '@/store/settings';
 
 /** Screen 13: Test instructions, with the steps read aloud on "Listen". */
 export default function Instructions() {
@@ -26,12 +27,11 @@ export default function Instructions() {
   const position = plan[index]?.testId === id ? index : plan.findIndex((p) => p.testId === id);
   // Glasses check: round 1 without glasses, round 2 with them.
   const [round] = useState(glassesRound);
-  const copy = round
-    ? {
-        ...INSTRUCTIONS[id],
-        tip: round === 'glasses_off' ? 'Take your glasses off for this round.' : 'Put your glasses back on for this round.',
-      }
-    : INSTRUCTIONS[id];
+  // Hindi and Odia from @visus/shared; English is this app's own wording.
+  const lang = useSettings((s) => s.language);
+  const talk = useSettings((s) => s.talk);
+  const base = lang === 'en' ? INSTRUCTIONS[id] : INSTRUCTIONS_I18N[lang][id];
+  const copy = round ? { ...base, tip: round === 'glasses_off' ? VOICE_TEXT[lang].glassesOff : VOICE_TEXT[lang].glassesOn } : base;
 
   // -1 = not playing; 0 = title; 1..3 = steps; 4 = tip.
   const [part, setPart] = useState(-1);
@@ -40,33 +40,33 @@ export default function Instructions() {
 
   const parts = [`${copy.title}. ${copy.subtitle}`, ...copy.steps, copy.tip];
 
-  function speakFrom(i: number, token: number) {
-    if (token !== run.current) return;
-    if (i >= parts.length) return setPart(-1);
-    setPart(i);
-    Speech.speak(parts[i], {
-      language: 'en',
-      rate: 0.95,
-      onDone: () => speakFrom(i + 1, token),
-      onError: () => setPart(-1),
-    });
+  /** Reads the title, each step and the tip in the Visus voice, highlighting what is being read. */
+  async function readAll(token: number) {
+    for (let i = 0; i < parts.length; i++) {
+      if (token !== run.current) return;
+      setPart(i);
+      await speak(parts[i], lang).done;
+    }
+    if (token === run.current) setPart(-1);
   }
 
   function toggle() {
     run.current += 1;
-    Speech.stop();
+    stopSpeaking();
     if (playing) setPart(-1);
-    else speakFrom(0, run.current);
+    else void readAll(run.current);
   }
 
-  // Stop talking when leaving the screen.
-  useEffect(
-    () => () => {
+  // Talk mode reads the instructions as soon as the screen opens; leaving stops it.
+  useEffect(() => {
+    const id = talk ? setTimeout(() => void readAll(++run.current), 400) : undefined;
+    return () => {
+      clearTimeout(id);
       run.current += 1;
-      Speech.stop();
-    },
-    [],
-  );
+      stopSpeaking();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per screen
+  }, []);
 
   const activeStep = part >= 1 && part <= 3 ? part - 1 : -1;
 

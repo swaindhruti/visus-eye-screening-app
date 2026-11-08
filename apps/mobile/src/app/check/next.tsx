@@ -1,4 +1,3 @@
-import * as Speech from 'expo-speech';
 import { Redirect, router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -12,6 +11,9 @@ import { Text } from '@/components/Text';
 import { testInfo } from '@/constants/tests';
 import { Colors, Fonts, Radius } from '@/constants/theme';
 import { firstStep, useCheck } from '@/store/check';
+import { VOICE_TEXT } from '@visus/shared';
+import { speak, stopSpeaking, useSayInTalkMode } from '@/services/talk';
+import { useSettings } from '@/store/settings';
 
 const REST_SECONDS = 20;
 
@@ -23,11 +25,13 @@ export default function BetweenTests() {
   const exit = useLeaveCheck();
   const [rest, setRest] = useState<number | null>(null);
   const timer = useRef<ReturnType<typeof setInterval>>(undefined);
+  // Talk mode: say what comes next (the reason is written in the chosen language).
+  useSayInTalkMode(step?.type === 'next_test' ? step.reason : undefined);
 
   useEffect(
     () => () => {
       clearInterval(timer.current);
-      Speech.stop();
+      stopSpeaking();
     },
     [],
   );
@@ -41,14 +45,14 @@ export default function BetweenTests() {
   function restEyes() {
     let left = REST_SECONDS;
     setRest(left);
-    Speech.speak('Look at something far away for 20 seconds.', { language: 'en' });
+    speak(VOICE_TEXT[useSettings.getState().language].rest);
     timer.current = setInterval(() => {
       left -= 1;
       setRest(left);
       if (left <= 0) {
         clearInterval(timer.current);
         setRest(null);
-        Speech.speak('Done. Continue when you are ready.', { language: 'en' });
+        speak(VOICE_TEXT[useSettings.getState().language].restDone);
       }
     }, 1000);
   }

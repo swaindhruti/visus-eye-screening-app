@@ -13,6 +13,7 @@ import { areasOf, dayLabel, findingsOf } from '@/constants/report';
 import { CATEGORIES, testInfo } from '@/constants/tests';
 import { Colors, Fonts, StatusColors } from '@/constants/theme';
 import { useCheck, useVerdict } from '@/store/check';
+import { useSayInTalkMode } from '@/services/talk';
 
 /** Two tiles per row, as in the design's 2-column grid. */
 const pairs = <T,>(items: T[]) => items.flatMap((item, i) => (i % 2 ? [] : [items.slice(i, i + 2)]));
@@ -23,6 +24,8 @@ export default function Results() {
   const { verdict, failed, retry } = useVerdict(sessionId);
   // Just finished: closing ends the check and goes Home. A past check just goes back.
   const fresh = useCheck((s) => s.verdict?.sessionId === sessionId);
+  // Talk mode reads the result (headline and advice come in the chosen language).
+  useSayInTalkMode(verdict && fresh ? `${verdict.headline}. ${verdict.advice}` : undefined);
 
   useEffect(() => {
     if (!fresh) return;
