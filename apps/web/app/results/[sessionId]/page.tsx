@@ -16,6 +16,7 @@ import { fmtShort } from "@/lib/dates";
 import { CATEGORIES, TEST_COPY, testInfo } from "@/lib/tests";
 import { useVerdict } from "@/lib/useVerdict";
 import { useCheck } from "@/store/check";
+import { useSayInTalkMode } from "@/lib/voice";
 
 const ORDER = ["see_doctor", "mild", "good"];
 const MAPS = "https://www.google.com/maps/search/eye+doctor+near+me";
@@ -25,6 +26,7 @@ export default function Results() {
   const router = useRouter();
   const q = useVerdict(sessionId);
   const check = useCheck();
+  useSayInTalkMode(q.data ? `${q.data.headline}. ${q.data.advice}` : undefined);
 
   if (q.isPending) return <LoadingState />;
   if (q.isError) return <ErrorState onRetry={() => q.refetch()} retrying={q.isFetching} />;

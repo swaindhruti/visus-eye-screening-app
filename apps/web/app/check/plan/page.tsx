@@ -10,6 +10,8 @@ import { Screen, Spacer } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { TEST_COPY, testInfo } from "@/lib/tests";
 import { useCheck } from "@/store/check";
+import { useSayInTalkMode, VOICE_TEXT } from "@/lib/voice";
+import { useSettings } from "@/store/settings";
 
 export default function Plan() {
   return (
@@ -23,6 +25,8 @@ function PlanScreen() {
   const plan = useCheck((s) => s.plan);
   const summary = useCheck((s) => s.summary);
   const minutes = plan.reduce((n, p) => n + testInfo(p.testId).minutes, 0);
+  const lang = useSettings((s) => s.lang);
+  useSayInTalkMode(summary ? `${VOICE_TEXT[lang].planned(plan.length, minutes)} ${summary}` : undefined);
 
   return (
     <Screen gap="gap-0">

@@ -4,15 +4,20 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
+import { LANGUAGE_OPTIONS, SPEECH_LOCALE, VOICE_TEXT } from "@visus/shared";
+
 import { cn } from "@/components/cn";
 import { Icon } from "@/components/Icon";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { OfflinePill } from "@/components/States";
+import { VoiceOrb, type VoiceState } from "@/components/VoiceOrb";
 import { useStartCheck } from "@/lib/useStartCheck";
+import { listen, speak, stopSpeaking } from "@/lib/voice";
 import { useVoiceInput } from "@/lib/useVoiceInput";
 import { listProfiles } from "@/services/profiles";
 import { intakeChat, intakeText, type IntakeMessage } from "@/services/sessions";
 import { useCheck } from "@/store/check";
+import { useSettings } from "@/store/settings";
 
 type Msg = IntakeMessage;
 
@@ -35,19 +40,24 @@ export default function Intake() {
   const name = (shopPatient?.name ?? owner?.name)?.split(" ")[0];
   const start = useStartCheck();
 
-  const greeting: Msg = { from: "ai", text: `Hi${name ? ` ${name}` : ""}. What's bothering your eyes today?` };
+  const lang = useSettings((s) => s.lang);
+  const talk = useSettings((s) => s.talk);
+  const setSettings = useSettings((s) => s.set);
+  const greeting: Msg = { from: "ai", text: VOICE_TEXT[lang].greeting(name ?? "") };
   // The whole chat so far, greeting first; sent to POST /intake/chat every turn.
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [chips, setChips] = useState<string[]>([]);
   const [done, setDone] = useState(false);
   const [text, setText] = useState("");
   const end = useRef<HTMLDivElement>(null);
-  const voice = useVoiceInput(setText);
+  const voice = useVoiceInput(setText, SPEECH_LOCALE[lang]);
   const chat = msgs.length ? msgs : [greeting];
 
   const turn = useMutation({
     mutationFn: (next: Msg[]) => intakeChat(owner?.id ?? profileId ?? "", next),
     onSuccess: (res, next) => {
+      // The AI answers in the language the person is using: keep talking in it.
+      if (res.language && res.language !== useSettings.getState().lang) setSettings({ lang: res.language });
       if (res.done) {
         setDone(true);
         setChips([]);
@@ -73,6 +83,66 @@ export default function Intake() {
     turn.mutate(next);
   };
 
+  // ---------- Talk mode: Visus reads each question aloud, then listens for the answer ----------
+  const [voiceState, setVoiceState] = useState<VoiceState>("idle");
+  const [level, setLevel] = useState(0);
+  const live = useRef<{ stop: () => void } | null>(null);
+  const handled = useRef(-1); // the last AI message already spoken
+  const talkOn = () => useSettings.getState().talk;
+
+  async function hear() {
+    live.current?.stop();
+    setVoiceState("listening");
+    const l = listen(useSettings.getState().lang, setLevel);
+    live.current = l;
+    const heard = await l.done;
+    setVoiceState("idle");
+    if (!heard?.text || !talkOn()) return;
+    if (heard.language && heard.language !== useSettings.getState().lang) setSettings({ lang: heard.language });
+    answer(heard.text);
+  }
+
+  async function converse(say: string) {
+    live.current?.stop();
+    setVoiceState("speaking");
+    const s = speak(say, useSettings.getState().lang);
+    live.current = s;
+    await s.done;
+    if (talkOn() && live.current === s) await hear();
+    else setVoiceState("idle");
+  }
+
+  useEffect(() => {
+    const idx = chat.length - 1;
+    if (!talk || !online || turn.isPending || done || chat[idx].from !== "ai" || handled.current === idx) return;
+    handled.current = idx;
+    void converse(chat[idx].text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- speak each new AI message once
+  }, [talk, online, turn.isPending, done, chat]);
+
+  // The chat ended in talk mode: go straight on to the plan (it reads its summary aloud).
+  useEffect(() => {
+    if (talk && done && online && !start.isPending && !start.isSuccess && !start.isError) start.mutate({ mode: "full", intake: intakeText(chat) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the chat is done
+  }, [talk, done]);
+
+  useEffect(
+    () => () => {
+      live.current?.stop();
+      stopSpeaking();
+    },
+    [],
+  );
+
+  const toggleTalk = () => {
+    if (talk) {
+      live.current?.stop();
+      stopSpeaking();
+      setVoiceState("idle");
+    } else handled.current = -1; // read the current question aloud
+    setSettings({ talk: !talk });
+  };
+
   const typing = turn.isPending;
   const chatDone = done;
   const intake = intakeText(chat);
@@ -83,6 +153,36 @@ export default function Intake() {
     <div className="mx-auto flex h-dvh max-w-[1200px] gap-6 px-5 pb-8 pt-6 md:px-8 md:py-8">
     <section aria-label="Chat" className="flex min-w-0 flex-[3_1_0] flex-col md:rounded-[28px] md:border md:border-line md:bg-white md:px-6 md:pb-6 md:pt-5">
       <ScreenHeader title="New check" fallback="/home" />
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <div role="radiogroup" aria-label="Language" className="flex rounded-full bg-fill p-1">
+          {LANGUAGE_OPTIONS.map((o) => (
+            <button
+              key={o.code}
+              type="button"
+              role="radio"
+              aria-checked={lang === o.code}
+              aria-label={o.name}
+              onClick={() => setSettings({ lang: o.code })}
+              className={cn("h-9 min-w-11 rounded-full px-3 text-[14px] font-semibold transition-colors", lang === o.code ? "bg-white text-ink shadow-sm" : "text-muted hover:text-ink")}
+            >
+              {o.short}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={toggleTalk}
+          aria-pressed={talk}
+          disabled={!online}
+          className={cn(
+            "flex h-11 items-center gap-2 rounded-full border px-4 text-[15px] font-semibold transition-colors disabled:opacity-40",
+            talk ? "border-ink bg-ink text-white" : "border-line-strong bg-white hover:bg-card-hover",
+          )}
+        >
+          <Icon name="speaker" size={18} />
+          {talk ? "Talk mode on" : "Talk instead"}
+        </button>
+      </div>
       {!online && <div className="mt-3 flex justify-center"><OfflinePill /></div>}
 
       <div className="no-scrollbar -mx-5 min-h-0 flex-1 overflow-y-auto px-5 md:-mx-2 md:px-2">
@@ -148,6 +248,27 @@ export default function Intake() {
         </div>
       </div>
 
+      {talk && online && (
+        <div className="mb-3 flex flex-none items-center gap-3 rounded-[22px] border border-line bg-white p-2.5 pr-3 md:border-line-option">
+          <VoiceOrb state={typing || start.isPending ? "thinking" : voiceState} level={level} size={48} />
+          <span className="min-w-0 flex-1 text-[15px] leading-snug text-ink-soft" aria-live="polite">
+            {voiceState === "listening" ? VOICE_TEXT[lang].listening : voiceState === "speaking" ? "…" : typing ? "" : VOICE_TEXT[lang].talkOn}
+          </span>
+          {voiceState === "listening" ? (
+            <button type="button" onClick={() => live.current?.stop()} className="h-10 flex-none rounded-full border border-line-strong px-4 text-[14px] font-semibold hover:bg-card-hover">
+              Done
+            </button>
+          ) : (
+            voiceState === "idle" &&
+            !typing &&
+            !done && (
+              <button type="button" onClick={() => void hear()} className="h-10 flex-none rounded-full bg-ink px-4 text-[14px] font-semibold text-white">
+                Speak
+              </button>
+            )
+          )}
+        </div>
+      )}
       <form
         onSubmit={(e) => {
           e.preventDefault();

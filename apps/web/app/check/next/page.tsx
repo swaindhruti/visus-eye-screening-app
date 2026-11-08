@@ -11,6 +11,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { perEye } from "@/lib/results";
 import { TEST_COPY, testInfo } from "@/lib/tests";
 import { useCheck } from "@/store/check";
+import { useSayInTalkMode } from "@/lib/voice";
 
 export default function Next() {
   return (
@@ -23,6 +24,8 @@ export default function Next() {
 function NextScreen() {
   const { lastStep, plan, done } = useCheck();
   const [rest, setRest] = useState(0);
+  // Talk mode: say what comes next (the reason is written in the chosen language).
+  useSayInTalkMode(lastStep?.type === "next_test" ? lastStep.reason : undefined);
 
   useEffect(() => {
     if (!rest) return;

@@ -1,3 +1,4 @@
+import type { Language } from "@visus/shared";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -6,7 +7,10 @@ export const TEXT_SIZES = ["Default", "Large", "Larger"] as const;
 type SettingsState = {
   /** Index into TEXT_SIZES. Anything above Default turns on large text mode. */
   textSize: number;
-  language: number;
+  /** The language Visus AI talks in (chat, voice, instructions). */
+  lang: Language;
+  /** Talk mode: Visus reads its lines aloud and listens for spoken answers. */
+  talk: boolean;
   notifications: boolean[];
   offlineCleared: boolean;
   onboarded: boolean;
@@ -19,7 +23,8 @@ export const useSettings = create<SettingsState>()(
   persist(
     (set) => ({
       textSize: 0,
-      language: 0,
+      lang: "en",
+      talk: false,
       notifications: [true, true, false],
       offlineCleared: false,
       onboarded: false,

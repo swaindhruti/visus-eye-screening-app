@@ -32,7 +32,7 @@ const ERRORS: Record<string, string> = {
 };
 
 /** Speech to text for a text box: `start(current)` fills the box with `current` + what's being said, live. */
-export function useVoiceInput(onText: (text: string) => void) {
+export function useVoiceInput(onText: (text: string) => void, lang?: string) {
   const supported = useSyncExternalStore(noop, () => !!getCtor(), () => false);
   const [listening, setListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +48,7 @@ export function useVoiceInput(onText: (text: string) => void) {
     const Ctor = getCtor();
     if (!Ctor || rec.current) return;
     const r = new Ctor();
-    r.lang = navigator.language || "en-IN";
+    r.lang = lang ?? (navigator.language || "en-IN");
     r.interimResults = true;
     r.continuous = false; // stops after a pause: one answer at a time
     const prefix = current.trim() ? `${current.trim()} ` : "";

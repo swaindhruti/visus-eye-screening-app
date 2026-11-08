@@ -145,6 +145,21 @@ function build(l: Lang): Record<TestId, Instructions> {
 /** Test instructions (screen 13) in Hindi and Odia. English comes from each app. */
 export const INSTRUCTIONS_I18N: Record<Lang, Record<TestId, Instructions>> = { hi: build("hi"), or: build("or") };
 
+/**
+ * Web steps that differ from the phone (the web Tumbling E runs at 2 m, the web Amsler at 40 cm).
+ * The web app puts these over INSTRUCTIONS_I18N.
+ */
+export const WEB_STEPS_I18N: Record<Lang, Partial<Record<TestId, [string, string, string]>>> = {
+  hi: {
+    tumbling_e: ["स्क्रीन को 2 मीटर दूर, आँखों की ऊँचाई पर रखें।", COVER_LEFT.hi, "बताएँ कि हर E किस तरफ़ खुला है। कोई मदद करने वाला टैप करे, या ऐरो की दबाएँ।"],
+    amsler: ["स्क्रीन को लगभग 40 सेमी दूर, अच्छी रोशनी में रखें।", COVER_LEFT.hi, "बीच वाले बिंदु को देखते रहें और जो हिस्सा गलत लगे उस पर टैप करें।"],
+  },
+  or: {
+    tumbling_e: ["ସ୍କ୍ରିନ୍‌କୁ 2 ମିଟର ଦୂରରେ, ଆଖି ଉଚ୍ଚତାରେ ରଖନ୍ତୁ।", COVER_LEFT.or, "କୁହନ୍ତୁ ପ୍ରତ୍ୟେକ E କେଉଁ ଦିଗକୁ ଖୋଲା। ଜଣେ ସାହାଯ୍ୟକାରୀ ଟ୍ୟାପ୍ କରନ୍ତୁ, କିମ୍ବା ଆରୋ କି ଦବାନ୍ତୁ।"],
+    amsler: ["ସ୍କ୍ରିନ୍‌କୁ ପ୍ରାୟ 40 ସେମି ଦୂରରେ, ଭଲ ଆଲୁଅରେ ରଖନ୍ତୁ।", COVER_LEFT.or, "ମଝି ବିନ୍ଦୁକୁ ଦେଖୁଥାନ୍ତୁ ଓ ଯେଉଁ ଅଂଶ ଭୁଲ ଲାଗେ ତା ଉପରେ ଟ୍ୟାପ୍ କରନ୍ତୁ।"],
+  },
+};
+
 /** Lines Visus says during a check, per language (English included, so apps can share the voice flow). */
 export const VOICE_TEXT = {
   en: {
