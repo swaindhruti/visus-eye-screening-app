@@ -86,7 +86,7 @@ export default function Intake() {
   // ---------- Talk mode: Visus reads each question aloud, then listens for the answer ----------
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [level, setLevel] = useState(0);
-  const live = useRef<{ stop: () => void } | null>(null);
+  const live = useRef<{ stop: () => void; finish?: () => void } | null>(null);
   const handled = useRef(-1); // the last AI message already spoken
   const talkOn = () => useSettings.getState().talk;
 
@@ -255,7 +255,7 @@ export default function Intake() {
             {voiceState === "listening" ? VOICE_TEXT[lang].listening : voiceState === "speaking" ? "…" : typing ? "" : VOICE_TEXT[lang].talkOn}
           </span>
           {voiceState === "listening" ? (
-            <button type="button" onClick={() => live.current?.stop()} className="h-10 flex-none rounded-full border border-line-strong px-4 text-[14px] font-semibold hover:bg-card-hover">
+            <button type="button" onClick={() => live.current?.finish?.()} className="h-10 flex-none rounded-full border border-line-strong px-4 text-[14px] font-semibold hover:bg-card-hover">
               Done
             </button>
           ) : (

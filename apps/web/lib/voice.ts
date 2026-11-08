@@ -73,7 +73,8 @@ function browserSpeak(text: string, lang: Language, stopped: () => boolean) {
 }
 
 export type Heard = { text: string; language: Language | null };
-export type Listening = { done: Promise<Heard | null>; stop: () => void };
+/** `finish` ends listening now and uses what was said; `stop` cancels. */
+export type Listening = { done: Promise<Heard | null>; stop: () => void; finish: () => void };
 
 /** How loud counts as speech (RMS of the mic signal, 0–1), how long a pause ends the answer. */
 const SPEECH_LEVEL = 0.035;
@@ -144,6 +145,7 @@ export function listen(lang: Language, onLevel?: (level: number) => void): Liste
       cancelled = true;
       finish();
     },
+    finish: () => finish(),
   };
 }
 
@@ -162,7 +164,7 @@ type Recognition = {
 function browserListen(lang: Language): Listening {
   const w = window as unknown as { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition };
   const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
-  if (!Ctor) return { done: Promise.resolve(null), stop: () => {} };
+  if (!Ctor) return { done: Promise.resolve(null), stop: () => {}, finish: () => {} };
   const r = new Ctor();
   r.lang = SPEECH_LOCALE[lang];
   r.interimResults = false;
@@ -178,9 +180,9 @@ function browserListen(lang: Language): Listening {
   try {
     r.start();
   } catch {
-    return { done: Promise.resolve(null), stop: () => {} };
+    return { done: Promise.resolve(null), stop: () => {}, finish: () => {} };
   }
-  return { done, stop: () => r.abort() };
+  return { done, stop: () => r.abort(), finish: () => (r as unknown as { stop(): void }).stop() };
 }
 
 /** Speech recognition or recording is possible in this browser. */
