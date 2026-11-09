@@ -11,6 +11,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Text } from '@/components/Text';
 import { Colors, Fonts, Type } from '@/constants/theme';
 import { firstStep, useCheck } from '@/store/check';
+import { useSayInTalkMode } from '@/services/talk';
 
 const BEFORE: [IconName, string][] = [
   ['sun', 'Good light'],
@@ -23,6 +24,8 @@ export default function Plan() {
   const { plan, summary } = useCheck();
   const tests = plan.map((p) => ({ ...p, info: TEST_CATALOG.find((t) => t.id === p.testId)! }));
   const total = tests.reduce((sum, t) => sum + t.info.minutes, 0);
+  // Talk mode reads the plan summary (written in the chosen language).
+  useSayInTalkMode(summary || undefined);
 
   return (
     <Screen scroll>

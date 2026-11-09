@@ -1,7 +1,10 @@
 // Voice input for the intake chat (9): speech → text in the message box, the user checks and sends.
 // Uses the phone's speech recognizer (expo-speech-recognition). Only in the installed app:
 // in Expo Go the native module is missing, so `voiceAvailable` is false and the mic is hidden.
+import { SPEECH_LOCALE } from '@visus/shared';
 import { requireOptionalNativeModule } from 'expo';
+
+import { useSettings } from '@/store/settings';
 import type { ExpoSpeechRecognitionModuleType } from 'expo-speech-recognition/build/ExpoSpeechRecognitionModule.types';
 
 const Speech = requireOptionalNativeModule<ExpoSpeechRecognitionModuleType>('ExpoSpeechRecognition');
@@ -38,6 +41,6 @@ export async function startListening({ onText, onEnd, onError }: Handlers): Prom
   function stopAll() {
     subs.forEach((s) => s.remove());
   }
-  Speech.start({ lang: 'en-IN', interimResults: true, continuous: false });
+  Speech.start({ lang: SPEECH_LOCALE[useSettings.getState().language], interimResults: true, continuous: false });
   return () => Speech.stop();
 }

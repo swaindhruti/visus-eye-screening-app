@@ -10,9 +10,20 @@ You describe your eye problem in a short chat. An AI agent then picks the right 
 
 > **Screening, not diagnosis.** Visus tells you when to see an eye doctor; it does not replace one.
 
+> **Mid-progress update (9 Nov 2026):** [docs/MID_PROGRESS.md](docs/MID_PROGRESS.md) covers what we added since the first build:
+> - a **shop portal** for optical stores, with patient records and consent-based account linking;
+> - **talk mode in English, Hindi and Odia** with a natural Indian voice (Sarvam AI);
+> - red-flag rules in all three languages;
+> - Sarvam AI working next to Gemini, so a check never stalls.
+
 ## Features
 
-- **AI intake chat:** Gemini asks up to 3 short follow-up questions, with quick-reply chips. You can type or speak (voice input).
+- **AI intake chat:** Visus AI asks up to 3 short follow-up questions, with quick-reply chips. You can type or speak (voice input). Gemini answers, and Sarvam AI's `sarvam-105b-conversations` steps in when Gemini is slow or busy (it goes first for Hindi and Odia).
+- **English, Hindi and Odia, by voice:** pick a language, or just speak one and Visus AI follows you.
+  - **Talk mode:** each question is read aloud in an Indian voice (Sarvam AI), the app listens until you pause, and your answer is sent.
+  - **Read aloud too:** the test plan, the test instructions, the switch-eye prompts and the result.
+  - **Fallback:** without the Sarvam key, or when its credits run out, the phone's or browser's own voice is used. Settings shows which voice is in use.
+  - Red-flag words are caught in all three languages by rules.
 - **Adaptive test plan:** the AI picks tests only from the test catalog and adds up to 2 tests after a result that needs a closer look. Rules handle the fixed cases.
 - **14 vision tests:**
   - Distance acuity (Tumbling E) and near reading
@@ -41,15 +52,19 @@ You describe your eye problem in a short chat. An AI agent then picks the right 
   - 20-20-20 break reminders shown over other apps;
   - a daily goal (2 h in child mode).
 - **Guest mode:** take any single test without an account. Results are scored but not saved.
+- **Shop portal** (web, `/shop`): an optical shop registers and keeps a record of walk-in patients.
+  - It can run any check for a patient (full AI, quick, glasses, single test).
+  - It can link a patient's own Visus account by mobile number. The patient allows it in their app.
+  - Once linked, the shop sees the patient's past checks, and the checks the shop runs show up in the patient's Results ("At <shop>").
 - **Accessible:** adjustable text size, large touch targets, clinical white test screens, and simple wording.
 
 ## Tech
 
 | Part | Stack |
 |---|---|
-| Mobile (`apps/mobile`) | Expo SDK 57, Expo Router, React Native, Skia, VisionCamera v5 + ML Kit face detection, `expo-speech-recognition`, local Kotlin module (Screen Coach), zustand, TanStack Query, EAS Build |
+| Mobile (`apps/mobile`) | Expo SDK 57, Expo Router, React Native, Skia, VisionCamera v5 + ML Kit face detection, `expo-audio` + `expo-speech-recognition` (talk mode), local Kotlin module (Screen Coach), zustand, TanStack Query, EAS Build |
 | Web (`apps/web`) | Next.js (App Router), Tailwind CSS, MediaPipe (camera distance), zustand, TanStack Query, Vercel |
-| Server (`apps/server`) | Hono on Cloudflare Workers, Drizzle ORM + `pg`, Postgres on Aiven (Hyperdrive in production), zod, JWT + PBKDF2, Gemini API |
+| Server (`apps/server`) | Hono on Cloudflare Workers, Drizzle ORM + `pg`, Postgres on Aiven (Hyperdrive in production), zod, JWT + PBKDF2, Gemini API, Sarvam AI through its JS SDK `sarvamai` (Indian voice: bulbul TTS, saaras STT, sarvam-105b-conversations) |
 | Shared (`packages/shared`) | zod schemas, types and the test catalog used by all three |
 | Tooling | Bun workspaces (Bun only), TypeScript everywhere |
 
@@ -61,7 +76,7 @@ You describe your eye problem in a short chat. An AI agent then picks the right 
 | [`apps/web`](apps/web/README.md) | Web app (Next.js) |
 | [`apps/server`](apps/server/README.md) | API, AI agent, scoring, rules and lens logic |
 | `packages/shared` | Shared types and test catalog |
-| `docs/` | [Setup](docs/SETUP.md), [Architecture](docs/ARCHITECTURE.md), [API](docs/API.md), [Screens](docs/SCREENS.md) |
+| `docs/` | [Mid-progress update](docs/MID_PROGRESS.md), [Setup](docs/SETUP.md), [Architecture](docs/ARCHITECTURE.md), [API](docs/API.md), [Screens](docs/SCREENS.md) |
 | `design/` | Claude Design handoff |
 
 ## Get started

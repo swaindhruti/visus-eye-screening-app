@@ -102,6 +102,49 @@ A single test from the library runs `/check/[testId]/instructions` → `/check/[
 | 24 | Settings | `/settings` | Both | local |
 | 25 | About & disclaimer | `/settings/about` | Both | — |
 
+## Shop portal (web only, added 2026-11-08)
+
+Not in the Claude Design handoff: built from the existing components and auth layout.
+
+| # | Screen | Route | Platform | Data |
+|---|---|---|---|---|
+| S1 | Shop register | `/shop/register` | Web | `POST /shops/register` |
+| S2 | Shop log in | `/shop/login` (the normal `/login` also sends shops to `/shop`) | Web | `POST /auth/login` |
+| S3 | Patient records (Add new patient at the top, stats, search) | `/shop` | Web | `GET /shop/patients?q=` |
+| S4 | New patient (mobile number optional) | `/shop/patients/new` | Web | `POST /shop/patients` |
+| S5 | Patient (link status, add or change the mobile number, start a check, past checks) | `/shop/patients/[id]` | Web | `GET /shop/patients/:id`, `PATCH /shop/patients/:id`, `POST /shop/patients/:id/link` |
+| S8 | Account (shop name, city, address; login; number of patients) | `/shop/account` | Web | `GET /shop`, `PATCH /shop` |
+| S10 | Ask Visus AI (who it's for: a patient, no record, or add one; then the AI chat) | `/shop/ask` → `/check/intake` (with a *For* bar to pick or add the patient mid-chat) | Web | `POST /intake/chat`, `POST /sessions` (`profileId: ""` for no patient) |
+| S11 | Orders (totals: open, ready, collected, due; status filter; search) | `/shop/orders` | Web | `GET /shop/orders` |
+| S12 | New order (patient or customer, type, item, total, advance, ready by, notes) | `/shop/orders/new` (`?patient=<id>` from a patient's page) | Web | `POST /shop/orders` |
+| S13 | Order (status steps, cancel; payments and record a payment) | `/shop/orders/[id]` | Web | `GET`/`PATCH /shop/orders/:id`, `POST /shop/orders/:id/payments` |
+| S9 | Test library (by category; run one test for a quick analysis, or tick up to 8 and run them as a set; for a patient or no patient record) | `/shop/tests` | Web | `GET /shop/patients`, `POST /sessions` (`single` or `custom`, `profileId: ""` for no patient) |
+| — | The check itself | the normal `/check/*` and `/results/*` screens, for the patient's profile | Web | as a normal check |
+
+Way in: *Log in as an optical shop* on `/login`, *Sign up as an optical shop* on `/signup`, and *For optical shops* in the landing footer. The shop pages link back to the personal log in and sign up.
+
+Layout: a sidebar instead of a top bar. **Ask Visus AI** first, as a highlighted capsule; then **Patient records**, **Test library** and **Orders**; **Account** and **Log out** at the bottom. On a laptop it folds to icons (remembered); on a phone a menu button opens it as a drawer.
+
+Patient side:
+
+| # | Screen | Route | Platform | Data |
+|---|---|---|---|---|
+| S6 | Shop request card (Allow / Decline) | on Home | Both | `GET /me/shop-requests`, `POST /me/shop-requests/:id` |
+| S7 | Optical shops: mobile number, linked shops, Remove | web: section in `/settings`; mobile: `/settings/shops` | Both | `PATCH /me`, `GET /me/shops`, `DELETE /me/shops/:id` |
+
+## Languages and talk mode (added 2026-11-09)
+
+Not new screens: controls on existing ones, on both web and mobile.
+
+| Where | What |
+|---|---|
+| Issue intake (9) | Language picker (EN / हिं / ଓଡ଼ି) and a "Talk instead" switch. In talk mode, a bar with the voice visualizer (VoiceOrb) and Speak / Done buttons |
+| Test instructions (13) | Hindi and Odia text (`INSTRUCTIONS_I18N`, `WEB_STEPS_I18N` in `@visus/shared`), Listen in the Visus voice, plays by itself in talk mode |
+| Your test plan, Between tests (14), Results (16), Switch eye (44) | Read aloud in talk mode, in the chosen language |
+| Settings (24) | Language (English, हिन्दी, ଓଡ଼ିଆ) and Talk mode, with which voice is in use (Visus voice by Sarvam, or the device's own) |
+
+Screens themselves stay in English. The AI's text (questions, plan reasons, verdict) and every spoken line follow the language.
+
 ## States
 
 | # | Screen | Where | Platform |

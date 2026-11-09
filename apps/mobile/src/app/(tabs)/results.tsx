@@ -24,7 +24,7 @@ const METRICS: { label: string; testId: TestId }[] = [
 ];
 const POINTS = 6;
 const ROWS = 4;
-const MODE_TITLE = { full: 'Full eye check', quick: 'Quick check', glasses: 'Glasses check' } as const;
+const MODE_TITLE = { full: 'Full eye check', quick: 'Quick check', glasses: 'Glasses check', custom: 'Selected tests' } as const;
 
 const month = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { month: 'short' });
 
@@ -187,9 +187,10 @@ function PastCheck({ session, first }: { session: SessionSummary; first: boolean
   const date = new Date(session.date);
   const single = session.mode === 'single' ? testInfo(session.tests[0]) : undefined;
   const title = single ? single.name : MODE_TITLE[session.mode === 'single' ? 'full' : session.mode];
-  const sub = single
-    ? `${CATEGORIES.find((c) => c.id === single.category)?.tile} · Both eyes`
-    : `${session.tests.length} ${session.tests.length === 1 ? 'test' : 'tests'} · Both eyes`;
+  const what = single
+    ? `${CATEGORIES.find((c) => c.id === single.category)?.tile}`
+    : `${session.tests.length} ${session.tests.length === 1 ? 'test' : 'tests'}`;
+  const sub = `${what} · ${session.shopName ? `At ${session.shopName}` : 'Both eyes'}`;
   return (
     <Pressable
       accessibilityRole="button"

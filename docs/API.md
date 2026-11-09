@@ -3,7 +3,7 @@
 Hono on Cloudflare Workers. Types come from `packages/shared` (`@visus/shared`).
 
 - Local: `cd apps/server && bun run dev:phone` → `http://localhost:8787` (phone: your Mac's Wi-Fi IP). Full setup: `docs/SETUP.md`
-- Auth: send `Authorization: Bearer <token>` on every route except `/health`, `/auth/signup`, `/auth/login`
+- Auth: send `Authorization: Bearer <token>` on every route except `/health`, `/auth/signup`, `/auth/login`, `/shops/register`, `/reports/*`
 - Errors: `{ "error": "message" }` with a 4xx/5xx status
 
 **D** = Dhrutinandan, **T** = Teammate. Status: planned → mock (apps use mock data) → live.
@@ -11,14 +11,15 @@ Hono on Cloudflare Workers. Types come from `packages/shared` (`@visus/shared`).
 | Route | Request | Response | Owner | Status |
 |---|---|---|---|---|
 | `GET /health` | — | `{ ok: true }` | D | live |
-| `POST /auth/signup` | `SignupRequest` | `AuthResponse` (201). 409 if the phone/email is taken | D | live |
+| `POST /auth/signup` | `SignupRequest` | `AuthResponse` (201). 409 if the phone/email is taken. A phone identifier also fills `user.phone` | D | live |
 | `POST /auth/login` | `LoginRequest` | `AuthResponse`. 401 on a wrong password | D | live |
-| `GET /me` | — | `{ user, profiles: Profile[] }`, owner first | D | live |
+| `GET /me` | — | `{ user, profiles: Profile[] }`, owner first. `user.role` is `"user"` or `"shop"` (+ `shopName`) | D | live |
+| `PATCH /me` | `UpdateMeRequest` (`{ phone }`) | `AuthResponse["user"]`. The number shops can link this account by (email sign-ups) | D | live |
 | `GET /profiles` | — | `Profile[]`, owner first | D | live |
 | `POST /profiles` | `Profile` without `id` | `Profile` (201). The first profile is the owner (`relation: "self"`) | D | live |
 | `PATCH /profiles/:id` | partial `Profile` | `Profile` | D | live |
-| `POST /intake/chat` | `IntakeChatRequest` (`{ profileId, messages: [{ from: "ai" \| "me", text }] }`, the whole chat so far) | `IntakeChatResponse` (`{ reply, chips, done }`) | D | live |
-| `POST /sessions` | `CreateSessionRequest` | `CreateSessionResponse` (201) | D | live |
+| `POST /intake/chat` | `IntakeChatRequest` (`{ profileId, messages: [{ from: "ai" \| "me", text }], language? }`, the whole chat so far) | `IntakeChatResponse` (`{ reply, chips, done, language }`): reply and chips in the language the person writes in | D | live |
+| `POST /sessions` | `CreateSessionRequest` (+ optional `language`) | `CreateSessionResponse` (201). Summary and reasons in `language`. `mode: "custom"` with `testIds` (1–8, duplicates dropped) runs exactly the tests picked. A shop may send `profileId: ""` for a check with no patient record (kept on the shop's own walk-in profile, never in its patient list); a personal account gets 400 | D | live |
 | `POST /sessions/:id/results` | `SubmitResult` | `NextStep`. 409 after the verdict | D (route) + T (scoring, rules) | live |
 | `POST /sessions/:id/verdict` | — | `Verdict` (saved; calling again returns the same one) | D (route) + T (lens) | live |
 | `GET /sessions` | — | `SessionSummary[]`, finished checks, newest first | T | live |
@@ -26,8 +27,60 @@ Hono on Cloudflare Workers. Types come from `packages/shared` (`@visus/shared`).
 | `POST /sessions/:id/share` | — | `ShareLink` (`{ url: WEB_URL/r/<token>, expiresAt }`, 24 h) | T | live |
 | `GET /reports/:token` | — (no login) | `Verdict` behind a share link, 404 when expired. For the web report page `/r/<token>` | T | live |
 | `POST /reports/guest-score` | — (no login) `SubmitResult` + optional `age` | `NextStep` (`red_flag` or `done`). Guest mode (web + mobile): same scorer and red-flag rules, nothing saved | T | live |
+| `GET /voice` | none | `VoiceStatus` (`{ voice: boolean }`): is the Visus voice on. Free, doesn't call Sarvam. Settings shows which voice talk mode uses | D | live |
+| `POST /voice/tts` | `TtsRequest` (`{ text, language }`) | `TtsResponse` (`{ audio: base64, mime: "audio/mpeg" }`): Indian voice, Ritu (Sarvam `bulbul:v4-flash` medical persona for English and Hindi, `bulbul:v3` for Odia). 503 when Sarvam is off (no key, credits used up, key refused) → apps use the device voice | D | live |
+| `POST /voice/stt` | multipart `file` (≤ 30 s, webm/m4a/wav…), optional `language` | `SttResponse` (`{ transcript, language }`, language detected when not sent). Sarvam `saaras:v4` with eye-check keyterms. 503 when Sarvam is off → apps use device speech recognition | D | live |
+| `POST /shops/register` | — (no login) `ShopRegisterRequest` | `AuthResponse` (201) with `role: "shop"`, `shopName`. 409 if the login is taken | D | live |
+| `GET /shop/patients?q=` | — (shop accounts; others 403) | `ShopPatient[]`, newest first; `q` matches name or phone | D | live |
+| `POST /shop/patients` | `CreatePatientRequest` | `PatientDetail` (201). `linkStatus: "pending"` when a Visus account has this phone, else `"none"`. 409 for a phone already in the list | D | live |
+| `GET /shop/patients/:id` | — | `PatientDetail`: the patient and their finished checks (all of them once linked) | D | live |
+| `PATCH /shop/patients/:id` | `UpdatePatientRequest` (`{ phone }`) | `PatientDetail`. Adds or changes the mobile number of a walk-in added without one; a Visus account with it gets a link request (`pending`), else `none`. 400 for a bad number or a linked patient, 409 if another patient has it | D | live |
+| `POST /shop/patients/:id/link` | — | `PatientDetail` with `linkStatus: "pending"`. 404 when no account has the phone yet | D | live |
+| `GET /shop/orders?status=&patientId=&q=` | — | `ShopOrders`: orders newest first, filtered; `summary` (`open`, `ready`, `collected`, `due` in ₹) covers all orders | D | live |
+| `POST /shop/orders` | `CreateOrderRequest` (`patientId` or `customerName`, `item`, `kind`, `total`, optional `advance`, `dueDate`, `notes`) | `ShopOrder` (201). 400 without a customer, or an advance above the total | D | live |
+| `GET /shop/orders/:id` | — | `ShopOrder` (`paid`, `due`, `paymentStatus` worked out from `payments`) | D | live |
+| `PATCH /shop/orders/:id` | `UpdateOrderRequest` (`status`, `item`, `total`, `dueDate`, `notes`) | `ShopOrder`. 400 for a total below what's paid | D | live |
+| `POST /shop/orders/:id/payments` | `Payment` (`{ amount, method: cash \| upi \| card }`) | `ShopOrder`. 400 above what's due, or on a cancelled order | D | live |
+| `GET /shop` | — | `ShopAccount`: the shop (name, address, city), the owner's name and login, and the number of patients | D | live |
+| `PATCH /shop` | `UpdateShopRequest` (`{ name, address, city }`) | `ShopAccount` | D | live |
+| `GET /me/shop-requests` | — | `ShopRequest[]`: shops asking to see your records (also ones made before you signed up with that phone) | D | live |
+| `POST /me/shop-requests/:id` | `ShopRequestAnswer` (`{ approve }`) | `ShopRequest` with the new status. 400 before onboarding (no own profile yet) | D | live |
+| `GET /me/shops` | — | `ShopRequest[]`: linked shops | D | live |
+| `DELETE /me/shops/:id` | — | `{ ok: true }`. The shop loses access (it keeps the checks it ran) | D | live |
 
 Server code: `apps/server` (feature folders, see `apps/server/CLAUDE.md`). Smoke test of every route: `apps/server/scripts/smoke.sh`.
+
+## Languages (English, Hindi, Odia)
+
+- `Language` is `"en" | "hi" | "or"`; `SPEECH_LOCALE` maps it to `en-IN`, `hi-IN`, `or-IN` for speech in the apps.
+- **Intake chat:**
+  - The app sends the language the user picked.
+  - Gemini replies in the language of the person's last message and returns it as `language`. Romanised Hindi or Odia counts as that language.
+  - The app keeps the returned `language` for the next turn, the voice and `POST /sessions`.
+- **Saved on the check:** `sessions.language` stores it. The plan summary and reasons, the re-plan reason and the verdict `headline` and `advice` are written in it, by Gemini or by the rule fallbacks in `features/agent/i18n.ts`.
+- **What stays English:** test ids, scores, statuses and the per-test `summary` from the scorers. Screens are not translated.
+- **Voice:** `/voice/tts` and `/voice/stt` go to Sarvam AI through its official JS SDK (`sarvamai`, in `src/lib/sarvam.ts`) with the server's key. The apps never see the key. When Sarvam answers 402 (no credits left) or 403 (key refused), the server turns Sarvam off for 10 minutes: voice routes answer 503 and the AI uses Gemini only. The SDK's own retries are off, so a failed call never spends credits twice. Talk mode in the intake chat works like this:
+  1. The AI reply is spoken with `/voice/tts`.
+  2. The mic records until the person stops talking.
+  3. `/voice/stt` turns the recording into text, which is sent as the answer.
+- **AI model:** with `SARVAM_API_KEY` set, `sarvam-105b-conversations` joins the hedged AI calls in `lib/gemini.ts`. It goes first for Hindi and Odia, and second for English, joining when Gemini Flash-Lite is slow or busy (for example, the free tier's rate limit).
+- **Red flags stay rules:** `rules/red-flags.ts` also knows Hindi and Odia urgent words (अचानक, दर्द, चमक, ହଠାତ୍, ଯନ୍ତ୍ରଣା…), including romanised spellings. A clause with a negation (नहीं, ନାହିଁ, nahi) doesn't count.
+
+## Shop portal
+
+An optical shop registers (`POST /shops/register`) and logs in with the normal `POST /auth/login`; `user.role === "shop"` sends the web app to `/shop`.
+
+- **Walk-ins:** `POST /shop/patients` stores the details in a profile owned by the shop account (`relation: "other"`), so the normal check routes work: start a check with `ShopPatient.checkProfileId` (`/intake/chat`, `/sessions`, `/results`, `/verdict`, `GET /sessions/:id`, share).
+- **Linking an existing account:** the shop enters the patient's phone (10 digits; `+91`, spaces and a leading 0 are fine). If a personal account has that phone, the patient sees the request in `GET /me/shop-requests`; if not, it shows up once someone signs up with that phone.
+- **On approve:**
+  - The shop's earlier checks of that walk-in move into the patient's account (their own "self" profile).
+  - `checkProfileId` becomes the patient's own profile, so the checks the shop runs from then on are saved in the patient's account, with `SessionSummary.shopName` set.
+  - The shop can open all of the patient's checks (read only).
+- **Number added later:** a walk-in added without a mobile number gets one with `PATCH /shop/patients/:id`. If a Visus account uses it, the patient gets the same request; once they allow it, the shop sees their past checks.
+- **Ask Visus AI / no patient record:** a shop may send `profileId: ""` to `POST /intake/chat` and `POST /sessions`. The check is kept on one hidden walk-in profile per shop (an adult, age 30), never shown in its patient list.
+- **Orders:** amounts are whole rupees. An order is for a shop patient (`patientId`, name and phone copied) or a customer without a record (`customerName`). Status: `new` → `in_progress` → `ready` → `delivered`, or `cancelled`. Payments are appended; `paid`, `due` and `paymentStatus` (`unpaid`, `partial`, `paid`) are worked out from them.
+- **Unlink** (`DELETE /me/shops/:id`): the shop keeps only the checks it ran itself, and can't start new ones on the patient's profile.
+- A check's `sessions.shop_id` records which shop ran it.
 
 ## Check modes
 

@@ -11,6 +11,8 @@ type Props = {
   tabs?: boolean;
   /** Wide (1200px) container instead of the focused 640px column. */
   wide?: boolean;
+  /** Full screen width (capped at 1760px), as on the landing page. */
+  full?: boolean;
   /** Clinical white background for test screens. */
   white?: boolean;
   /** Gap between children (Tailwind class). */
@@ -24,14 +26,14 @@ type Props = {
  * Page wrapper. Phones: full width with the 20px gutter, as in the design.
  * Desktop: a centred container — wide for tab pages, a focused column for flows.
  */
-export function Screen({ children, eyebrow, title, tabs, wide, white, gap = "gap-4", className, actions }: Props) {
+export function Screen({ children, eyebrow, title, tabs, wide, full, white, gap = "gap-4", className, actions }: Props) {
   const isWide = wide || tabs;
   return (
     <div className={cn("min-h-dvh", white ? "bg-white" : "bg-pearl")}>
       <main
         className={cn(
           "mx-auto flex w-full flex-col px-5 pt-6",
-          isWide ? "max-w-[1200px] md:px-8 md:pt-9" : "max-w-[640px] md:pt-10",
+          full ? "max-w-[1760px] md:px-10 md:pt-9 xl:px-16" : isWide ? "max-w-[1200px] md:px-8 md:pt-9" : "max-w-[640px] md:pt-10",
           tabs ? "min-h-[calc(100dvh-73px)] pb-[112px] md:pb-16" : "min-h-dvh pb-8 md:pb-12",
           gap,
           className,

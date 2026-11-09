@@ -3,16 +3,16 @@ import type { SessionSummary, TestId } from "@visus/shared";
 import { MONTHS } from "./dates";
 import { categoryOf, TEST_COPY, testInfo } from "./tests";
 
-/** "Full eye check", "Quick check", or the test name for a single test. */
+/** "Full eye check", "Quick check", "Selected tests", or the test name for a single test. */
 export function sessionTitle(s: SessionSummary) {
   if (s.mode === "single" && s.tests[0]) return TEST_COPY[s.tests[0]].title;
-  return s.mode === "quick" ? "Quick check" : s.mode === "glasses" ? "Glasses check" : "Full eye check";
+  return s.mode === "quick" ? "Quick check" : s.mode === "glasses" ? "Glasses check" : s.mode === "custom" ? "Selected tests" : "Full eye check";
 }
 
-/** Second line on a past check: the test's group for a single test, else "4 tests". */
+/** Second line on a past check: the test's group for a single test, else "4 tests"; "At <shop>" when a shop ran it. */
 export function sessionSub(s: SessionSummary) {
-  if (s.mode === "single" && s.tests[0]) return categoryOf(testInfo(s.tests[0]).category).label;
-  return `${s.tests.length} ${s.tests.length === 1 ? "test" : "tests"}`;
+  const what = s.mode === "single" && s.tests[0] ? categoryOf(testInfo(s.tests[0]).category).label : `${s.tests.length} ${s.tests.length === 1 ? "test" : "tests"}`;
+  return s.shopName ? `${what} · At ${s.shopName}` : what;
 }
 
 const TRENDS: [string, TestId][] = [

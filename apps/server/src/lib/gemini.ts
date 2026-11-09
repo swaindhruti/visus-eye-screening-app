@@ -1,15 +1,25 @@
-// Thin Gemini client (Google AI Studio API) used by features/agent.
+// Thin AI client used by features/agent: Gemini (Google AI Studio) and Sarvam AI's sarvam-105b-conversations.
 // Sends a prompt with a JSON schema and returns the parsed JSON, or null on any failure,
-// so callers can fall back to the rules.
+// so callers can fall back to the rules. Sarvam joins when its key is set (SARVAM_API_KEY): it keeps
+// checks going when the Gemini free tier is busy, and goes first for Hindi and Odia.
 //
 // Gemini's latency comes in spikes (1 s most of the time, sometimes 10+ s), so requests are hedged:
 // the first model starts; if it hasn't answered after HEDGE_MS (or fails), the next one starts too.
 // The first valid answer wins and the others are cancelled. After BUDGET_MS the rules answer instead.
 import { z } from 'zod';
 
+import { SARVAM_CHAT_MODEL, sarvamChat, sarvamReady } from './sarvam';
+
 const BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 /** Fastest first; the others join when it is slow, busy (503/429) or failing. */
 export const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.8-flash'];
+export const SARVAM_MODEL = SARVAM_CHAT_MODEL;
+
+/** Set once per request from the env (index.ts), so the agent code doesn't pass a second key around. */
+let sarvamKey = '';
+export const setSarvamKey = (key: string | undefined) => {
+  sarvamKey = key ?? '';
+};
 const HEDGE_MS = 2_500;
 /** All models together: after this the caller's rule-based fallback answers. */
 const BUDGET_MS = 7_000;
@@ -17,7 +27,33 @@ const BUDGET_MS = 7_000;
 /** Models that just said they're busy are skipped for a minute (per Worker instance). */
 const busyUntil = new Map<string, number>();
 
-type Options<T extends z.ZodType> = { apiKey: string; system: string; prompt: string; schema: T; models?: string[] };
+type Options<T extends z.ZodType> = {
+  apiKey: string;
+  system: string;
+  prompt: string;
+  schema: T;
+  models?: string[];
+  /** "sarvam": Sarvam first (Hindi, Odia), Gemini joins if it's slow. Default: Gemini first, Sarvam second. */
+  prefer?: 'sarvam';
+};
+
+/** One Sarvam try: the parsed reply or null. The schema goes in the prompt with JSON mode (tested with this model). */
+async function askSarvam<T extends z.ZodType>(system: string, prompt: string, schema: T, signal: AbortSignal): Promise<z.infer<T> | null> {
+  try {
+    const json = JSON.stringify(z.toJSONSchema(schema, { target: 'draft-7' }));
+    const text = await sarvamChat(sarvamKey, `${system}\n\nReply with one JSON object only, matching this JSON schema:\n${json}`, prompt, signal);
+    if (!text) return null;
+    // Reasoning models may think out loud first: take the JSON object.
+    const parsed = schema.safeParse(JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)));
+    if (parsed.success) return parsed.data;
+    console.warn(`Sarvam: reply didn't match the schema`, parsed.error.issues[0]);
+    return null;
+  } catch (err) {
+    if ((err as { busy?: boolean }).busy) busyUntil.set(SARVAM_MODEL, Date.now() + 60_000);
+    else if (!signal.aborted) console.warn(`Sarvam: ${(err as Error).message}`);
+    return null;
+  }
+}
 
 /** One model, one try: the parsed reply or null. */
 async function ask<T extends z.ZodType>(model: string, apiKey: string, body: string, schema: T, signal: AbortSignal): Promise<z.infer<T> | null> {
@@ -49,8 +85,11 @@ async function ask<T extends z.ZodType>(model: string, apiKey: string, body: str
   }
 }
 
-export async function geminiJson<T extends z.ZodType>({ apiKey, system, prompt, schema, models = GEMINI_MODELS }: Options<T>): Promise<z.infer<T> | null> {
-  if (!apiKey) return null;
+export async function geminiJson<T extends z.ZodType>({ apiKey, system, prompt, schema, models = GEMINI_MODELS, prefer }: Options<T>): Promise<z.infer<T> | null> {
+  // Sarvam goes first for Hindi/Odia, else second (it joins when Flash-Lite is slow or busy).
+  if (sarvamReady(sarvamKey) && !models.includes(SARVAM_MODEL)) models = prefer === 'sarvam' ? [SARVAM_MODEL, ...models] : [models[0], SARVAM_MODEL, ...models.slice(1)];
+  if (!apiKey) models = models.filter((m) => m === SARVAM_MODEL);
+  if (!models.length) return null;
   const body = JSON.stringify({
     systemInstruction: { parts: [{ text: system }] },
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -85,7 +124,8 @@ export async function geminiJson<T extends z.ZodType>({ apiKey, system, prompt, 
         const model = list[next++];
         running++;
         const hedge = setTimeout(launch, HEDGE_MS);
-        void ask(model, apiKey, body, schema, abort.signal).then((reply) => {
+        const attempt = model === SARVAM_MODEL ? askSarvam(system, prompt, schema, abort.signal) : ask(model, apiKey, body, schema, abort.signal);
+        void attempt.then((reply) => {
           running--;
           clearTimeout(hedge);
           if (reply !== null) finish(reply);

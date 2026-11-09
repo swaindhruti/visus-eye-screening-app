@@ -51,6 +51,7 @@ bunx eas-cli build --profile preview --platform android        # standalone APK
 | Camera distance | `src/components/FaceCamera.tsx` (VisionCamera v5 + ML Kit face detector), loaded lazily by `DistanceCamera.tsx`; setup screen `src/app/check/distance.tsx` | camera permission |
 | Distance warning during tests | `src/app/check/[testId]/run.tsx` | camera distance |
 | Voice input in the intake chat | `src/services/voice.ts` (`expo-speech-recognition`) | microphone permission |
+| Talk mode (Indian voice, English / Hindi / Odia) | `src/services/talk.ts`: `speak()` plays `POST /voice/tts` (MP3), `useTalk().hear()` records with `expo-audio` until a pause and sends it to `POST /voice/stt`; `src/components/VoiceOrb.tsx` | microphone permission. `expo-audio`/`expo-file-system` are in Expo Go; an installed app needs a **new development build** (made after 2026-11-09), otherwise talk mode uses the phone's own voice |
 | Screen Coach (screen time, weekly view, 20-20-20 breaks) | `modules/screen-coach` (Kotlin), `src/services/coach.ts`, `src/app/coach/*` | *Usage access* and *Display over other apps* |
 | Check reminders | `src/services/reminders.ts` (`expo-notifications`) | notification permission |
 

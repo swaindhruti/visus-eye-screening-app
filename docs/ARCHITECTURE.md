@@ -111,6 +111,7 @@ apps/server/src/
     rules/        red flags + rule plans
     lens/         ZEISS lens and coating catalog + recommendation
     history/      past checks, share links (24 h), guest scoring
+    shops/        shop portal: register, patients, link by phone, who may see a check
 ```
 
 ## Data model
@@ -121,11 +122,62 @@ erDiagram
   users ||--o{ sessions : runs
   profiles ||--o{ sessions : "check is for"
   sessions ||--o{ results : has
+  users ||--o| shops : "owns (role shop)"
+  shops ||--o{ shop_patients : "walk-ins"
+  shop_patients }o--|| profiles : "details in"
+  shop_patients }o--o| users : "linked account"
+  shops ||--o{ sessions : "ran"
 
-  users { uuid id  text name  text identifier  text password_hash }
+  users { uuid id  text name  text identifier  text role  text phone  text password_hash }
+  shops { uuid id  uuid owner_id  text name  text city }
+  shop_patients { uuid id  uuid shop_id  uuid profile_id  text phone  uuid linked_user_id  text link_status }
   profiles { uuid id  text name  int age  text relation  bool is_child  bool wears_glasses  jsonb prescription  jsonb saved_lens }
-  sessions { uuid id  text mode  text intake  jsonb plan  jsonb verdict  text share_token  timestamp finished_at }
+  sessions { uuid id  uuid shop_id  text mode  text intake  jsonb plan  jsonb verdict  text share_token  timestamp finished_at }
   results { uuid id  text test_id  text eye  jsonb answers  jsonb scored  text red_flag }
+```
+
+### Shop portal and linking
+
+- A shop is a user with `role = "shop"` plus a `shops` row.
+- **Walk-ins:** each one is a `shop_patients` row whose details live in a profile owned by the shop account. Every check route works unchanged for them.
+- **Linking:**
+  - When the shop enters a phone number that matches a personal account (`users.phone`, the last 10 digits), the link becomes `pending`.
+  - On **Allow**, the shop's earlier checks move into the patient's own profile.
+  - From then on the shop starts checks on the patient's profile (`checkTarget`), so they are saved in the patient's account with `sessions.shop_id` set.
+- **Who may use a check** is decided in one place, `features/shops/access.ts` (`sessionAccess`):
+  - your own checks;
+  - the checks your shop ran;
+  - read only: every check of a patient who linked to your shop.
+
+### Voice and languages
+
+- **Languages:** `Language` is `en`, `hi` or `or`.
+  - The intake chat replies in the language the person writes or speaks in.
+  - The check keeps that language (`sessions.language`), so Gemini and Sarvam write the plan and verdict text in it.
+- **Speaking:** the apps send text to `POST /voice/tts`. The server asks Sarvam through its SDK (`bulbul:v4-flash`, voice Ritu in a medical style; `bulbul:v3` for Odia, which v4 doesn't have yet) and returns an MP3 for the app to play.
+- **Listening:**
+  1. The apps record until a pause, using a simple level check (Web Audio on the web, `expo-audio` metering on the phone).
+  2. They upload the clip to `POST /voice/stt`, where Sarvam `saaras:v4` transcribes it and detects the language (keyterms such as Amsler and ZEISS help it spell eye words).
+- **The key:** it stays on the server. Without it, the apps use the browser's or phone's own speech.
+- **AI model:** `lib/gemini.ts` hedges across Gemini models and `sarvam-105b-conversations`, so a busy Gemini free tier doesn't stall a check.
+- **Out of credits:** a 402 (no credits) or 403 (key refused) from Sarvam turns it off for 10 minutes. `GET /voice` then says `voice: false`, the voice routes answer 503, and the apps use the device voice and Gemini. Settings shows which voice is in use.
+- **No LiveKit:** the visualizer (`VoiceOrb`) is our own.
+
+```mermaid
+sequenceDiagram
+  participant App
+  participant Server
+  participant Sarvam
+  participant AI as Gemini / sarvam-105b-conversations
+  App->>Server: POST /voice/tts (AI question, language)
+  Server->>Sarvam: bulbul:v4-flash (v3 for Odia)
+  Server-->>App: MP3, played aloud
+  App->>App: record until a pause
+  App->>Server: POST /voice/stt (clip)
+  Server->>Sarvam: saaras:v4
+  Server-->>App: transcript + language
+  App->>Server: POST /intake/chat (answer, language)
+  Server->>AI: next question in that language
 ```
 
 ## Clients

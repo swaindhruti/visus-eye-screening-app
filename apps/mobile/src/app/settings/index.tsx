@@ -9,11 +9,14 @@ import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { FixedText, Text } from '@/components/Text';
+import { LANGUAGE_OPTIONS } from '@visus/shared';
+
 import { Colors, Fonts, Radius, StatusColors } from '@/constants/theme';
 import { logout } from '@/services/auth';
 import { forgetProfiles } from '@/services/profiles';
 import { canDrawOverlays, coachAvailable, getCoachStatus, setBreakReminders } from '@/services/coach';
 import { UNAVAILABLE_NOTE } from '@/services/reminders';
+import { useVoiceKind } from '@/services/talk';
 import { useAuth } from '@/store/auth';
 import { useCalibration } from '@/store/calibration';
 import { useCheck } from '@/store/check';
@@ -29,8 +32,6 @@ const REMINDERS: [Reminder, string, string][] = [
   ['breaks', 'Break reminders', 'Every 20 min of screen time'],
   ['weekly', 'Weekly report', 'Sunday evening'],
 ];
-/** Only English is translated so far. */
-const LANGUAGES = ['English', 'हिन्दी', 'தமிழ்', 'বাংলা', 'मराठी'];
 
 // Loaded on first use: importing expo-notifications in Expo Go logs a warning about push (not used here).
 const reminders = () => import('@/services/reminders');
@@ -47,10 +48,11 @@ function masked(identifier: string) {
 
 /** Screen 24: Settings. */
 export default function Settings() {
-  const { textSize, reminders: on, setTextSize, setReminder } = useSettings();
+  const { textSize, reminders: on, setTextSize, setReminder, language, setLanguage, talk, setTalk } = useSettings();
   const calibrated = useCalibration((s) => s.pxPerMm !== null);
   const identifier = useAuth((s) => s.user?.identifier ?? '');
   const [languages, setLanguages] = useState(false);
+  const voice = useVoiceKind();
   const [blocked, setBlocked] = useState<'denied' | 'unavailable' | null>(null);
   const [armed, setArmed] = useState(false);
 
@@ -95,9 +97,18 @@ export default function Settings() {
           <Pressable accessibilityRole="button" onPress={() => setLanguages(true)} style={styles.row}>
             <Icon name="globe" size={20} strokeWidth={1.8} />
             <Text style={styles.rowTitle}>Language</Text>
-            <Text style={styles.value}>English</Text>
+            <Text style={styles.value}>{LANGUAGE_OPTIONS.find((o) => o.code === language)?.name}</Text>
             <Icon name="chevronRight" size={16} color={Colors.faint} strokeWidth={2.2} />
           </Pressable>
+          <View style={[styles.notif, styles.divider]}>
+            <Icon name="speaker" size={20} strokeWidth={1.8} />
+            <View style={styles.notifText}>
+              <Text style={styles.rowTitle}>Talk mode</Text>
+              <Text style={styles.sub}>Visus reads aloud and listens for spoken answers</Text>
+              {talk && <Text style={styles.sub}>{voice === 'visus' ? 'Voice: Visus (Indian voice by Sarvam AI)' : "Voice: this phone's own voice"}</Text>}
+            </View>
+            <Switch value={talk} onChange={setTalk} label="Talk mode" />
+          </View>
           <View style={[styles.textSize, styles.divider]}>
             <View style={styles.textSizeTop}>
               <Icon name="textSize" size={20} strokeWidth={1.8} />
@@ -153,6 +164,15 @@ export default function Settings() {
           )
         )}
 
+        <Text style={styles.section}>Optical shops</Text>
+        <View style={styles.card}>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/settings/shops')} style={styles.row}>
+            <Icon name="shieldCheck" size={20} strokeWidth={1.8} />
+            <Text style={styles.rowTitle}>Linked shops and mobile number</Text>
+            <Icon name="chevronRight" size={16} color={Colors.faint} strokeWidth={2.2} />
+          </Pressable>
+        </View>
+
         <Text style={styles.section}>Data</Text>
         <View style={styles.card}>
           <View style={styles.offline}>
@@ -193,15 +213,17 @@ export default function Settings() {
         <Pressable style={styles.scrim} onPress={() => setLanguages(false)}>
           <Pressable style={styles.sheet}>
             <Text style={styles.sheetTitle}>Language</Text>
-            {LANGUAGES.map((l, i) => (
-              <View key={l} style={[styles.langRow, i > 0 && styles.divider]}>
-                <Text style={[styles.rowTitle, i > 0 && styles.langOff]}>{l}</Text>
-                {i === 0 ? (
-                  <Icon name="checkLarge" size={20} color={Colors.acc} />
-                ) : (
-                  <Text style={styles.sub}>Coming soon</Text>
-                )}
-              </View>
+            <Text style={styles.sub}>Visus AI chats, speaks and reads instructions in it. Screens stay in English.</Text>
+            {LANGUAGE_OPTIONS.map((o, i) => (
+              <Pressable
+                key={o.code}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: language === o.code }}
+                onPress={() => setLanguage(o.code)}
+                style={[styles.langRow, i > 0 && styles.divider]}>
+                <Text style={styles.rowTitle}>{o.name}</Text>
+                {language === o.code && <Icon name="checkLarge" size={20} color={Colors.acc} />}
+              </Pressable>
             ))}
             <Button title="Done" onPress={() => setLanguages(false)} style={styles.sheetButton} />
           </Pressable>
@@ -277,6 +299,5 @@ const styles = StyleSheet.create({
   },
   sheetTitle: { marginBottom: 8, fontFamily: Fonts.bold, fontSize: 20, color: Colors.ink },
   langRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  langOff: { color: Colors.faint },
   sheetButton: { marginTop: 12 },
 });

@@ -1,3 +1,4 @@
+import type { Language } from '@visus/shared';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -15,6 +16,12 @@ type SettingsState = {
   /** Re-check reminder (56) "Remind me in a week": the Home banner stays hidden until then (ISO). */
   recheckSnoozedUntil: string | null;
   coach: CoachSettings;
+  /** The language Visus AI talks in (chat, voice, instructions). */
+  language: Language;
+  /** Talk mode: Visus reads its lines aloud and listens for spoken answers. */
+  talk: boolean;
+  setLanguage: (language: Language) => void;
+  setTalk: (talk: boolean) => void;
   setCoach: (patch: Partial<CoachSettings>) => void;
   setTextSize: (size: TextSize) => void;
   snoozeRecheck: (until: string) => void;
@@ -30,6 +37,10 @@ export const useSettings = create<SettingsState>()(
       reminders: { check: false, breaks: false, weekly: false },
       recheckSnoozedUntil: null,
       coach: { intervalMin: 20, childMode: false },
+      language: 'en',
+      talk: false,
+      setLanguage: (language) => set({ language }),
+      setTalk: (talk) => set({ talk }),
       setCoach: (patch) => set(({ coach }) => ({ coach: { ...coach, ...patch } })),
       setTextSize: (textSize) => set({ textSize }),
       snoozeRecheck: (until) => set({ recheckSnoozedUntil: until }),
@@ -38,7 +49,7 @@ export const useSettings = create<SettingsState>()(
     {
       name: 'visus-settings',
       storage: phoneStorage,
-      partialize: ({ textSize, reminders, recheckSnoozedUntil, coach }) => ({ textSize, reminders, recheckSnoozedUntil, coach }),
+      partialize: ({ textSize, reminders, recheckSnoozedUntil, coach, language, talk }) => ({ textSize, reminders, recheckSnoozedUntil, coach, language, talk }),
     },
   ),
 );

@@ -9,6 +9,7 @@ import { StatusBadge } from '@/components/Chip';
 import { Icon } from '@/components/Icon';
 import { ListRow } from '@/components/ListRow';
 import { Screen } from '@/components/Screen';
+import { ShopRequestCard } from '@/components/ShopRequestCard';
 import { Text } from '@/components/Text';
 import { daysAgo, daysSince, elapsed, RECHECK_DAYS } from '@/constants/report';
 import { Colors, Fonts, Radius, Type } from '@/constants/theme';
@@ -54,6 +55,7 @@ function HomeScreen() {
 
   return (
     <Screen tabs scroll>
+      <ShopRequestCard />
       {recheck && (
         <Card style={styles.recheck} onPress={() => router.push('/check/recheck')}>
           <View style={styles.recheckIcon}>

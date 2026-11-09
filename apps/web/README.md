@@ -33,7 +33,7 @@ Vercel, with root directory `apps/web`. Set `NEXT_PUBLIC_API_URL` (the Worker UR
 ## Layout
 
 ```
-app/          routes, same as the mobile app (+ /r/[token] shared report)
+app/          routes, same as the mobile app (+ /r/[token] shared report, /shop/* shop portal)
 components/   shared UI
 lib/          hooks and helpers (tests copy, guest mode, voice input)
 services/     api.ts + one file per server area; mock/ for USE_MOCK

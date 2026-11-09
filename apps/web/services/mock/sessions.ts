@@ -51,6 +51,7 @@ const PLANS: Record<Exclude<CheckMode, "single">, TestId[]> = {
   full: ["tumbling_e", "clock_dial", "amsler", "contrast"],
   quick: ["tumbling_e", "amsler", "clock_dial"],
   glasses: ["tumbling_e", "tumbling_e"],
+  custom: [], // the tests picked (shop Test library)
 };
 
 const sessions = () => load<Record<string, MockSession>>("sessions-v2", {});
@@ -74,7 +75,7 @@ export async function create(input: NewSession): Promise<CreatedSession> {
   await delay(900);
   const child = load<{ id: string; isChild: boolean }[]>("profiles-v2", []).find((p) => p.id === input.profileId)?.isChild ?? input.profileId === "p2";
   const mode = input.mode ?? "full";
-  const plan = mode === "single" && input.testId ? [input.testId] : mode === "full" && child ? (["kids_tumbling_e", "kids_colour_shapes"] as TestId[]) : PLANS[mode === "single" ? "full" : mode];
+  const plan = mode === "single" && input.testId ? [input.testId] : mode === "full" && child ? (["kids_tumbling_e", "kids_colour_shapes"] as TestId[]) : mode === "custom" && input.testIds ? [...new Set(input.testIds)] : PLANS[mode === "single" ? "full" : mode];
   const s: MockSession = { id: uid(), profileId: input.profileId, mode, date: new Date().toISOString(), plan, results: [], redFlagShown: false };
   put(s);
   return {

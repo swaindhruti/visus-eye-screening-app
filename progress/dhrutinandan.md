@@ -3,11 +3,61 @@
 Area: mobile app + server (setup, auth, agent). Claude updates this file at the end of every task. Newest entry on top.
 
 ## Now
+- **Phase 4 (Nov) on `feat/visus-next`** (plan in `WORK.md` → Phase 4): shop portal, multilingual voice, faster AI + offline, web accessibility. Deploy is postponed.
+  - 2026-11-08: shop portal backend done: `users.role`/`users.phone`, `shops`, `shop_patients`, `sessions.shop_id`; routes in `docs/API.md` → Shop portal; smoke test 66/66 on a local Postgres (PGlite). **Aiven needs `bun run db:push`** before the shop routes work there (only adds tables and columns).
+  - 2026-11-08: shop portal web screens (`/shop/register`, `/shop/login`, `/shop`, `/shop/patients/new`, `/shop/patients/[id]`) and the patient side on web + mobile (request card on Home, Optical shops in Settings, "At <shop>" on past checks). Typecheck, lint and `next build` pass. **Not looked at in a browser yet** (no browser on this Mac for Claude): check the shop pages by eye.
+  - 2026-11-08: Phase 2 backend done: `Language` (`en`/`hi`/`or`) + `SPEECH_LOCALE` in shared, `sessions.language`, Gemini writes the intake, plan, re-plan and verdict text in it (`features/agent/i18n.ts` holds the translated rule fallbacks), the intake chat detects the language the person writes in. Red flags also catch Hindi/Odia/romanised urgent words, ignoring negated clauses. Smoke test 72/72. **The Hindi and Odia wording needs a native speaker's check.**
+  - 2026-11-09: **voice with Sarvam AI** (LiveKit dropped; we built our own `VoiceOrb` visualizer).
+    - **Server:** `POST /voice/tts` (bulbul:v3, speaker priya) and `/voice/stt` (saaras:v3, auto language). `sarvam-105b-conversations` sits in the AI hedge, first for Hindi and Odia, second for English. All of it needs the optional `SARVAM_API_KEY`; without it the routes answer 503 and the apps use device voices.
+    - **Web and mobile:** language picker, talk mode (question spoken, the app records until a pause, then transcribes and sends), Hindi and Odia instructions from `@visus/shared`, and spoken plan, next test, switch eye and result.
+    - **Mobile:** added `expo-audio` and `expo-file-system`, loaded lazily so an older development build still runs.
+    - **Checks:** smoke 75/75, `next build`, and typecheck/lint on all three apps.
+    - **Not tested by ear yet.**
+  - 2026-11-09: **Sarvam key set and the server moved to Sarvam's official SDK** (`sarvamai` in `apps/server`).
+    - The key works: one voice, one speech-to-text and one chat call answered. Then we stopped testing to save the credits.
+    - Chat: `sarvam-105b-conversations` (0.3–0.6 s); plain `sarvam-105b` thinks for 7–16 s, past our AI budget.
+    - Voice: Ritu in Sarvam's medical style (`bulbul:v4-flash`; `bulbul:v3` for Odia, since v4 has no Odia), MP3. Speech to text: `saaras:v4` with eye-check keyterms.
+    - No credits (402) or a refused key (403) turns Sarvam off for 10 min; the apps switch to the device voice. Checked with a fake key (no credits used).
+    - New `GET /voice`; Settings on web and mobile shows which voice talk mode uses.
+    - The Worker bundle builds (`wrangler deploy --dry-run`, 275 KB gzipped). Smoke not rerun: it would spend credits.
+  - 2026-11-09: **shop Ask Visus AI and Orders**.
+    - Ask Visus AI (`/shop/ask`, first in the sidebar, a highlighted capsule): pick a patient, no record, or add one, then the normal AI chat (`/check/intake`) with a *For* bar to change or add the patient mid-chat. No patient: `profileId: ""` on `/intake/chat` and `/sessions`. Also fixed the chat's Send button being greyed out for shops.
+    - Orders: new `shop_orders` table (payments as JSON); `GET/POST /shop/orders`, `GET/PATCH /shop/orders/:id`, `POST /shop/orders/:id/payments`. Web: `/shop/orders` (totals, status filter, search), `/shop/orders/new`, `/shop/orders/[id]` (status steps, payments); a patient's page lists their orders.
+    - Smoke 101/101 on the local test DB. **Aiven needs `bun run db:push`** for the new table. **Not looked at by eye yet.**
+  - 2026-11-09: fix: a shop couldn't find accounts made before phone numbers were stored (their `users.phone` is empty until they log in again). The lookup now also matches the phone login and saves it; the patient's request list does the same.
+  - 2026-11-09: **shop Test library** (`/shop/tests`, in the sidebar): tests by category; run one test, or tick up to 8 and run them as a set; a patient is optional. Server: `mode: "custom"` with `testIds`, and `profileId: ""` for a shop check with no patient (one hidden walk-in profile per shop, not in the patient list). After a no-patient check, Done goes back to the library. Smoke 90/90. **Not looked at by eye yet.**
+  - 2026-11-09: **shop portal v2** (web + server).
+    - A sidebar replaces the top bar: Patient records at the top, Account and Log out at the bottom. It folds to icons on a laptop (remembered in settings) and opens as a drawer on phones.
+    - Patient records has *Add new patient* at the top.
+    - A walk-in's mobile number can be added later (`PATCH /shop/patients/:id`); if they use Visus, they get the request and their past results follow once they allow it.
+    - New Account page (`/shop/account`, `GET`/`PATCH /shop`).
+    - The log in and sign up pages have an optical shop option.
+    - The portal always renders its page (Next.js instant-navigation check); data waits for the shop login.
+    - Smoke 85/85 on the local test DB with `SARVAM_API_KEY=` (no Sarvam credits used). `src/local.ts` now takes `PORT` and an empty `SARVAM_API_KEY` from the shell.
+    - **Not looked at by eye yet.**
+  - `feat/visus-next` is based on `feat/web-landing` (the landing branch restyles login/signup, which the portal touches). Merge the landing PR first.
 - Mobile now has every web feature (`feat/mobile-web-parity`, 2026-10-23): guest mode, voice input, onboarding "Later", skip-saves-profile fix, more distance-watched tests; server Gemini calls are hedged. Pushed for a PR. **Needs a new EAS development build** (voice input adds a native package), then a phone check.
 - Docs (2026-10-24): new root `README.md` (banner `docs/assets/banner.png`), `docs/SETUP.md` (run server + web + mobile together, EAS build, network changes, troubleshooting, deploy), `docs/ARCHITECTURE.md`, and README per app.
 - Remaining for Dhrutinandan: the deployment, later. Everything else is Sidhartha's.
 
-## Next
+## Next (resume here, Phase 4 on `feat/visus-next`)
+Phase 2 (voice) is done in code on all three apps (2026-11-09). Next:
+1. **Dhrutinandan:** once there are Sarvam credits, run `bun run dev:phone` and `bun run smoke`, then try talk mode by ear on the web (`/check/intake`, "Talk instead") and on the phone. The key is already in `.dev.vars`; for production run `bunx wrangler secret put SARVAM_API_KEY`.
+   - Expo Go has `expo-audio`, so talk mode works there.
+   - The installed app needs a new development build: `cd apps/mobile && bunx eas-cli build --profile development --platform android`.
+2. A native speaker checks the Hindi and Odia text: `packages/shared/src/voice.ts` and `apps/server/src/features/agent/i18n.ts`.
+3. Phase 3: faster AI (`lib/gemini.ts` timings), `packages/engine`, offline checks. **The on-device model needs Dhrutinandan's OK first**, because they have a different plan for it.
+4. Phase 4: web accessibility. Spoken Tumbling E answers are part of it.
+5. Before the final PR: delete PGlite from the laptop (see below).
+
+**Reminder before the final PR:** delete PGlite from the laptop (see the last task in `WORK.md` → Phase 4). Don't install anything else outside the three apps.
+
+How the server was tested without Aiven on 2026-11-08 (PGlite, to be deleted at the end):
+- PGlite was installed in the job temp folder. Run `bunx --package @electric-sql/pglite-socket pglite-server -p 55432 -m 10`, or install it again with `bun add` in any temp folder.
+- Then run `DATABASE_URL='postgres://postgres:pw@127.0.0.1:55432/postgres?sslmode=disable' bunx drizzle-kit push --force`, and start `bun src/local.ts` with the same `DATABASE_URL`.
+- Then `bun run smoke`.
+
+Older:
 - New development build: `cd apps/mobile && bunx eas-cli build --profile development --platform android` (first time: `bunx eas-cli login`, `bunx eas-cli init`).
 - Later: deployment (`apps/server/CLAUDE.md` → Deploy).
 

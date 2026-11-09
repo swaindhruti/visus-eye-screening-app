@@ -7,7 +7,10 @@ import { historyRoutes, reportRoutes } from './features/history/history.routes';
 import { intakeRoutes } from './features/intake/intake.routes';
 import { profilesRoutes } from './features/profiles/profiles.routes';
 import { sessionsRoutes } from './features/sessions/sessions.routes';
+import { voiceRoutes } from './features/voice/voice.routes';
+import { myShopsRoutes, shopRegisterRoutes, shopRoutes } from './features/shops/shops.routes';
 import { createDb } from './db/client';
+import { setSarvamKey } from './lib/gemini';
 import type { AppEnv } from './lib/env';
 import { errorHandler } from './lib/errors';
 
@@ -20,7 +23,7 @@ app.use(
   cors({
     origin: (origin) => (ALLOWED.some((re) => re.test(origin)) ? origin : null),
     allowHeaders: ['Content-Type', 'Authorization'],
-    allowMethods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   }),
 );
 
@@ -28,6 +31,7 @@ app.use(
 app.use('*', async (c, next) => {
   const { db, close } = createDb(c.env);
   c.set('db', db);
+  setSarvamKey(c.env.SARVAM_API_KEY);
   try {
     await next();
   } finally {
@@ -38,11 +42,15 @@ app.use('*', async (c, next) => {
 app.get('/health', (c) => c.json({ ok: true }));
 
 app.route('/', authRoutes); // /auth/signup, /auth/login, /me
+app.route('/me', myShopsRoutes); // shop link requests and linked shops (the patient's side)
 app.route('/profiles', profilesRoutes);
 app.route('/intake', intakeRoutes); // AI intake chat
 app.route('/sessions', sessionsRoutes); // create, results, verdict
 app.route('/sessions', historyRoutes); // list, one check, share
 app.route('/reports', reportRoutes); // shared report, no login
+app.route('/shops', shopRegisterRoutes); // register a shop, no login
+app.route('/shop', shopRoutes); // shop portal: patients, link requests
+app.route('/voice', voiceRoutes); // Indian voice: text to speech, speech to text (Sarvam AI)
 
 app.notFound((c) => c.json({ error: 'Not found' }, 404));
 app.onError(errorHandler);

@@ -11,6 +11,7 @@ import { StatusBadge } from "@/components/Chip";
 import { Icon, type IconName } from "@/components/Icon";
 import { RecheckReminder } from "@/components/RecheckReminder";
 import { Screen } from "@/components/Screen";
+import { ShopRequestsCard } from "@/components/ShopLinks";
 import { TestIcon } from "@/components/TestArt";
 import { daysAgo, fmtLong, fmtShort, MONTHS, useToday } from "@/lib/dates";
 import { categoryOf, TEST_COPY, testInfo } from "@/lib/tests";
@@ -40,6 +41,7 @@ export default function Home() {
   return (
     <>
       <Screen tabs gap="gap-4 md:gap-7" eyebrow={today ? fmtLong(today) : " "} title={me ? `Hello, ${me.name.split(" ")[0]}` : "Today"}>
+        <ShopRequestsCard />
         <div className="flex flex-col gap-4 md:flex-row md:gap-5">
           <div className="flex min-w-0 flex-col gap-4 md:flex-[2_1_0]">
             <section className="flex flex-col gap-1.5 rounded-[24px] bg-night p-5 text-white md:flex-row md:flex-wrap md:items-end md:justify-between md:gap-6 md:rounded-[28px] md:p-8">

@@ -6,15 +6,18 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Segmented, Toggle } from "@/components/Chip";
+import { LANGUAGE_OPTIONS } from "@visus/shared";
+
 import { cn } from "@/components/cn";
 import { Icon } from "@/components/Icon";
 import { Screen, Spacer } from "@/components/Screen";
+import { LinkedShopsSection } from "@/components/ShopLinks";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { logout, me } from "@/services/auth";
+import { voiceStatus } from "@/services/voice";
 import { useHydrated } from "@/store/hydrated";
 import { TEXT_SIZES, useSettings } from "@/store/settings";
 
-const LANGUAGES = ["English", "हिन्दी", "தமிழ்", "বাংলা", "मराठी"];
 const NOTIFICATIONS = [
   ["Check reminders", "Once a month"],
   ["Break reminders", "Every 20 min of screen time"],
@@ -30,6 +33,7 @@ export default function Settings() {
   const qc = useQueryClient();
   const s = useSettings();
   const user = useQuery({ queryKey: ["me"], queryFn: me });
+  const voice = useQuery({ queryKey: ["voice"], queryFn: voiceStatus, enabled: s.talk, staleTime: 60_000 });
   const [armed, setArmed] = useState(false);
   const hydrated = useHydrated();
   if (!hydrated) return <Screen />;
@@ -40,12 +44,29 @@ export default function Settings() {
 
       <span className="mb-2 ml-1 mt-5 text-[13px] font-bold text-muted">General</span>
       <div className="flex flex-none flex-col rounded-[20px] border border-line bg-white px-4">
-        <button type="button" onClick={() => s.set({ language: (s.language + 1) % LANGUAGES.length })} className="flex min-h-14 items-center gap-3 text-left">
-          <Icon name="globe" size={20} strokeWidth={1.8} className="flex-none" />
-          <span className="flex-1 text-[16px] font-semibold">Language</span>
-          <span className="text-[15px] text-muted">{LANGUAGES[s.language]}</span>
-          <Icon name="chevronRight" size={16} color="#9A9A95" strokeWidth={2.2} />
-        </button>
+        <div className="flex flex-col gap-3 pb-4 pt-3.5">
+          <div className="flex items-center gap-3">
+            <Icon name="globe" size={20} strokeWidth={1.8} className="flex-none" />
+            <span className="flex flex-1 flex-col gap-0.5">
+              <span className="text-[16px] font-semibold">Language</span>
+              <span className="text-[13px] text-muted">Visus AI chats, speaks and reads instructions in it</span>
+            </span>
+          </div>
+          <Segmented pill className="h-10" options={LANGUAGE_OPTIONS.map((o) => o.name)} value={LANGUAGE_OPTIONS.findIndex((o) => o.code === s.lang)} onChange={(i) => s.set({ lang: LANGUAGE_OPTIONS[i].code })} />
+        </div>
+        <div className="flex min-h-[60px] items-center gap-3 border-t border-divider">
+          <Icon name="speaker" size={20} strokeWidth={1.8} className="flex-none" />
+          <span className="flex flex-1 flex-col gap-0.5">
+            <span className="text-[16px] font-semibold">Talk mode</span>
+            <span className="text-[13px] text-muted">Visus reads aloud and listens for spoken answers</span>
+            {s.talk && (
+              <span className="text-[13px] text-muted">
+                {voice.data?.voice ? "Voice: Visus (Indian voice by Sarvam AI)" : "Voice: this browser's own voice"}
+              </span>
+            )}
+          </span>
+          <Toggle on={s.talk} label="Talk mode" onClick={() => s.set({ talk: !s.talk })} />
+        </div>
         <div className="flex flex-col gap-3 border-t border-divider pb-4 pt-3.5">
           <div className="flex items-center gap-3">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="flex-none">
@@ -72,6 +93,9 @@ export default function Settings() {
           </div>
         ))}
       </div>
+
+      <Label>Optical shops</Label>
+      <LinkedShopsSection />
 
       <Label>Data</Label>
       <div className="flex flex-none flex-col rounded-[20px] border border-line bg-white px-4">

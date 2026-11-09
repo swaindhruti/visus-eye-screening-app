@@ -69,3 +69,54 @@ Sidhartha (details and pointers in `progress/sidhartha.md` → Handover):
 - [ ] T: Tune scoring / rules / lens if the accuracy check shows it (`apps/server/src/features/{scoring,rules,lens}`)
 - [ ] T: Accuracy check with 15–20 people
 - [ ] T: Demo video + presentation
+
+## Phase 4: next features (Nov)
+
+New priority order agreed on 2026-11-08 (replaces "Visus: Plan to 15 November"). One branch: `feat/visus-next`, merged by PR. Deploy stays for later. **D** = built by Dhrutinandan with Claude Code (including web this time); anything left goes to Sidhartha.
+
+1. Shop portal (web + server + mobile link requests)
+
+- [x] D: Server: `users.role` + `users.phone`, `shops`, `shop_patients`, `sessions.shop_id`; `POST /shops/register`; role on `/me` and login
+- [x] D: Server: shop patients (list, search, add, detail with records), link request by phone, user approve / decline / unlink; shops can run checks for their patients
+- [x] D: Web: shop register, shop dashboard, new patient, patient detail with records and "Start check"
+- [x] D: Mobile + web: link requests ("Optics X wants to see your eye records"), Linked shops in Settings, "At <shop>" on shop-run checks
+
+- [x] D: Shop portal v2: sidebar (Patient records; Account and Log out at the bottom; folds to icons, drawer on phones), Add new patient at the top, add a patient's mobile number later (`PATCH /shop/patients/:id`, links past results), Account page (`GET`/`PATCH /shop`); optical shop option on log in and sign up
+
+- [x] D: Shop Test library in the sidebar (`/shop/tests`): tests by category; run one for a quick analysis or tick a set (`mode: "custom"`, `testIds`); patient optional (`profileId: ""` keeps it on the shop's walk-in record)
+
+- [x] D: Shop Ask Visus AI (`/shop/ask`, first in the sidebar as a highlighted capsule): AI chat and plan for a customer with or without a patient record; pick or add the patient mid-chat. Fixed the chat's Send button for shops
+- [x] D: Shop Orders (`shop_orders` table, `/shop/orders` routes; list with totals, new order, status steps, payments; orders on the patient page). **Aiven needs `bun run db:push`** (new table)
+
+2. Multilingual voice agent (English, Hindi, Odia)
+
+- [x] D: Server: `language` on intake chat, sessions and verdict; prompts reply in that language; Hindi / Odia rule fallbacks; Hindi / Odia urgent words in the red-flag rules
+- [x] D: Server: Sarvam AI (Indian voice) `POST /voice/tts` + `/voice/stt`, and `sarvam-105b-conversations` next to Gemini (first for Hindi/Odia). LiveKit dropped: our own VoiceOrb visualizer
+- [x] D: Mobile: language picker, talk mode (speak → auto-send → reply read aloud → listen again), `expo-audio`
+- [x] D: Mobile: test instructions, switch-eye and next-test text in Hindi and Odia, read aloud automatically in talk mode
+- [x] D: Web: same language picker, talk mode and translated instructions
+- [x] D: `SARVAM_API_KEY` in `apps/server/.dev.vars`; key checked (voice, speech to text and chat each answered once)
+- [x] D: Server: Sarvam through its official SDK `sarvamai`: `bulbul:v4-flash` Ritu medical voice (v3 for Odia), MP3, `saaras:v4` with eye-check keyterms, `sarvam-105b-conversations` (under 1 s), off for 10 min on 402/403, `GET /voice`; Settings on web and mobile shows which voice is in use
+- [ ] D: Try talk mode end to end by ear once there are credits; native speaker checks the Hindi/Odia text
+- [ ] D: New EAS development build for the installed app (adds `expo-audio`)
+
+3. Faster AI and offline checks
+
+- [ ] D: Server: Gemini timing logs, shorter hedge / budget, minimal thinking for chat and re-plan, plan started when the chat ends, verdict text and lens in parallel
+- [ ] D: `packages/engine`: scoring, rules, rule plan, rule verdict and lens shared by the server and the phone
+- [ ] D: Server: `POST /sessions/import` (an offline check with its own timestamps, re-scored on the server)
+- [ ] D: Mobile: full check offline on rules, saved on the phone, synced when online + background sync every ~15 min
+- [ ] D (stretch, **ask Dhrutinandan first: they have a different plan**): on-device model for the offline intake chat
+
+4. Web accessibility
+
+- [ ] D: Keyboard answers for the tests (arrows for Tumbling E, numbers for plates, space for peripheral)
+- [ ] D: Spoken answers for Tumbling E ("up", "left")
+- [ ] D: Skip link, focus on page change, live region for the AI chat, labels on icon buttons, status not by colour alone
+- [ ] D: Reduced motion respected (landing smooth scroll, 3D iris, reveals)
+- [ ] D: High-contrast theme and a dyslexia-friendly font option; `<html lang>` follows the language
+- [ ] D or T: 44 px targets, contrast check, axe audit fixes
+
+Before the final PR (cleanup on Dhrutinandan's laptop):
+
+- [ ] D: Delete PGlite (the throwaway test Postgres from 2026-11-08): `rm -rf ~/.claude/jobs/3d970588/tmp/pg` and `bun pm cache rm`. It was never in the repo.

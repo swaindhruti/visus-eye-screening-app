@@ -73,10 +73,24 @@ export const LoginRequest = z.object({
   identifier: z.string().min(3),
   password: z.string().min(1).max(128),
 });
+/** "shop" accounts open the shop portal (web) instead of the personal app. */
+export const Role = z.enum(["user", "shop"]);
+export type Role = z.infer<typeof Role>;
+
 export const AuthResponse = z.object({
   token: z.string(),
-  user: z.object({ id: z.string(), name: z.string(), identifier: z.string() }),
+  user: z.object({
+    id: z.string(),
+    name: z.string(),
+    identifier: z.string(),
+    role: Role.optional(), // missing = "user"
+    shopName: z.string().optional(), // shop accounts only
+    phone: z.string().optional(), // 10 digits; shops find a patient's account by it
+  }),
 });
+
+/** PATCH /me: add or change the phone number shops can find you by. */
+export const UpdateMeRequest = z.object({ phone: z.string().min(10).max(16) });
 
 export const Relation = z.enum(["self", "child", "partner", "parent", "sibling", "other"]);
 export type Relation = z.infer<typeof Relation>;
@@ -113,19 +127,35 @@ export type Profile = z.infer<typeof Profile>;
 
 // ---------- Check session ----------
 
+/** The language Visus AI talks in (chat, plan reasons, verdict text, read-aloud). Screens stay English. */
+export const Language = z.enum(["en", "hi", "or"]);
+export type Language = z.infer<typeof Language>;
+/** Speech recognition / text-to-speech locale per language. */
+export const SPEECH_LOCALE: Record<Language, string> = { en: "en-IN", hi: "hi-IN", or: "or-IN" };
+
 export const CreateSessionRequest = z.object({
+  /** Who the check is for. A shop may send "" for a walk-in it doesn't keep a record of (Test library). */
   profileId: z.string(),
   intake: z.string().max(2000), // what the user typed
-  mode: z.enum(["full", "quick", "single", "glasses"]).default("full"), // same values as SessionMode
+  mode: z.enum(["full", "quick", "single", "glasses", "custom"]).default("full"), // same values as SessionMode
   testId: TestId.optional(), // for mode "single"
+  testIds: z.array(TestId).min(1).max(8).optional(), // for mode "custom": the tests picked, in order
+  language: Language.optional(), // default "en"; the plan reasons and verdict text are written in it
 });
 
 /** Issue intake chat (9): one turn. The app keeps the transcript and sends it every turn. */
 export const IntakeMessage = z.object({ from: z.enum(["ai", "me"]), text: z.string().max(1000) });
 export type IntakeMessage = z.infer<typeof IntakeMessage>;
-export const IntakeChatRequest = z.object({ profileId: z.string(), messages: z.array(IntakeMessage).min(1).max(20) });
-/** The next question with quick-reply chips, or done: then call POST /sessions with the transcript as `intake`. */
-export const IntakeChatResponse = z.object({ reply: z.string(), chips: z.array(z.string()), done: z.boolean() });
+export const IntakeChatRequest = z.object({
+  profileId: z.string(),
+  messages: z.array(IntakeMessage).min(1).max(20),
+  language: Language.optional(), // the language the user picked; default "en"
+});
+/**
+ * The next question with quick-reply chips, or done: then call POST /sessions with the transcript as `intake`.
+ * `language`: the language the person is writing in (the AI replies in it); send it on the next turn and to POST /sessions.
+ */
+export const IntakeChatResponse = z.object({ reply: z.string(), chips: z.array(z.string()), done: z.boolean(), language: Language.optional() });
 export type IntakeChatResponse = z.infer<typeof IntakeChatResponse>;
 
 export const PlanItem = z.object({ testId: TestId, reason: z.string() });
@@ -202,7 +232,7 @@ export type Verdict = z.infer<typeof Verdict>;
 
 // ---------- Past checks & sharing ----------
 
-export const SessionMode = z.enum(["full", "quick", "single", "glasses"]);
+export const SessionMode = z.enum(["full", "quick", "single", "glasses", "custom"]);
 export type SessionMode = z.infer<typeof SessionMode>;
 
 /** One row of GET /sessions, newest first. */
@@ -215,9 +245,152 @@ export const SessionSummary = z.object({
   status: Status, // worst status of the check
   tests: z.array(TestId),
   scores: z.partialRecord(TestId, z.number().min(0).max(100)), // for the Results trend chart
+  shopName: z.string().optional(), // set when an optical shop ran the check
 });
 export type SessionSummary = z.infer<typeof SessionSummary>;
 
 /** POST /sessions/:id/share: a read-only report link for a doctor. */
 export const ShareLink = z.object({ url: z.string(), expiresAt: z.string() });
 export type ShareLink = z.infer<typeof ShareLink>;
+
+// ---------- Shop portal (web) ----------
+// An optical shop registers, adds walk-in patients and runs checks for them. A patient with a
+// Visus account can be linked by phone number once they approve it in their app; the shop then
+// sees their past checks, and the checks the shop runs show up in the patient's account.
+
+export const ShopRegisterRequest = z.object({
+  shopName: z.string().min(2).max(100),
+  address: z.string().max(200).default(""),
+  city: z.string().max(80).default(""),
+  ownerName: z.string().min(1).max(100),
+  identifier: z.string().min(3), // login: phone or email
+  password: z.string().min(8).max(128),
+});
+
+export const Shop = z.object({ id: z.string(), name: z.string(), address: z.string(), city: z.string() });
+export type Shop = z.infer<typeof Shop>;
+
+/** none = no Visus account with this phone yet; pending = waiting for the patient's answer. */
+export const LinkStatus = z.enum(["none", "pending", "approved", "declined"]);
+export type LinkStatus = z.infer<typeof LinkStatus>;
+
+export const CreatePatientRequest = z.object({
+  name: z.string().min(1).max(100),
+  age: z.number().int().min(3).max(120),
+  gender: z.string().optional(),
+  phone: z.string().max(16).default(""), // optional: needed only to link a Visus account
+  wearsGlasses: z.boolean().default(false),
+});
+
+/** One row of GET /shop/patients. */
+export const ShopPatient = z.object({
+  id: z.string(),
+  name: z.string(),
+  age: z.number(),
+  phone: z.string(),
+  wearsGlasses: z.boolean(),
+  linkStatus: LinkStatus,
+  /** Start checks with this profile: the patient's own profile once linked, else the shop's record. */
+  checkProfileId: z.string(),
+  lastCheck: z.string().nullable(), // ISO date
+  createdAt: z.string(),
+});
+export type ShopPatient = z.infer<typeof ShopPatient>;
+
+/** GET /shop/patients/:id: the patient and their finished checks (all of them once linked). */
+export const PatientDetail = ShopPatient.extend({ sessions: z.array(SessionSummary) });
+export type PatientDetail = z.infer<typeof PatientDetail>;
+
+/** A shop asking to see your records (GET /me/shop-requests), or a linked shop (GET /me/shops). */
+export const ShopRequest = z.object({
+  id: z.string(),
+  shopName: z.string(),
+  city: z.string(),
+  status: LinkStatus,
+  createdAt: z.string(),
+});
+export type ShopRequest = z.infer<typeof ShopRequest>;
+
+export const ShopRequestAnswer = z.object({ approve: z.boolean() });
+
+/**
+ * PATCH /shop/patients/:id: add or change a walk-in's mobile number later. If a Visus account uses it,
+ * the patient gets a link request; once they allow it, the shop sees their past checks.
+ */
+export const UpdatePatientRequest = z.object({ phone: z.string().max(16) });
+
+/** GET /shop: the shop and who runs it (Account in the shop portal). */
+export const ShopAccount = Shop.extend({ ownerName: z.string(), identifier: z.string(), patients: z.number() });
+export type ShopAccount = z.infer<typeof ShopAccount>;
+
+/** PATCH /shop: change the shop's name, address or city. */
+export const UpdateShopRequest = z.object({ name: z.string().min(2).max(100), address: z.string().max(200), city: z.string().max(80) });
+
+// ---------- Shop orders and payments (shop portal → Orders) ----------
+
+export const OrderKind = z.enum(["spectacles", "lenses", "contact_lenses", "frames", "sunglasses", "other"]);
+export type OrderKind = z.infer<typeof OrderKind>;
+/** new → in_progress (at the lab) → ready (for pickup) → delivered; or cancelled. */
+export const OrderStatus = z.enum(["new", "in_progress", "ready", "delivered", "cancelled"]);
+export type OrderStatus = z.infer<typeof OrderStatus>;
+export const PaymentMethod = z.enum(["cash", "upi", "card"]);
+export type PaymentMethod = z.infer<typeof PaymentMethod>;
+/** Paid from the payments against the total. */
+export type PaymentStatus = "unpaid" | "partial" | "paid";
+
+/** Amounts are whole rupees. */
+export const Payment = z.object({ amount: z.number().int().positive().max(10_000_000), method: PaymentMethod });
+export type Payment = z.infer<typeof Payment> & { at: string };
+
+export type ShopOrder = {
+  id: string;
+  /** The shop's patient this order is for, or null for a customer without a record. */
+  patientId: string | null;
+  customerName: string;
+  phone: string;
+  item: string;
+  kind: OrderKind;
+  total: number;
+  paid: number;
+  due: number;
+  paymentStatus: PaymentStatus;
+  payments: Payment[];
+  status: OrderStatus;
+  /** Promised for (ISO date), or null. */
+  dueDate: string | null;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** GET /shop/orders: the orders (newest first) and the shop's totals. */
+export type ShopOrders = {
+  orders: ShopOrder[];
+  summary: { open: number; ready: number; collected: number; due: number };
+};
+
+/** POST /shop/orders. A patient, or a customer name (and phone) for someone without a record. */
+export const CreateOrderRequest = z.object({
+  patientId: z.string().optional(),
+  customerName: z.string().max(100).default(""),
+  phone: z.string().max(16).default(""),
+  item: z.string().min(1).max(200),
+  kind: OrderKind.default("spectacles"),
+  total: z.number().int().min(0).max(10_000_000),
+  /** Paid now (an advance), optional. */
+  advance: Payment.optional(),
+  dueDate: z.iso.date().optional(),
+  notes: z.string().max(500).default(""),
+});
+
+/** PATCH /shop/orders/:id: move it along, or fix its details. */
+export const UpdateOrderRequest = z.object({
+  status: OrderStatus.optional(),
+  item: z.string().min(1).max(200).optional(),
+  total: z.number().int().min(0).max(10_000_000).optional(),
+  dueDate: z.iso.date().nullable().optional(),
+  notes: z.string().max(500).optional(),
+});
+
+// Hindi and Odia instructions, spoken lines and the voice routes (Sarvam AI via the server).
+export * from "./voice";

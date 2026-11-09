@@ -11,6 +11,10 @@ import type {
   Verdict,
 } from "@visus/shared";
 
+import type { Language } from "@visus/shared";
+
+import { useSettings } from "@/store/settings";
+
 import { api, USE_MOCK } from "./api";
 import { isGuest } from "./auth";
 import * as mock from "./mock/sessions";
@@ -20,10 +24,13 @@ export type CheckMode = SessionMode;
 export type NewSession = ReturnType<typeof CreateSessionRequest.parse>;
 export type CreatedSession = ReturnType<typeof CreateSessionResponse.parse>;
 
-/** POST /intake/chat: the AI's next intake question with quick replies, or done. Send the whole chat so far. */
-export async function intakeChat(profileId: string, messages: IntakeMessage[]): Promise<IntakeChatResponse> {
+/**
+ * POST /intake/chat: the AI's next intake question with quick replies, or done. Send the whole chat so far.
+ * The reply comes in the language the person writes in (`language` in the response).
+ */
+export async function intakeChat(profileId: string, messages: IntakeMessage[], language: Language = useSettings.getState().lang): Promise<IntakeChatResponse> {
   if (USE_MOCK) return mock.intakeChat(messages);
-  return api<IntakeChatResponse>("/intake/chat", { body: { profileId, messages } });
+  return api<IntakeChatResponse>("/intake/chat", { body: { profileId, messages, language } });
 }
 
 /** The chat as the `intake` text of POST /sessions: one line per message, "Visus: …" / "Me: …". */
@@ -39,7 +46,8 @@ export async function createSession(input: NewSession): Promise<CreatedSession> 
     return { sessionId: GUEST_SESSION, summary: "The test you picked.", plan: [{ testId: input.testId, reason: "The test you picked." }] };
   }
   if (USE_MOCK) return mock.create(input);
-  return api<CreatedSession>("/sessions", { body: input });
+  // The plan reasons and the verdict text come in the chosen language.
+  return api<CreatedSession>("/sessions", { body: { ...input, language: input.language ?? useSettings.getState().lang } });
 }
 
 /** Raw answers only. The server scores them and decides what comes next. */

@@ -1,4 +1,5 @@
 import type {
+  Language,
   CreateSessionRequest,
   CreateSessionResponse,
   IntakeChatResponse,
@@ -11,6 +12,7 @@ import type {
 } from '@visus/shared';
 
 import { mockDelay, request, USE_MOCK } from '@/services/api';
+import { useSettings } from '@/store/settings';
 import { mockCreateSession, mockIntakeChat, mockSession, mockSessions, mockShare, mockSubmitResult, mockVerdict } from '@/services/mock/sessions';
 
 export type { SessionSummary };
@@ -39,9 +41,10 @@ export async function shareSession(sessionId: string): Promise<ShareLink> {
 export type { IntakeMessage };
 
 /** POST /intake/chat: the AI's next intake question with quick replies, or done. Send the whole chat so far. */
-export async function intakeChat(profileId: string, messages: IntakeMessage[]): Promise<IntakeChatResponse> {
+export async function intakeChat(profileId: string, messages: IntakeMessage[], language: Language = useSettings.getState().language): Promise<IntakeChatResponse> {
   if (USE_MOCK) return mockDelay(mockIntakeChat(messages), 900);
-  return request<IntakeChatResponse>('/intake/chat', { method: 'POST', body: { profileId, messages } });
+  // The reply comes in the language the person writes in (`language` in the response).
+  return request<IntakeChatResponse>('/intake/chat', { method: 'POST', body: { profileId, messages, language } });
 }
 
 /** The chat as the `intake` text of POST /sessions: one line per message, "Visus: …" / "Me: …". */
@@ -54,7 +57,8 @@ export type Session = ReturnType<typeof CreateSessionResponse.parse>;
 /** POST /sessions: the agent reads the intake and returns a test plan. */
 export async function createSession(input: NewSession): Promise<Session> {
   if (USE_MOCK) return mockDelay(mockCreateSession(input), 1200);
-  return request<Session>('/sessions', { method: 'POST', body: input });
+  // The plan reasons and the verdict text come in the chosen language.
+  return request<Session>('/sessions', { method: 'POST', body: { ...input, language: input.language ?? useSettings.getState().language } });
 }
 
 /** Guest checks never reach the server's sessions: one test, scored by POST /reports/guest-score, nothing saved. */

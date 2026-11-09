@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 
 import { setGuest } from "@/services/auth";
 import { useCheck } from "@/store/check";
@@ -18,6 +19,7 @@ export function GuestDialog({ onBack, onContinue }: { onBack: () => void; onCont
       <div className="fixed inset-0 z-30 bg-[rgba(17,17,17,.42)]" onClick={onBack} />
       <div
         role="alertdialog"
+        data-lenis-prevent
         aria-modal
         aria-labelledby="guest-title"
         className="fixed inset-x-5 top-1/2 z-40 mx-auto flex max-h-[90dvh] max-w-[440px] -translate-y-1/2 flex-col overflow-y-auto rounded-[28px] bg-white px-5 pb-5 pt-6 shadow-[0_20px_50px_rgba(0,0,0,.2)] md:px-7 md:pt-7"
@@ -53,24 +55,31 @@ export function GuestDialog({ onBack, onContinue }: { onBack: () => void; onCont
 }
 
 /** Welcome: "Continue as guest" → the dialog → the Tests library. */
-export function ContinueAsGuest() {
+export function ContinueAsGuest({ className }: { className?: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="h-11 self-center whitespace-nowrap text-[15px] font-semibold text-muted underline-offset-4 hover:text-ink hover:underline md:self-auto md:px-2">
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={className ?? "h-11 self-center whitespace-nowrap text-[15px] font-semibold text-muted underline-offset-4 hover:text-ink hover:underline md:self-auto md:px-2"}
+      >
         Continue as guest
       </button>
-      {open && (
-        <GuestDialog
-          onBack={() => setOpen(false)}
-          onContinue={() => {
-            setGuest(true);
-            useCheck.getState().reset();
-            router.push("/tests");
-          }}
-        />
-      )}
+      {/* Portalled, so a transformed ancestor (landing animations) can't trap the fixed dialog. */}
+      {open &&
+        createPortal(
+          <GuestDialog
+            onBack={() => setOpen(false)}
+            onContinue={() => {
+              setGuest(true);
+              useCheck.getState().reset();
+              router.push("/tests");
+            }}
+          />,
+          document.body,
+        )}
     </>
   );
 }

@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { AuthShell, PillButton } from "@/components/AuthShell";
 import { Button } from "@/components/Button";
 import { Chip, OptionRow } from "@/components/Chip";
 import { cn } from "@/components/cn";
@@ -20,8 +21,10 @@ const PAST_LABELS = PAST_OPTIONS.map(([, l]) => l);
 
 type Data = { name: string; gender: string | null; age: number | ""; specs: string | null; past: string | null; note: string; cond: string[]; screen: string | null };
 
-const Q = ({ children }: { children: React.ReactNode }) => <h1 className="m-0 mt-2 text-q font-bold leading-[1.15] tracking-[-0.02em]">{children}</h1>;
-const Sub = ({ children }: { children: React.ReactNode }) => <p className="m-0 mt-2.5 text-body leading-normal text-muted text-pretty">{children}</p>;
+const STEP_NAMES = ["Your name", "Gender", "Age", "Glasses or lenses", "Eye history", "Health", "Screen time"];
+
+const Q = ({ children }: { children: React.ReactNode }) => <h1 className="m-0 mt-3 text-[32px] font-medium leading-[1.05] tracking-[-0.035em] text-balance md:text-[40px]">{children}</h1>;
+const Sub = ({ children }: { children: React.ReactNode }) => <p className="m-0 mt-3 text-body leading-relaxed text-muted text-pretty">{children}</p>;
 
 export default function Onboarding() {
   const router = useRouter();
@@ -83,9 +86,30 @@ export default function Onboarding() {
   ];
 
   return (
-    <div className="min-h-dvh bg-pearl">
-      <main
-        className="mx-auto w-full max-w-[640px] flex min-h-dvh flex-col px-5 pb-8 pt-6 md:pt-10"
+    <AuthShell
+      panel={
+        <>
+          <h2 className="m-0 text-[44px] font-medium leading-[1.02] tracking-[-0.04em] text-balance xl:text-[52px]">A few questions, then your first check.</h2>
+          <ol className="m-0 mt-9 flex list-none flex-col gap-1 p-0">
+            {STEP_NAMES.map((label, i) => (
+              <li key={label} className={cn("flex items-center gap-3.5 rounded-full py-1.5 pr-4 text-[15px] transition-colors duration-500", i === step ? "text-white" : i < step ? "text-white/70" : "text-white/35")}>
+                <span
+                  className={cn(
+                    "grid size-8 flex-none place-items-center rounded-full border text-[13px] font-medium tabular-nums transition-colors duration-500",
+                    i === step ? "border-white bg-white text-ink" : i < step ? "border-acc-bright/50 bg-acc-bright/15 text-acc-bright" : "border-white/15",
+                  )}
+                >
+                  {i < step ? <Icon name="check" size={12} strokeWidth={2.4} /> : i + 1}
+                </span>
+                {label}
+              </li>
+            ))}
+          </ol>
+        </>
+      }
+    >
+      <div
+        className="flex flex-1 flex-col"
         onKeyDown={(e) => {
           if (e.key === "Enter" && step < 7 && (e.target as HTMLElement).tagName !== "TEXTAREA") next();
         }}
@@ -95,13 +119,14 @@ export default function Onboarding() {
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-line-option" role="progressbar" aria-valuenow={step + 1} aria-valuemax={8}>
             <div className="h-full rounded-full bg-acc transition-[width] duration-400 ease-[cubic-bezier(.2,.7,.3,1)]" style={{ width: `${Math.round(((step + 1) / 8) * 100)}%` }} />
           </div>
-          <button type="button" onClick={advance} className={cn("h-11 px-1.5 text-[16px] font-semibold text-muted hover:text-ink", (step === 0 || step === 7) && "invisible")}>
+          <button type="button" onClick={advance} className={cn("h-11 rounded-full px-4 text-[15px] font-medium text-muted transition-colors hover:bg-fill hover:text-ink", (step === 0 || step === 7) && "invisible")}>
             Skip
           </button>
         </div>
 
-        <div className="mt-8 flex flex-col">
-          <div className="text-[14px] font-semibold text-muted">{step < 7 ? `Step ${step + 1} of 7` : "All done"}</div>
+        {/* key: each step rises in when it appears */}
+        <div key={step} className="mt-8 flex animate-rise flex-col [animation-duration:.7s] motion-reduce:animate-none lg:mt-[12vh]">
+          <div className="text-[12px] font-semibold uppercase tracking-[0.16em] text-faint">{step < 7 ? `Step ${step + 1} of 7` : "All done"}</div>
 
           {step === 0 && (
             <>
@@ -113,7 +138,7 @@ export default function Onboarding() {
                 onChange={(e) => set({ name: e.target.value })}
                 placeholder="Your name"
                 aria-label="Your name"
-                className="mt-7 h-opt w-full rounded-[16px] border border-line-strong bg-white px-[18px] text-opt outline-none transition-[border-color,box-shadow] focus:border-ink focus:shadow-[0_0_0_4px_rgba(17,17,17,.06)] focus-visible:outline-none"
+                className="mt-8 h-[60px] w-full rounded-[18px] border border-line-strong bg-white px-5 text-[18px] outline-none transition-[border-color,box-shadow] focus:border-ink focus:shadow-[0_0_0_4px_rgba(17,17,17,.06)] focus-visible:outline-none"
               />
             </>
           )}
@@ -177,13 +202,13 @@ export default function Onboarding() {
               <div className="mt-2 grid size-[60px] place-items-center rounded-full bg-acc-soft text-acc-ink">
                 <Icon name="checkLg" size={28} strokeWidth={2.4} />
               </div>
-              <h1 className="m-0 mt-5 text-q font-bold leading-[1.15] tracking-[-0.02em]">You&apos;re all set, {d.name.trim().split(" ")[0] || "friend"}</h1>
+              <h1 className="m-0 mt-5 text-[32px] font-medium leading-[1.05] tracking-[-0.035em] md:text-[40px]">You&apos;re all set, {d.name.trim().split(" ")[0] || "friend"}</h1>
               <Sub>Here&apos;s what Visus will use to tailor your checks.</Sub>
-              <div className="mt-[22px] rounded-[20px] border border-line bg-white px-[18px]">
+              <div className="mt-7 rounded-[24px] border border-line bg-white px-5">
                 {rows.map(([k, v], i) => (
                   <div key={k} className={cn("flex items-baseline justify-between gap-4 py-[13px] text-[15px]", i > 0 && "border-t border-divider")}>
                     <span className="flex-none text-muted">{k}</span>
-                    <span className="text-right font-semibold">{v || "Skipped"}</span>
+                    <span className={cn("text-right font-medium", !v && "text-faint")}>{v || "Skipped"}</span>
                   </div>
                 ))}
               </div>
@@ -191,24 +216,24 @@ export default function Onboarding() {
           )}
         </div>
 
-        <Spacer min={20} />
+        <Spacer min={28} />
         {step < 7 ? (
-          <Button onClick={next} disabled={!canNext}>
+          <PillButton onClick={next} disabled={!canNext}>
             {step === 6 ? "Finish" : "Continue"}
-          </Button>
+          </PillButton>
         ) : (
           <>
             {save.isError && <p className="m-0 mb-3 text-center text-[14px] text-doc">Couldn&apos;t save your profile. Try again.</p>}
-            <Button onClick={() => (save.isError ? save.mutate() : router.push("/permissions"))} disabled={save.isPending}>
+            <PillButton onClick={() => (save.isError ? save.mutate() : router.push("/permissions"))} disabled={save.isPending}>
               {save.isPending ? "Saving…" : save.isError ? "Try again" : "Start my first eye check"}
-            </Button>
-            <Button variant="ghost" className="mt-1" disabled={!save.isSuccess} onClick={() => router.push("/home")}>
+            </PillButton>
+            <Button variant="ghost" className="mt-2 rounded-full!" disabled={!save.isSuccess} onClick={() => router.push("/home")}>
               Later
             </Button>
             <div className="mt-2 text-center text-[14px] text-muted">You can change these anytime in Profile.</div>
           </>
         )}
-      </main>
-    </div>
+      </div>
+    </AuthShell>
   );
 }

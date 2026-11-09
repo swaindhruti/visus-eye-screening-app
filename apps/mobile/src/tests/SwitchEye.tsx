@@ -1,6 +1,5 @@
 // Screen 44: Switch eye, between the right-eye and left-eye parts of a test.
 // Reads the instruction aloud, then counts down 3 seconds and starts.
-import * as Speech from 'expo-speech';
 import { useEffect, useEffectEvent, useState } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -10,6 +9,9 @@ import { Icon } from '@/components/Icon';
 import { TestHeader } from '@/components/TestHeader';
 import { Text } from '@/components/Text';
 import { Colors, Fonts, Radius, StatusColors } from '@/constants/theme';
+import { VOICE_TEXT } from '@visus/shared';
+import { speak } from '@/services/talk';
+import { useSettings } from '@/store/settings';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const RING = 2 * Math.PI * 34; // 213.6
@@ -36,10 +38,13 @@ export function SwitchEye({ title, onExit, onStart }: Props) {
       for (let i = 1; i <= COUNT; i++) timers.push(setTimeout(() => setLeft(COUNT - i), i * 1000));
       timers.push(setTimeout(() => start(), COUNT * 1000 + 600));
     };
-    Speech.speak(`${TITLE}. ${BODY}`, { language: 'en', rate: 0.95, onDone: countdown, onError: countdown });
+    // Read in the chosen language (the Visus voice, else the phone's), then count down.
+    const lang = useSettings.getState().language;
+    const voice = speak(lang === 'en' ? `${TITLE}. ${BODY}` : VOICE_TEXT[lang].switchEye, lang);
+    void voice.done.then(countdown);
     return () => {
       active = false;
-      Speech.stop();
+      voice.stop();
       timers.forEach(clearTimeout);
       progress.stopAnimation();
     };
