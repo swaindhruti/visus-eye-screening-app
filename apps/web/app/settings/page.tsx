@@ -14,6 +14,7 @@ import { Screen, Spacer } from "@/components/Screen";
 import { LinkedShopsSection } from "@/components/ShopLinks";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { logout, me } from "@/services/auth";
+import { voiceStatus } from "@/services/voice";
 import { useHydrated } from "@/store/hydrated";
 import { TEXT_SIZES, useSettings } from "@/store/settings";
 
@@ -32,6 +33,7 @@ export default function Settings() {
   const qc = useQueryClient();
   const s = useSettings();
   const user = useQuery({ queryKey: ["me"], queryFn: me });
+  const voice = useQuery({ queryKey: ["voice"], queryFn: voiceStatus, enabled: s.talk, staleTime: 60_000 });
   const [armed, setArmed] = useState(false);
   const hydrated = useHydrated();
   if (!hydrated) return <Screen />;
@@ -57,6 +59,11 @@ export default function Settings() {
           <span className="flex flex-1 flex-col gap-0.5">
             <span className="text-[16px] font-semibold">Talk mode</span>
             <span className="text-[13px] text-muted">Visus reads aloud and listens for spoken answers</span>
+            {s.talk && (
+              <span className="text-[13px] text-muted">
+                {voice.data?.voice ? "Voice: Visus (Indian voice by Sarvam AI)" : "Voice: this browser's own voice"}
+              </span>
+            )}
           </span>
           <Toggle on={s.talk} label="Talk mode" onClick={() => s.set({ talk: !s.talk })} />
         </div>

@@ -16,6 +16,7 @@ import { logout } from '@/services/auth';
 import { forgetProfiles } from '@/services/profiles';
 import { canDrawOverlays, coachAvailable, getCoachStatus, setBreakReminders } from '@/services/coach';
 import { UNAVAILABLE_NOTE } from '@/services/reminders';
+import { useVoiceKind } from '@/services/talk';
 import { useAuth } from '@/store/auth';
 import { useCalibration } from '@/store/calibration';
 import { useCheck } from '@/store/check';
@@ -51,6 +52,7 @@ export default function Settings() {
   const calibrated = useCalibration((s) => s.pxPerMm !== null);
   const identifier = useAuth((s) => s.user?.identifier ?? '');
   const [languages, setLanguages] = useState(false);
+  const voice = useVoiceKind();
   const [blocked, setBlocked] = useState<'denied' | 'unavailable' | null>(null);
   const [armed, setArmed] = useState(false);
 
@@ -103,6 +105,7 @@ export default function Settings() {
             <View style={styles.notifText}>
               <Text style={styles.rowTitle}>Talk mode</Text>
               <Text style={styles.sub}>Visus reads aloud and listens for spoken answers</Text>
+              {talk && <Text style={styles.sub}>{voice === 'visus' ? 'Voice: Visus (Indian voice by Sarvam AI)' : "Voice: this phone's own voice"}</Text>}
             </View>
             <Switch value={talk} onChange={setTalk} label="Talk mode" />
           </View>

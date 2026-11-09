@@ -5,7 +5,7 @@
 // every failure just returns null and the screen carries on with typing and tapping.
 // expo-audio and expo-file-system load lazily: a development build made before they were added
 // doesn't have them, and then talk mode uses the phone's voice and speech recognition only.
-import { SPEECH_LOCALE, type Language, type SttResponse, type TtsResponse } from '@visus/shared';
+import { SPEECH_LOCALE, type Language, type SttResponse, type TtsResponse, type VoiceStatus } from '@visus/shared';
 import { requireOptionalNativeModule } from 'expo';
 import type { AudioPlayer, AudioRecorder } from 'expo-audio';
 import * as Speech from 'expo-speech';
@@ -22,7 +22,7 @@ export type Heard = { text: string; language: Language | null };
 /** This build can record and play audio files (Expo Go and builds made after expo-audio was added). */
 const audioReady = !!requireOptionalNativeModule('ExpoAudio') && !!requireOptionalNativeModule('FileSystem');
 
-/** False once the server said it has no voice key (503): use the phone's voice from then on. */
+/** False once the server said its voice is off (503: no key, or the Sarvam credits are used up): use the phone's voice from then on. */
 let serverVoice = true;
 const serverOn = () => audioReady && serverVoice && !USE_MOCK && !!useAuth.getState().token && !useAuth.getState().guest;
 
@@ -31,7 +31,7 @@ async function ttsFile(text: string, language: Language): Promise<string | null>
   try {
     const res = await request<TtsResponse>('/voice/tts', { method: 'POST', body: { text: text.slice(0, 2000), language } });
     const { File, Paths } = await import('expo-file-system');
-    const file = new File(Paths.cache, `visus-voice-${Date.now()}.wav`);
+    const file = new File(Paths.cache, `visus-voice-${Date.now()}.${res.mime.includes('mpeg') ? 'mp3' : 'wav'}`);
     file.write(res.audio, { encoding: 'base64' });
     return file.uri;
   } catch (e) {
@@ -238,4 +238,19 @@ export function useSayInTalkMode(text: string | undefined) {
       stopSpeaking();
     };
   }, [talk, text]);
+}
+
+/** Which voice talk mode uses: the Visus voice (Sarvam) or the phone's own. Asks GET /voice once (free). */
+export function useVoiceKind(): 'visus' | 'device' {
+  const [on, setOn] = useState(serverOn);
+  useEffect(() => {
+    if (!serverOn()) return;
+    request<VoiceStatus>('/voice')
+      .then((status) => {
+        if (!status.voice) serverVoice = false;
+        setOn(status.voice);
+      })
+      .catch(() => undefined);
+  }, []);
+  return on ? 'visus' : 'device';
 }

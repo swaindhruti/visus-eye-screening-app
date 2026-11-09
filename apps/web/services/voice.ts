@@ -1,9 +1,10 @@
-import { type Language, type SttResponse, type TtsResponse } from "@visus/shared";
+import { type Language, type SttResponse, type TtsResponse, type VoiceStatus } from "@visus/shared";
 
 import { api, ApiError, getToken, USE_MOCK } from "./api";
 
 // The Indian voice of Visus: POST /voice/tts and /voice/stt (Sarvam AI on the server).
-// null means "use the browser's own voice": no login, mock mode, or the server has no voice key (503).
+// null means "use the browser's own voice": no login, mock mode, or the server's voice is off (503: no key,
+// or the Sarvam credits are used up).
 
 let serverVoice = true;
 
@@ -35,3 +36,15 @@ export async function stt(audio: Blob, language?: Language): Promise<SttResponse
 
 /** False once the server said it has no voice: skip recording and use the browser's speech recognition. */
 export const hasServerVoice = () => serverVoice && !USE_MOCK && !!getToken();
+
+/** Whether the Visus voice is on (GET /voice, free: it doesn't use Sarvam credits). Off: the browser's voice. */
+export async function voiceStatus(): Promise<VoiceStatus> {
+  if (!hasServerVoice()) return { voice: false };
+  try {
+    const status = await api<VoiceStatus>("/voice");
+    if (!status.voice) serverVoice = false;
+    return status;
+  } catch {
+    return { voice: false };
+  }
+}
