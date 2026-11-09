@@ -83,6 +83,8 @@ New priority order agreed on 2026-11-08 (replaces "Visus: Plan to 15 November").
 
 - [x] D: Shop portal v2: sidebar (Patient records; Account and Log out at the bottom; folds to icons, drawer on phones), Add new patient at the top, add a patient's mobile number later (`PATCH /shop/patients/:id`, links past results), Account page (`GET`/`PATCH /shop`); optical shop option on log in and sign up
 
+- [x] D: Shop Test library in the sidebar (`/shop/tests`): tests by category; run one for a quick analysis or tick a set (`mode: "custom"`, `testIds`); patient optional (`profileId: ""` keeps it on the shop's walk-in record)
+
 2. Multilingual voice agent (English, Hindi, Odia)
 
 - [x] D: Server: `language` on intake chat, sessions and verdict; prompts reply in that language; Hindi / Odia rule fallbacks; Hindi / Odia urgent words in the red-flag rules

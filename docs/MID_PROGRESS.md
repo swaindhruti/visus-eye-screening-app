@@ -30,10 +30,11 @@ See the [main README](../README.md#features) for the full list.
 A walk-in customer at any optical counter can get a screening, and the shop keeps a record.
 
 - **Shop account:** a shop registers at `/shop/register` with its name, city and a login. Shops log in at `/shop/login`, or through the normal log in, which sends shop accounts to their portal. The log in and sign up pages each have an *optical shop* option.
-- **Sidebar layout:** *Patient records* at the top, *Account* and *Log out* at the bottom. It folds to icons on a laptop and opens as a drawer on a phone.
+- **Sidebar layout:** *Patient records* and *Test library* at the top, *Account* and *Log out* at the bottom. It folds to icons on a laptop and opens as a drawer on a phone.
 - **Patient records (`/shop`):** *Add new patient* at the top, then search by name or phone, each patient's last check, and how many were checked today and how many accounts are linked.
 - **Add a walk-in:** name, age, glasses, and an optional mobile number. No email or account is needed for the customer. The number can be added later from the patient's record, which links their past results once they allow it.
 - **Account (`/shop/account`):** the shop's name, city and address (editable), its login, and how many patients it has.
+- **Test library (`/shop/tests`):** every test grouped by category (Clarity, Focus, Eye Health, Colour, Comfort, Kids). Run one test for a quick analysis, or tick several and run them as a set. Picking a patient is optional: with *No patient* the result isn't saved to anyone's record.
 - **Run any check for a patient:** a full AI check, the 1-minute quick check, a glasses check, or any single test. It's the same check flow, and the result is saved on the patient's record.
 - **Link the patient's own Visus account by mobile number, with their consent:**
   1. The patient gets a request in their app: *"Optics X wants to see your eye records: Allow / Decline"*.
@@ -93,7 +94,7 @@ How it fits together: [ARCHITECTURE.md](ARCHITECTURE.md) → *Shop portal and li
 
 ## How we checked it
 
-- **Server:** the automated smoke test covers every route, including 39 checks for the shop portal (register, walk-ins, linking, approve, unlink, a number added later, the shop's account, who can see what), 6 for languages and 4 for voice. **85 of 85 pass.**
+- **Server:** the automated smoke test covers every route, including 44 checks for the shop portal (register, walk-ins, linking, approve, unlink, a number added later, the shop's account, Test library checks with and without a patient, who can see what), 6 for languages and 4 for voice. **90 of 90 pass.**
 - **Web:** production build passes, with typecheck and lint.
 - **Android:** typecheck and lint pass.
 - **Still to check by hand:**

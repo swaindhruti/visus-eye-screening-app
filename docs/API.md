@@ -19,7 +19,7 @@ Hono on Cloudflare Workers. Types come from `packages/shared` (`@visus/shared`).
 | `POST /profiles` | `Profile` without `id` | `Profile` (201). The first profile is the owner (`relation: "self"`) | D | live |
 | `PATCH /profiles/:id` | partial `Profile` | `Profile` | D | live |
 | `POST /intake/chat` | `IntakeChatRequest` (`{ profileId, messages: [{ from: "ai" \| "me", text }], language? }`, the whole chat so far) | `IntakeChatResponse` (`{ reply, chips, done, language }`): reply and chips in the language the person writes in | D | live |
-| `POST /sessions` | `CreateSessionRequest` (+ optional `language`) | `CreateSessionResponse` (201). Summary and reasons in `language` | D | live |
+| `POST /sessions` | `CreateSessionRequest` (+ optional `language`) | `CreateSessionResponse` (201). Summary and reasons in `language`. `mode: "custom"` with `testIds` (1–8, duplicates dropped) runs exactly the tests picked. A shop may send `profileId: ""` for a check with no patient record (kept on the shop's own walk-in profile, never in its patient list); a personal account gets 400 | D | live |
 | `POST /sessions/:id/results` | `SubmitResult` | `NextStep`. 409 after the verdict | D (route) + T (scoring, rules) | live |
 | `POST /sessions/:id/verdict` | — | `Verdict` (saved; calling again returns the same one) | D (route) + T (lens) | live |
 | `GET /sessions` | — | `SessionSummary[]`, finished checks, newest first | T | live |
