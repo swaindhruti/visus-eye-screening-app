@@ -8,7 +8,7 @@
 // The first valid answer wins and the others are cancelled. After BUDGET_MS the rules answer instead.
 import { z } from 'zod';
 
-import { SARVAM_CHAT_MODEL, sarvamChat } from './sarvam';
+import { SARVAM_CHAT_MODEL, sarvamChat, sarvamReady } from './sarvam';
 
 const BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 /** Fastest first; the others join when it is slow, busy (503/429) or failing. */
@@ -37,7 +37,7 @@ type Options<T extends z.ZodType> = {
   prefer?: 'sarvam';
 };
 
-/** One Sarvam try: the parsed reply or null. Sarvam has no schema field, so the schema goes in the prompt. */
+/** One Sarvam try: the parsed reply or null. The schema goes in the prompt with JSON mode (tested with this model). */
 async function askSarvam<T extends z.ZodType>(system: string, prompt: string, schema: T, signal: AbortSignal): Promise<z.infer<T> | null> {
   try {
     const json = JSON.stringify(z.toJSONSchema(schema, { target: 'draft-7' }));
@@ -87,7 +87,7 @@ async function ask<T extends z.ZodType>(model: string, apiKey: string, body: str
 
 export async function geminiJson<T extends z.ZodType>({ apiKey, system, prompt, schema, models = GEMINI_MODELS, prefer }: Options<T>): Promise<z.infer<T> | null> {
   // Sarvam goes first for Hindi/Odia, else second (it joins when Flash-Lite is slow or busy).
-  if (sarvamKey && !models.includes(SARVAM_MODEL)) models = prefer === 'sarvam' ? [SARVAM_MODEL, ...models] : [models[0], SARVAM_MODEL, ...models.slice(1)];
+  if (sarvamReady(sarvamKey) && !models.includes(SARVAM_MODEL)) models = prefer === 'sarvam' ? [SARVAM_MODEL, ...models] : [models[0], SARVAM_MODEL, ...models.slice(1)];
   if (!apiKey) models = models.filter((m) => m === SARVAM_MODEL);
   if (!models.length) return null;
   const body = JSON.stringify({

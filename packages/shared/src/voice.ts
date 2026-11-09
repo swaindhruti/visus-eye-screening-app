@@ -223,10 +223,14 @@ export const LANGUAGE_OPTIONS = [
 
 /** POST /voice/tts: text → Indian voice. 503 when the server has no voice key: apps use the device voice. */
 export const TtsRequest = z.object({ text: z.string().min(1).max(2000), language: z.enum(["en", "hi", "or"]) });
-/** Base64 audio (`mime`, e.g. audio/wav). */
+/** Base64 audio (`mime`: audio/mpeg from Sarvam). */
 export const TtsResponse = z.object({ audio: z.string(), mime: z.string() });
 export type TtsResponse = z.infer<typeof TtsResponse>;
 
 /** POST /voice/stt (multipart: `file` up to 30 s, optional `language`): speech → text, with the language heard. */
 export const SttResponse = z.object({ transcript: z.string(), language: z.enum(["en", "hi", "or"]).nullable() });
 export type SttResponse = z.infer<typeof SttResponse>;
+
+/** GET /voice: whether the Visus voice (Sarvam) is on. Off: no key, credits used up, or the key was refused. */
+export const VoiceStatus = z.object({ voice: z.boolean() });
+export type VoiceStatus = z.infer<typeof VoiceStatus>;

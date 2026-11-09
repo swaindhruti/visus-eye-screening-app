@@ -160,9 +160,11 @@ call POST "/sessions/$LSID/results" "{\"testId\":\"tumbling_e\",\"eye\":\"both\"
 call POST "/sessions/$LSID/verdict"
 check "single test in Hindi → Hindi verdict text" 200 "any('ऀ' <= ch <= 'ॿ' for ch in d['headline'])"
 
-echo "Voice (Sarvam AI: 200 with SARVAM_API_KEY set, 503 without; the apps then use the device voice)"
+echo "Voice (Sarvam AI: 200 with SARVAM_API_KEY set, 503 without or out of credits; the apps then use the device voice)"
+call GET /voice
+check "GET /voice (is the Visus voice on)" 200 "isinstance(d['voice'], bool)"
 call POST /voice/tts '{"text":"नमस्ते, आज आपकी आँखों में क्या परेशानी है?","language":"hi"}'
-if [ "$CODE" = "503" ]; then check "TTS without a Sarvam key → 503" 503 "'error' in d"; else check "TTS in Hindi → base64 WAV" 200 "len(d['audio']) > 1000 and d['mime'] == 'audio/wav'"; fi
+if [ "$CODE" = "503" ]; then check "TTS without a Sarvam key → 503" 503 "'error' in d"; else check "TTS in Hindi → base64 MP3" 200 "len(d['audio']) > 1000 and d['mime'] == 'audio/mpeg'"; fi
 call POST /voice/tts '{"text":"","language":"hi"}'
 check "TTS with empty text → 400" 400
 call POST /voice/stt '{}'
