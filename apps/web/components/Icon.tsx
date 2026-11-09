@@ -57,6 +57,7 @@ const ICONS = {
   chat: { box: 24, el: <path d="M4 5.5h16v11H9.5L5 20v-3.5H4z" /> },
   star: { box: 24, el: <path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z" /> },
   menu: { box: 24, el: <path d="M4 7h16M4 12h16M4 17h16" /> },
+  bag: { box: 24, el: <><path d="M5 8h14l-1 12.5H6z" /><path d="M9 10V7a3 3 0 0 1 6 0v3" /></> },
   panel: { box: 24, el: <><rect x={3.5} y={4.5} width={17} height={15} rx={2.5} /><path d="M9.5 4.5v15" /></> },
 } satisfies Record<string, { box: number; el: ReactNode }>;
 

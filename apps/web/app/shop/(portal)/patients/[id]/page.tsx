@@ -11,6 +11,7 @@ import { cn } from "@/components/cn";
 import { Icon, type IconName } from "@/components/Icon";
 import { Disclaimer, Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { OrderRow } from "@/components/Orders";
 import { LinkBadge, useShopReady } from "@/components/ShopShell";
 import { ErrorState } from "@/components/States";
 import { MONTHS } from "@/lib/dates";
@@ -18,6 +19,7 @@ import { sessionSub, sessionTitle } from "@/lib/history";
 import { TEST_COPY } from "@/lib/tests";
 import { useStartCheck } from "@/lib/useStartCheck";
 import type { CheckMode } from "@/services/sessions";
+import { listOrders } from "@/services/orders";
 import { getPatient, requestLink, setPatientPhone, type PatientDetail } from "@/services/shops";
 import { useCheck } from "@/store/check";
 
@@ -102,6 +104,7 @@ export default function Patient() {
 
         <aside className="flex min-w-0 flex-col gap-4 md:flex-[2_1_0]">
           <LinkCard p={p} />
+          <OrdersCard patientId={p.id} />
           <Disclaimer>Results are a screening, not a diagnosis. Refer to an eye doctor when a check says so.</Disclaimer>
         </aside>
       </div>
@@ -260,6 +263,36 @@ function LinkCard({ p }: { p: PatientDetail }) {
         </button>
       )}
       {ask.isError && <p className="m-0 text-[14px] text-doc">{ask.error.message}</p>}
+    </section>
+  );
+}
+
+/** This patient's orders (spectacles, lenses…) and a way to add one. */
+function OrdersCard({ patientId }: { patientId: string }) {
+  const ready = useShopReady();
+  const q = useQuery({ queryKey: ["shop-orders", "patient", patientId], queryFn: () => listOrders({ patientId }), enabled: ready });
+  const orders = q.data?.orders ?? [];
+  return (
+    <section className="flex flex-col gap-3 rounded-[20px] border border-line bg-white p-[18px]">
+      <div className="flex items-center gap-2.5">
+        <span className="grid size-9 place-items-center rounded-full bg-fill">
+          <Icon name="bag" size={18} />
+        </span>
+        <h2 className="m-0 flex-1 text-[17px] font-bold">Orders</h2>
+        <Link href={`/shop/orders/new?patient=${patientId}`} className="flex h-9 items-center gap-1 rounded-[10px] px-2.5 text-[14px] font-semibold text-muted hover:bg-pressed hover:text-ink">
+          <Icon name="plusSm" size={16} />
+          New order
+        </Link>
+      </div>
+      {orders.length > 0 ? (
+        <div className="-mx-[18px] -mb-[18px] overflow-hidden border-t border-divider">
+          {orders.map((o, i) => (
+            <OrderRow key={o.id} o={o} first={i === 0} />
+          ))}
+        </div>
+      ) : (
+        <p className="m-0 text-[15px] text-muted">{q.isPending ? "Loading…" : "No orders yet."}</p>
+      )}
     </section>
   );
 }

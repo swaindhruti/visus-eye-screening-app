@@ -9,12 +9,15 @@ import { LANGUAGE_OPTIONS, SPEECH_LOCALE, VOICE_TEXT } from "@visus/shared";
 import { cn } from "@/components/cn";
 import { Icon } from "@/components/Icon";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { ShopChatFor } from "@/components/ShopPatientPicker";
+import { useMe } from "@/components/ShopShell";
 import { OfflinePill } from "@/components/States";
 import { VoiceOrb, type VoiceState } from "@/components/VoiceOrb";
 import { useStartCheck } from "@/lib/useStartCheck";
 import { listen, speak, stopSpeaking } from "@/lib/voice";
 import { useVoiceInput } from "@/lib/useVoiceInput";
 import { listProfiles } from "@/services/profiles";
+import { isShop } from "@/services/shops";
 import { intakeChat, intakeText, type IntakeMessage } from "@/services/sessions";
 import { useCheck } from "@/store/check";
 import { useSettings } from "@/store/settings";
@@ -35,8 +38,10 @@ export default function Intake() {
   const profileId = useCheck((s) => s.profileId);
   const shopPatient = useCheck((s) => s.shopPatient);
   const profiles = useQuery({ queryKey: ["profiles"], queryFn: listProfiles });
+  // A shop (Ask Visus AI) chats for its patient, or with no patient record ("" on the server).
+  const shop = isShop(useMe().data?.user);
   // A shop's patient may be a linked account (not in the shop's own profile list).
-  const owner = shopPatient ? undefined : (profiles.data?.find((p) => p.id === profileId) ?? profiles.data?.[0]);
+  const owner = shop || shopPatient ? undefined : (profiles.data?.find((p) => p.id === profileId) ?? profiles.data?.[0]);
   const name = (shopPatient?.name ?? owner?.name)?.split(" ")[0];
   const start = useStartCheck();
 
@@ -54,7 +59,7 @@ export default function Intake() {
   const chat = msgs.length ? msgs : [greeting];
 
   const turn = useMutation({
-    mutationFn: (next: Msg[]) => intakeChat(owner?.id ?? profileId ?? "", next),
+    mutationFn: (next: Msg[]) => intakeChat(shop ? (useCheck.getState().shopPatient ? (useCheck.getState().profileId ?? "") : "") : (owner?.id ?? profileId ?? ""), next),
     onSuccess: (res, next) => {
       // The AI answers in the language the person is using: keep talking in it.
       if (res.language && res.language !== useSettings.getState().lang) setSettings({ lang: res.language });
@@ -146,13 +151,14 @@ export default function Intake() {
   const typing = turn.isPending;
   const chatDone = done;
   const intake = intakeText(chat);
-  const canSend = text.trim().length > 0 && !typing && !done && !!owner;
+  const canSend = text.trim().length > 0 && !typing && !done && (shop || !!shopPatient || !!owner);
 
   return (
     <div className="min-h-dvh bg-pearl">
     <div className="mx-auto flex h-dvh max-w-[1200px] gap-6 px-5 pb-8 pt-6 md:px-8 md:py-8">
     <section aria-label="Chat" className="flex min-w-0 flex-[3_1_0] flex-col md:rounded-[28px] md:border md:border-line md:bg-white md:px-6 md:pb-6 md:pt-5">
-      <ScreenHeader title="New check" fallback="/home" />
+      <ScreenHeader title={shop ? "Ask Visus AI" : "New check"} fallback={shop ? "/shop/ask" : "/home"} />
+      {shop && <ShopChatFor />}
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
         <div role="radiogroup" aria-label="Language" className="flex rounded-full bg-fill p-1">
           {LANGUAGE_OPTIONS.map((o) => (

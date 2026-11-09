@@ -20,7 +20,8 @@ export const useMe = () => useQuery({ queryKey: ["me"], queryFn: me, staleTime: 
 export const useShopReady = () => isShop(useMe().data?.user);
 
 /**
- * Shop portal frame: a sidebar with Patient records and the Test library, and Account and Log out at the bottom. On a laptop
+ * Shop portal frame: a sidebar with Ask Visus AI (a highlighted capsule at the top), Patient
+ * records, the Test library and Orders, and Account and Log out at the bottom. On a laptop
  * it sits beside the page and folds to icons; on a phone a menu button opens it as a drawer.
  * Only shop accounts get in; others go to Home, and a signed-out visit goes to the shop log in.
  * The page is always rendered (Next.js validates every segment for instant navigation) but stays
@@ -95,7 +96,9 @@ function ShopSidebar({ shopName, onLogout, onClose }: { shopName?: string; onLog
   const folded = useSettings((s) => s.shopSidebarCollapsed) && !onClose;
   const onAccount = pathname.startsWith("/shop/account");
   const onLibrary = pathname.startsWith("/shop/tests");
-  const onRecords = !onAccount && !onLibrary;
+  const onAsk = pathname.startsWith("/shop/ask");
+  const onOrders = pathname.startsWith("/shop/orders");
+  const onRecords = !onAccount && !onLibrary && !onAsk && !onOrders;
   const item = cn(
     "flex h-11 w-full items-center gap-3 rounded-[12px] text-[15px] font-semibold transition-colors",
     folded ? "justify-center px-0" : "px-3",
@@ -130,7 +133,25 @@ function ShopSidebar({ shopName, onLogout, onClose }: { shopName?: string; onLog
         )}
       </div>
 
-      <div className="mt-6 flex flex-col gap-1">
+      {/* Ask Visus AI first, as a highlighted capsule. */}
+      <Link
+        href="/shop/ask"
+        onClick={onClose}
+        aria-current={onAsk ? "page" : undefined}
+        title={folded ? "Ask Visus AI" : undefined}
+        className={cn(
+          "mt-6 flex h-12 items-center gap-2.5 rounded-full text-[15px] font-semibold transition-[background-color,box-shadow,color] duration-200",
+          folded ? "w-12 justify-center self-center" : "w-full px-4",
+          onAsk
+            ? "bg-acc text-white shadow-[0_10px_24px_-12px_rgba(25,79,129,.8)]"
+            : "bg-acc-soft text-acc-ink ring-1 ring-acc/25 hover:bg-acc hover:text-white",
+        )}
+      >
+        <Icon name="sparkle" size={20} strokeWidth={1.9} className="flex-none" />
+        {label("Ask Visus AI")}
+      </Link>
+
+      <div className="mt-3 flex flex-col gap-1">
         <Link href="/shop" onClick={onClose} aria-current={onRecords ? "page" : undefined} title={folded ? "Patient records" : undefined} className={cn(item, tone(onRecords))}>
           <Icon name="doc" size={20} strokeWidth={1.8} className="flex-none" />
           {label("Patient records")}
@@ -138,6 +159,10 @@ function ShopSidebar({ shopName, onLogout, onClose }: { shopName?: string; onLog
         <Link href="/shop/tests" onClick={onClose} aria-current={onLibrary ? "page" : undefined} title={folded ? "Test library" : undefined} className={cn(item, tone(onLibrary))}>
           <Icon name="eye" size={20} strokeWidth={1.8} className="flex-none" />
           {label("Test library")}
+        </Link>
+        <Link href="/shop/orders" onClick={onClose} aria-current={onOrders ? "page" : undefined} title={folded ? "Orders" : undefined} className={cn(item, tone(onOrders))}>
+          <Icon name="bag" size={20} strokeWidth={1.8} className="flex-none" />
+          {label("Orders")}
         </Link>
       </div>
 
