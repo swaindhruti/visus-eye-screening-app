@@ -1,6 +1,6 @@
 // Shop portal: register a shop, its walk-in patients, and linking a patient's own Visus account.
-import type { CreatePatientRequest, LinkStatus, PatientDetail, ShopPatient, ShopRegisterRequest, ShopRequest } from '@visus/shared';
-import { and, desc, eq, ilike, inArray, isNotNull, isNull, max, or } from 'drizzle-orm';
+import type { CreatePatientRequest, LinkStatus, PatientDetail, ShopAccount, ShopPatient, ShopRegisterRequest, ShopRequest, UpdateShopRequest } from '@visus/shared';
+import { and, count, desc, eq, ilike, inArray, isNotNull, isNull, max, ne, or } from 'drizzle-orm';
 import type { z } from 'zod';
 
 import type { Db } from '../../db/client';
@@ -132,6 +132,30 @@ export async function createPatient(db: Db, shopId: string, ownerId: string, inp
   return getPatient(db, shopId, row.id);
 }
 
+/**
+ * PATCH /shop/patients/:id: add or change the mobile number of a walk-in added without one. If a Visus
+ * account uses it, the patient gets a link request; once they allow it, the shop sees their past checks.
+ */
+export async function setPatientPhone(db: Db, shopId: string, id: string, raw: string) {
+  const { p } = await patientRow(db, shopId, id);
+  if (p.linkStatus === 'approved') fail(400, "This patient's Visus account is linked, so their number can't change here.");
+  const phone = raw.trim() ? normalizePhone(raw) : '';
+  if (phone === null) fail(400, 'Enter a 10-digit mobile number.');
+  if (phone) {
+    const [dup] = await db
+      .select({ id: shopPatients.id })
+      .from(shopPatients)
+      .where(and(eq(shopPatients.shopId, shopId), eq(shopPatients.phone, phone), ne(shopPatients.id, id)));
+    if (dup) fail(409, 'Another patient in your list has this phone number.');
+  }
+  const account = await accountByPhone(db, phone);
+  await db
+    .update(shopPatients)
+    .set({ phone, linkedUserId: account?.id ?? null, linkStatus: account ? 'pending' : 'none' })
+    .where(eq(shopPatients.id, id));
+  return getPatient(db, shopId, id);
+}
+
 /** POST /shop/patients/:id/link: ask again (after a decline, or once the patient has an account). */
 export async function requestLink(db: Db, shopId: string, id: string) {
   const { p } = await patientRow(db, shopId, id);
@@ -141,6 +165,22 @@ export async function requestLink(db: Db, shopId: string, id: string) {
   if (!account) fail(404, 'No Visus account uses this phone number yet. Ask the patient to sign up with it.');
   await db.update(shopPatients).set({ linkedUserId: account.id, linkStatus: 'pending' }).where(eq(shopPatients.id, id));
   return getPatient(db, shopId, id);
+}
+
+// ---------- The shop's account ----------
+
+/** GET /shop: the shop, who runs it and how many patients it has. */
+export async function getShopAccount(db: Db, shopId: string, userId: string): Promise<ShopAccount> {
+  const [shop] = await db.select().from(shops).where(eq(shops.id, shopId));
+  const [owner] = await db.select({ name: users.name, identifier: users.identifier }).from(users).where(eq(users.id, userId));
+  const [{ n }] = await db.select({ n: count() }).from(shopPatients).where(eq(shopPatients.shopId, shopId));
+  return { id: shop.id, name: shop.name, address: shop.address, city: shop.city, ownerName: owner.name, identifier: owner.identifier, patients: n };
+}
+
+/** PATCH /shop: the shop's name, address and city. */
+export async function updateShop(db: Db, shopId: string, userId: string, input: z.infer<typeof UpdateShopRequest>) {
+  await db.update(shops).set({ name: input.name.trim(), address: input.address.trim(), city: input.city.trim() }).where(eq(shops.id, shopId));
+  return getShopAccount(db, shopId, userId);
 }
 
 // ---------- The patient's side (/me) ----------

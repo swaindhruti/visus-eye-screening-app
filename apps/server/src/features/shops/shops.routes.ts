@@ -1,6 +1,6 @@
 // Shop portal. POST /shops/register (no login); /shop/* for shop accounts; /me/shop-requests and
 // /me/shops for the patient's side (approve or decline a shop, unlink it later).
-import { CreatePatientRequest, ShopRegisterRequest, ShopRequestAnswer } from '@visus/shared';
+import { CreatePatientRequest, ShopRegisterRequest, ShopRequestAnswer, UpdatePatientRequest, UpdateShopRequest } from '@visus/shared';
 import { Hono } from 'hono';
 import { createMiddleware } from 'hono/factory';
 
@@ -13,12 +13,15 @@ import {
   answerRequest,
   createPatient,
   getPatient,
+  getShopAccount,
   listLinkedShops,
   listPatients,
   listRequests,
   registerShop,
   requestLink,
+  setPatientPhone,
   unlinkShop,
+  updateShop,
 } from './shops.service';
 
 export const shopRegisterRoutes = new Hono<AppEnv>();
@@ -38,6 +41,12 @@ const requireShop = createMiddleware<AppEnv>(async (c, next) => {
 export const shopRoutes = new Hono<AppEnv>();
 shopRoutes.use('*', requireAuth, requireShop);
 
+shopRoutes.get('/', async (c) => c.json(await getShopAccount(c.var.db, c.var.shopId, c.var.userId)));
+
+shopRoutes.patch('/', validate('json', UpdateShopRequest), async (c) =>
+  c.json(await updateShop(c.var.db, c.var.shopId, c.var.userId, c.req.valid('json'))),
+);
+
 shopRoutes.get('/patients', async (c) => c.json(await listPatients(c.var.db, c.var.shopId, c.req.query('q'))));
 
 shopRoutes.post('/patients', validate('json', CreatePatientRequest), async (c) =>
@@ -45,6 +54,10 @@ shopRoutes.post('/patients', validate('json', CreatePatientRequest), async (c) =
 );
 
 shopRoutes.get('/patients/:id', async (c) => c.json(await getPatient(c.var.db, c.var.shopId, c.req.param('id'))));
+
+shopRoutes.patch('/patients/:id', validate('json', UpdatePatientRequest), async (c) =>
+  c.json(await setPatientPhone(c.var.db, c.var.shopId, c.req.param('id'), c.req.valid('json').phone)),
+);
 
 shopRoutes.post('/patients/:id/link', async (c) => c.json(await requestLink(c.var.db, c.var.shopId, c.req.param('id'))));
 

@@ -311,5 +311,18 @@ export type ShopRequest = z.infer<typeof ShopRequest>;
 
 export const ShopRequestAnswer = z.object({ approve: z.boolean() });
 
+/**
+ * PATCH /shop/patients/:id: add or change a walk-in's mobile number later. If a Visus account uses it,
+ * the patient gets a link request; once they allow it, the shop sees their past checks.
+ */
+export const UpdatePatientRequest = z.object({ phone: z.string().max(16) });
+
+/** GET /shop: the shop and who runs it (Account in the shop portal). */
+export const ShopAccount = Shop.extend({ ownerName: z.string(), identifier: z.string(), patients: z.number() });
+export type ShopAccount = z.infer<typeof ShopAccount>;
+
+/** PATCH /shop: change the shop's name, address or city. */
+export const UpdateShopRequest = z.object({ name: z.string().min(2).max(100), address: z.string().max(200), city: z.string().max(80) });
+
 // Hindi and Odia instructions, spoken lines and the voice routes (Sarvam AI via the server).
 export * from "./voice";

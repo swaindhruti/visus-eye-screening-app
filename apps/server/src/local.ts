@@ -13,8 +13,13 @@ const vars = Object.fromEntries(
     .filter((line) => line.includes('=') && !line.startsWith('#'))
     .map((line) => [line.slice(0, line.indexOf('=')).trim(), line.slice(line.indexOf('=') + 1).trim()]),
 );
-// DATABASE_URL may be overridden from the shell, e.g. a local test database.
-const env = { ...vars, ...(process.env.DATABASE_URL ? { DATABASE_URL: process.env.DATABASE_URL } : {}) } as Bindings;
+// DATABASE_URL may be overridden from the shell, e.g. a local test database. SARVAM_API_KEY= (empty)
+// turns the Sarvam voice off, e.g. to run the smoke test without spending Sarvam credits.
+const env = {
+  ...vars,
+  ...(process.env.DATABASE_URL ? { DATABASE_URL: process.env.DATABASE_URL } : {}),
+  ...(process.env.SARVAM_API_KEY !== undefined ? { SARVAM_API_KEY: process.env.SARVAM_API_KEY } : {}),
+} as Bindings;
 
 const ctx = {
   waitUntil: (promise: Promise<unknown>) => void promise.catch((err) => console.error(err)),
@@ -22,7 +27,7 @@ const ctx = {
   props: {},
 } as unknown as ExecutionContext;
 
-const PORT = 8787;
+const PORT = Number(process.env.PORT ?? 8787);
 console.log(`Visus API → http://localhost:${PORT} (phone: http://<your Mac's Wi-Fi IP>:${PORT})`);
 
 export default {

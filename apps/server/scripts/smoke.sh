@@ -242,6 +242,37 @@ TOKEN=$(get "d['token']")
 call GET /me/shop-requests
 check "signing up later with that phone shows the request" 200 "len(d) == 1 and d[0]['shopName'] == 'Smoke Optics'"
 TOKEN=$SHOP
+call GET /shop
+check "shop account" 200 "d['name'] == 'Smoke Optics' and d['ownerName'] == 'Shop Owner' and d['patients'] == 3"
+call PATCH /shop '{"name":"Smoke Optics","address":"1 Main Road","city":"Cuttack"}'
+check "edit the shop's address and city" 200 "d['city'] == 'Cuttack' and d['address'] == '1 Main Road'"
+
+# A walk-in added without a phone; the number is added later and links their past checks.
+PHONE3="7${PHONE:1}"
+TOKEN=""
+call POST /auth/signup "{\"name\":\"Phone Later\",\"identifier\":\"$PHONE3\",\"password\":\"secret123\"}"
+LATER=$(get "d['token']"); TOKEN=$LATER
+call POST /profiles '{"name":"Phone Later","age":61,"isChild":false,"wearsGlasses":false,"healthConditions":[],"screenHoursPerDay":2}'
+LATER_ME=$(get "d['id']")
+single_check "$LATER_ME"; LATER_CHECK=$CHECK_ID
+TOKEN=$SHOP
+call POST /shop/patients '{"name":"Phone Later","age":61,"wearsGlasses":false}'
+check "walk-in without a phone (number added later)" 201 "d['phone'] == '' and d['linkStatus'] == 'none'"
+LATER_P=$(get "d['id']")
+call PATCH "/shop/patients/$LATER_P" '{"phone":"12345"}'
+check "add a bad number later → 400" 400
+call PATCH "/shop/patients/$LATER_P" "{\"phone\":\"$PHONE\"}"
+check "add another patient's number → 409" 409
+call PATCH "/shop/patients/$LATER_P" "{\"phone\":\"+91 $PHONE3\"}"
+check "add the number later → link request" 200 "d['phone'] == '$PHONE3' and d['linkStatus'] == 'pending' and d['sessions'] == []"
+TOKEN=$LATER
+call POST "/me/shop-requests/$LATER_P" '{"approve":true}'
+check "patient allows it" 200 "d['status'] == 'approved'"
+TOKEN=$SHOP
+call GET "/shop/patients/$LATER_P"
+check "shop now sees their past check" 200 "d['linkStatus'] == 'approved' and len(d['sessions']) == 1 and d['sessions'][0]['id'] == '$LATER_CHECK'"
+call PATCH "/shop/patients/$LATER_P" '{"phone":"9999999999"}'
+check "linked patient's number can't change → 400" 400
 
 TOKEN=$PATIENT
 call GET /me/shop-requests
