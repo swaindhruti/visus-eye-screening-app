@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { Route } from "next";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
@@ -10,7 +11,7 @@ import { isShop, LINK_LABEL, type ShopPatient } from "@/services/shops";
 import { useCheck } from "@/store/check";
 
 import { cn } from "./cn";
-import { Icon } from "./Icon";
+import { Icon, type IconName } from "./Icon";
 
 /** The signed-in account (cached), for role checks. */
 export const useMe = () => useQuery({ queryKey: ["me"], queryFn: me, staleTime: 60_000 });
@@ -112,5 +113,22 @@ export function LinkBadge({ status, className }: { status: ShopPatient["linkStat
       {status === "approved" && <Icon name="check" size={14} strokeWidth={2.4} />}
       {LINK_LABEL[status]}
     </span>
+  );
+}
+
+/** On the log in and sign up pages: the way into the shop portal, and back to a personal account. */
+export function AccountSwitch({ href, icon, title, sub }: { href: Route; icon: IconName; title: string; sub: string }) {
+  return (
+    <Link
+      href={href}
+      className="mt-6 flex min-h-[64px] items-center gap-3 rounded-[20px] border border-line bg-white px-4 py-3 transition-colors hover:bg-card-hover"
+    >
+      <Icon name={icon} size={22} strokeWidth={1.8} className="flex-none" />
+      <span className="flex flex-1 flex-col gap-0.5">
+        <span className="text-[15px] font-semibold text-ink">{title}</span>
+        <span className="text-[13px] text-muted">{sub}</span>
+      </span>
+      <Icon name="chevronRight" size={16} strokeWidth={2.2} className="flex-none text-faint" />
+    </Link>
   );
 }

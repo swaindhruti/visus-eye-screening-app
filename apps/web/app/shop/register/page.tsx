@@ -9,6 +9,7 @@ import { AuthBody, AuthShell, AuthTitle, PanelList, PanelTitle, PillButton } fro
 import { PasswordField, TextField } from "@/components/Field";
 import { Spacer } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { AccountSwitch } from "@/components/ShopShell";
 import { registerShop } from "@/services/shops";
 
 /** Shop portal: an optical shop creates its account. */
@@ -69,6 +70,7 @@ export default function ShopRegister() {
             Log in
           </Link>
         </p>
+        <AccountSwitch href="/signup" icon="profile" title="Not a shop? Sign up for yourself" sub="Check your eyes and your family's" />
       </AuthBody>
     </AuthShell>
   );

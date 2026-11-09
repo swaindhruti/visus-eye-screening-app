@@ -110,6 +110,8 @@ Not in the Claude Design handoff: built from the existing components and auth la
 |---|---|---|---|---|
 | S1 | Shop register | `/shop/register` | Web | `POST /shops/register` |
 | S2 | Shop log in | `/shop/login` (the normal `/login` also sends shops to `/shop`) | Web | `POST /auth/login` |
+
+Way in: *Log in as an optical shop* on `/login`, *Sign up as an optical shop* on `/signup`, and *For optical shops* in the landing footer. The shop pages link back to the personal log in and sign up.
 | S3 | Patients (dashboard: stats, search) | `/shop` | Web | `GET /shop/patients?q=` |
 | S4 | New patient | `/shop/patients/new` | Web | `POST /shop/patients` |
 | S5 | Patient (link status, start a check, past checks) | `/shop/patients/[id]` | Web | `GET /shop/patients/:id`, `POST /shop/patients/:id/link` |

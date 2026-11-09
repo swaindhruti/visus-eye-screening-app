@@ -11,6 +11,7 @@ import { PasswordField, TextField } from "@/components/Field";
 import { Icon } from "@/components/Icon";
 import { Spacer } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { AccountSwitch } from "@/components/ShopShell";
 import { signup } from "@/services/auth";
 
 const STEPS = [
@@ -108,6 +109,7 @@ export default function SignUp() {
               Log in
             </Link>
           </p>
+          <AccountSwitch href="/shop/register" icon="store" title="Sign up as an optical shop" sub="Register your shop to test customers and keep records" />
         </div>
       </AuthBody>
     </AuthShell>

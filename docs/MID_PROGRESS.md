@@ -29,7 +29,7 @@ See the [main README](../README.md#features) for the full list.
 
 A walk-in customer at any optical counter can get a screening, and the shop keeps a record.
 
-- **Shop account:** a shop registers at `/shop/register` with its name, city and a login. Shops log in at `/shop/login`, or through the normal log in, which sends shop accounts to their portal.
+- **Shop account:** a shop registers at `/shop/register` with its name, city and a login. Shops log in at `/shop/login`, or through the normal log in, which sends shop accounts to their portal. The log in and sign up pages each have an *optical shop* option.
 - **Patients dashboard (`/shop`):** search by name or phone, see each patient's last check, and see how many were checked today and how many accounts are linked.
 - **Add a walk-in:** name, age, glasses, and an optional mobile number. No email or account is needed for the customer.
 - **Run any check for a patient:** a full AI check, the 1-minute quick check, a glasses check, or any single test. It's the same check flow, and the result is saved on the patient's record.
@@ -71,7 +71,7 @@ Setup is in [SETUP.md](SETUP.md). Add the optional `SARVAM_API_KEY` to `apps/ser
 
 | Try | Where |
 |---|---|
-| Shop portal | Web: *For optical shops* in the landing page footer, or go to `/shop/register` |
+| Shop portal | Web: *Sign up as an optical shop* on the sign up page (or *Log in as an optical shop* on the log in page), or *For optical shops* in the landing page footer |
 | Link a patient | Add a walk-in with the phone number of an existing Visus account, then open that account: Home shows the request |
 | Talk mode | New check → chat → **Talk instead** (web), or **Talk instead** in the chat (Android) |
 | Hindi / Odia | The **EN / हिं / ଓଡ଼ି** switch in the chat, or Settings → Language |

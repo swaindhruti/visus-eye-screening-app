@@ -10,6 +10,7 @@ import { PasswordField, TextField } from "@/components/Field";
 import { ContinueAsGuest } from "@/components/GuestDialog";
 import { Spacer } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { AccountSwitch } from "@/components/ShopShell";
 import { login } from "@/services/auth";
 import { listProfiles } from "@/services/profiles";
 import { isShop } from "@/services/shops";
@@ -85,6 +86,7 @@ export default function LogIn() {
             <span className="h-px flex-1 bg-line" />
           </div>
           <ContinueAsGuest className="mx-auto mt-2 h-11 px-3 text-[15px] font-medium text-muted underline-offset-4 hover:text-ink hover:underline" />
+          <AccountSwitch href="/shop/login" icon="store" title="Log in as an optical shop" sub="Test walk-in customers and keep their records" />
         </div>
       </AuthBody>
     </AuthShell>

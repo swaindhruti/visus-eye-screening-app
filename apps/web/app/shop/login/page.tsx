@@ -9,6 +9,7 @@ import { AuthBody, AuthShell, AuthTitle, PanelList, PanelTitle, PillButton } fro
 import { PasswordField, TextField } from "@/components/Field";
 import { Spacer } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { AccountSwitch } from "@/components/ShopShell";
 import { login, logout } from "@/services/auth";
 import { isShop } from "@/services/shops";
 
@@ -73,6 +74,7 @@ export default function ShopLogin() {
             Register your shop
           </Link>
         </p>
+        <AccountSwitch href="/login" icon="profile" title="Not a shop? Log in to your own account" sub="Check your eyes and your family's" />
       </AuthBody>
     </AuthShell>
   );
