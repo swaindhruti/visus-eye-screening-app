@@ -60,7 +60,7 @@ A walk-in customer at any optical counter can get a screening, and the shop keep
 
 ### 4. A check never gets stuck on one AI provider
 
-- **Gemini and Sarvam together:** Sarvam AI's `sarvam-105b` model now runs next to Gemini.
+- **Gemini and Sarvam together:** Sarvam AI's `sarvam-105b-conversations` model now runs next to Gemini.
   - For Hindi and Odia, Sarvam answers first.
   - For English, it steps in when Gemini is slow or the free tier is busy.
 - **Rules as a last resort:** if every AI is slow, the rules still answer, in all three languages, so the check carries on.
@@ -83,7 +83,7 @@ Setup is in [SETUP.md](SETUP.md). Add the optional `SARVAM_API_KEY` to `apps/ser
   - New: the `shops` and `shop_patients` tables, a role and phone number on users, a shop and a language on each check.
   - New routes: `/shops/register`, `/shop/patients…`, `/me/shop-requests`, `/me/shops`, `/voice/tts`, `/voice/stt`.
   - All routes are listed in [API.md](API.md).
-- **AI:** Gemini and Sarvam AI (`sarvam-105b` for chat, `bulbul:v3` for voice, `saaras:v3` for speech recognition).
+- **AI:** Gemini and Sarvam AI (`sarvam-105b-conversations` for chat, `bulbul:v3` for voice, `saaras:v3` for speech recognition).
 - **Web:** Next.js. **Android:** Expo SDK 57 (`expo-audio` for recording and playback).
 - **Shared:** Hindi and Odia instructions and the spoken lines live in `packages/shared`, so the web and the phone say the same thing.
 

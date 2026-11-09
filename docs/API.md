@@ -54,7 +54,7 @@ Server code: `apps/server` (feature folders, see `apps/server/CLAUDE.md`). Smoke
   1. The AI reply is spoken with `/voice/tts`.
   2. The mic records until the person stops talking.
   3. `/voice/stt` turns the recording into text, which is sent as the answer.
-- **AI model:** with `SARVAM_API_KEY` set, `sarvam-105b` joins the hedged AI calls in `lib/gemini.ts`. It goes first for Hindi and Odia, and second for English, joining when Gemini Flash-Lite is slow or busy (for example, the free tier's rate limit).
+- **AI model:** with `SARVAM_API_KEY` set, `sarvam-105b-conversations` joins the hedged AI calls in `lib/gemini.ts`. It goes first for Hindi and Odia, and second for English, joining when Gemini Flash-Lite is slow or busy (for example, the free tier's rate limit).
 - **Red flags stay rules:** `rules/red-flags.ts` also knows Hindi and Odia urgent words (अचानक, दर्द, चमक, ହଠାତ୍, ଯନ୍ତ୍ରଣା…), including romanised spellings. A clause with a negation (नहीं, ନାହିଁ, nahi) doesn't count.
 
 ## Shop portal

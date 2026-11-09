@@ -1,4 +1,4 @@
-// Thin AI client used by features/agent: Gemini (Google AI Studio) and Sarvam AI's sarvam-105b.
+// Thin AI client used by features/agent: Gemini (Google AI Studio) and Sarvam AI's sarvam-105b-conversations.
 // Sends a prompt with a JSON schema and returns the parsed JSON, or null on any failure,
 // so callers can fall back to the rules. Sarvam joins when its key is set (SARVAM_API_KEY): it keeps
 // checks going when the Gemini free tier is busy, and goes first for Hindi and Odia.
@@ -8,12 +8,12 @@
 // The first valid answer wins and the others are cancelled. After BUDGET_MS the rules answer instead.
 import { z } from 'zod';
 
-import { sarvamChat } from './sarvam';
+import { SARVAM_CHAT_MODEL, sarvamChat } from './sarvam';
 
 const BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 /** Fastest first; the others join when it is slow, busy (503/429) or failing. */
 export const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.8-flash'];
-export const SARVAM_MODEL = 'sarvam-105b';
+export const SARVAM_MODEL = SARVAM_CHAT_MODEL;
 
 /** Set once per request from the env (index.ts), so the agent code doesn't pass a second key around. */
 let sarvamKey = '';

@@ -18,7 +18,7 @@ You describe your eye problem in a short chat. An AI agent then picks the right 
 
 ## Features
 
-- **AI intake chat:** Visus AI asks up to 3 short follow-up questions, with quick-reply chips. You can type or speak (voice input). Gemini answers, and Sarvam AI's `sarvam-105b` steps in when Gemini is slow or busy (it goes first for Hindi and Odia).
+- **AI intake chat:** Visus AI asks up to 3 short follow-up questions, with quick-reply chips. You can type or speak (voice input). Gemini answers, and Sarvam AI's `sarvam-105b-conversations` steps in when Gemini is slow or busy (it goes first for Hindi and Odia).
 - **English, Hindi and Odia, by voice:** pick a language, or just speak one and Visus AI follows you.
   - **Talk mode:** each question is read aloud in an Indian voice (Sarvam AI), the app listens until you pause, and your answer is sent.
   - **Read aloud too:** the test plan, the test instructions, the switch-eye prompts and the result.
@@ -64,7 +64,7 @@ You describe your eye problem in a short chat. An AI agent then picks the right 
 |---|---|
 | Mobile (`apps/mobile`) | Expo SDK 57, Expo Router, React Native, Skia, VisionCamera v5 + ML Kit face detection, `expo-audio` + `expo-speech-recognition` (talk mode), local Kotlin module (Screen Coach), zustand, TanStack Query, EAS Build |
 | Web (`apps/web`) | Next.js (App Router), Tailwind CSS, MediaPipe (camera distance), zustand, TanStack Query, Vercel |
-| Server (`apps/server`) | Hono on Cloudflare Workers, Drizzle ORM + `pg`, Postgres on Aiven (Hyperdrive in production), zod, JWT + PBKDF2, Gemini API, Sarvam AI (Indian voice: bulbul TTS, saaras STT, sarvam-105b) |
+| Server (`apps/server`) | Hono on Cloudflare Workers, Drizzle ORM + `pg`, Postgres on Aiven (Hyperdrive in production), zod, JWT + PBKDF2, Gemini API, Sarvam AI (Indian voice: bulbul TTS, saaras STT, sarvam-105b-conversations) |
 | Shared (`packages/shared`) | zod schemas, types and the test catalog used by all three |
 | Tooling | Bun workspaces (Bun only), TypeScript everywhere |
 

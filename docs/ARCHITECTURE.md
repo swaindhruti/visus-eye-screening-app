@@ -159,7 +159,7 @@ erDiagram
   1. The apps record until a pause, using a simple level check (Web Audio on the web, `expo-audio` metering on the phone).
   2. They upload the clip to `POST /voice/stt`, where Sarvam saaras:v3 transcribes it and detects the language.
 - **The key:** it stays on the server. Without it, the apps use the browser's or phone's own speech.
-- **AI model:** `lib/gemini.ts` hedges across Gemini models and `sarvam-105b`, so a busy Gemini free tier doesn't stall a check.
+- **AI model:** `lib/gemini.ts` hedges across Gemini models and `sarvam-105b-conversations`, so a busy Gemini free tier doesn't stall a check.
 - **No LiveKit:** the visualizer (`VoiceOrb`) is our own.
 
 ```mermaid
@@ -167,7 +167,7 @@ sequenceDiagram
   participant App
   participant Server
   participant Sarvam
-  participant AI as Gemini / sarvam-105b
+  participant AI as Gemini / sarvam-105b-conversations
   App->>Server: POST /voice/tts (AI question, language)
   Server->>Sarvam: bulbul:v3
   Server-->>App: WAV, played aloud

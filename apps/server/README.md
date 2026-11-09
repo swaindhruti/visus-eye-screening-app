@@ -49,7 +49,7 @@ Before deploying, set `WEB_URL` in `wrangler.jsonc` to the web app's URL; share 
 ## AI
 
 - **Prompts:** `src/features/agent/prompts.ts`. The test catalog is fed in from `@visus/shared`.
-- **Models:** `GEMINI_MODELS` in `src/lib/gemini.ts`, plus Sarvam AI's `sarvam-105b` when `SARVAM_API_KEY` is set (`src/lib/sarvam.ts`). Sarvam goes first for Hindi and Odia, and second for English.
+- **Models:** `GEMINI_MODELS` in `src/lib/gemini.ts`, plus Sarvam AI's `sarvam-105b-conversations` when `SARVAM_API_KEY` is set (`src/lib/sarvam.ts`). Sarvam goes first for Hindi and Odia, and second for English.
 - **Voice:** `POST /voice/tts` (bulbul:v3, speaker priya) and `POST /voice/stt` (saaras:v3), both in `src/features/voice`. Without the key they answer 503 and the apps use the device voice.
 - **Languages:** English, Hindi and Odia. Fixed wording is translated in `src/features/agent/i18n.ts`, and Gemini or Sarvam write the rest in the session's language.
 - **Hedging:** the server starts the next model after 2.5 s, the first valid answer wins, and after 7 s it uses the rule fallback.

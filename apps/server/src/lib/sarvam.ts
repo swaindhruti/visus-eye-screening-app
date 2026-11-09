@@ -1,7 +1,8 @@
 // Sarvam AI (https://docs.sarvam.ai): Indian voices and an Indian-language LLM.
 // - Text to speech: bulbul:v3 (the only Sarvam TTS model with Odia), base64 WAV back.
 // - Speech to text: saaras:v3, "transcribe" mode, clips up to 30 s; "unknown" detects the language.
-// - Chat: sarvam-105b (OpenAI-style), used next to Gemini in lib/gemini.ts.
+// - Chat: sarvam-105b-conversations (OpenAI-style), used next to Gemini in lib/gemini.ts. Plain sarvam-105b
+//   reasons before answering (7–16 s, over our AI budget); the conversations model answers in under 1 s.
 // The key is a server secret (SARVAM_API_KEY); without it every function returns null and callers fall back.
 import type { Language } from '@visus/shared';
 
@@ -11,6 +12,7 @@ const CODE: Record<Language, string> = { en: 'en-IN', hi: 'hi-IN', or: 'od-IN' }
 const FROM_CODE: Record<string, Language> = { 'en-IN': 'en', 'hi-IN': 'hi', 'od-IN': 'or' };
 /** A warm female voice available in all three languages on bulbul:v3. */
 const SPEAKER = 'priya';
+export const SARVAM_CHAT_MODEL = 'sarvam-105b-conversations';
 
 /** Short lines repeat a lot (instructions, greetings): keep the last 200 in memory per Worker instance. */
 const ttsCache = new Map<string, string>();
@@ -69,13 +71,13 @@ export async function sarvamStt(apiKey: string | undefined, file: Blob, language
   }
 }
 
-/** One chat call to sarvam-105b asking for JSON. The raw text, or null. */
+/** One chat call to Sarvam asking for JSON. The raw text, or null. */
 export async function sarvamChat(apiKey: string, system: string, prompt: string, signal: AbortSignal): Promise<string | null> {
   const res = await fetch(`${BASE}/v1/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'api-subscription-key': apiKey },
     body: JSON.stringify({
-      model: 'sarvam-105b',
+      model: SARVAM_CHAT_MODEL,
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: prompt },
