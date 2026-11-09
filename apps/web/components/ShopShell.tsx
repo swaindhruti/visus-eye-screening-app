@@ -143,8 +143,8 @@ function ShopSidebar({ shopName, onLogout, onClose }: { shopName?: string; onLog
           "mt-6 flex h-12 items-center gap-2.5 rounded-full text-[15px] font-semibold transition-[background-color,box-shadow,color] duration-200",
           folded ? "w-12 justify-center self-center" : "w-full px-4",
           onAsk
-            ? "bg-acc text-white shadow-[0_10px_24px_-12px_rgba(25,79,129,.8)]"
-            : "bg-acc-soft text-acc-ink ring-1 ring-acc/25 hover:bg-acc hover:text-white",
+            ? "bg-ink text-white shadow-[0_10px_24px_-12px_rgba(17,17,17,.7)] ring-2 ring-ink/15 ring-offset-2"
+            : "bg-ink text-white shadow-[0_10px_24px_-14px_rgba(17,17,17,.6)] hover:bg-[#2a2a2a]",
         )}
       >
         <Icon name="sparkle" size={20} strokeWidth={1.9} className="flex-none" />
