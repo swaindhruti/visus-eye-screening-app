@@ -1,6 +1,6 @@
 // Shop portal: register a shop, its walk-in patients, and linking a patient's own Visus account.
 import type { CreatePatientRequest, LinkStatus, PatientDetail, ShopAccount, ShopPatient, ShopRegisterRequest, ShopRequest, UpdateShopRequest } from '@visus/shared';
-import { and, count, desc, eq, ilike, inArray, isNotNull, isNull, max, ne, or } from 'drizzle-orm';
+import { and, count, desc, eq, ilike, inArray, isNotNull, isNull, max, ne, notLike, or, sql } from 'drizzle-orm';
 import type { z } from 'zod';
 
 import type { Db } from '../../db/client';
@@ -22,14 +22,26 @@ export async function registerShop(db: Db, env: Bindings, input: z.infer<typeof 
   return issue(db, env, user);
 }
 
-/** A personal account with this phone number (shops can't link other shops). */
+/** The last 10 digits of a phone login ("+91 98765 43210" → "9876543210"), in SQL. */
+const loginDigits = sql`right(regexp_replace(${users.identifier}, '[^0-9]', '', 'g'), 10)`;
+
+/**
+ * A personal account with this phone number (shops can't link other shops). Accounts made before
+ * phone numbers were stored have only their phone login: they match by it, and get it saved.
+ */
 async function accountByPhone(db: Db, phone: string) {
   if (!phone) return null;
   const [user] = await db
-    .select({ id: users.id })
+    .select({ id: users.id, phone: users.phone })
     .from(users)
-    .where(and(eq(users.phone, phone), eq(users.role, 'user')));
-  return user ?? null;
+    .where(
+      and(
+        eq(users.role, 'user'),
+        or(eq(users.phone, phone), and(isNull(users.phone), notLike(users.identifier, '%@%'), eq(loginDigits, phone))),
+      ),
+    );
+  if (user && !user.phone) await db.update(users).set({ phone }).where(eq(users.id, user.id));
+  return user ? { id: user.id } : null;
 }
 
 /** Rows → ShopPatient: linked patients are checked on their own profile; adds the last check date. */
@@ -187,7 +199,9 @@ export async function updateShop(db: Db, shopId: string, userId: string, input: 
 
 /** Requests for this account: sent to it, or waiting on its phone number from before it signed up. */
 async function requestsFor(db: Db, userId: string) {
-  const [me] = await db.select({ phone: users.phone }).from(users).where(eq(users.id, userId));
+  const [account] = await db.select({ phone: users.phone, identifier: users.identifier }).from(users).where(eq(users.id, userId));
+  // Accounts from before phone numbers were stored: their phone login.
+  const me = account && { phone: account.phone ?? normalizePhone(account.identifier) };
   const byPhone = me?.phone ? and(isNull(shopPatients.linkedUserId), eq(shopPatients.linkStatus, 'none'), eq(shopPatients.phone, me.phone)) : undefined;
   return or(and(eq(shopPatients.linkedUserId, userId), eq(shopPatients.linkStatus, 'pending')), byPhone)!;
 }

@@ -20,6 +20,7 @@ Area: mobile app + server (setup, auth, agent). Claude updates this file at the 
     - No credits (402) or a refused key (403) turns Sarvam off for 10 min; the apps switch to the device voice. Checked with a fake key (no credits used).
     - New `GET /voice`; Settings on web and mobile shows which voice talk mode uses.
     - The Worker bundle builds (`wrangler deploy --dry-run`, 275 KB gzipped). Smoke not rerun: it would spend credits.
+  - 2026-11-09: fix: a shop couldn't find accounts made before phone numbers were stored (their `users.phone` is empty until they log in again). The lookup now also matches the phone login and saves it; the patient's request list does the same.
   - 2026-11-09: **shop Test library** (`/shop/tests`, in the sidebar): tests by category; run one test, or tick up to 8 and run them as a set; a patient is optional. Server: `mode: "custom"` with `testIds`, and `profileId: ""` for a shop check with no patient (one hidden walk-in profile per shop, not in the patient list). After a no-patient check, Done goes back to the library. Smoke 90/90. **Not looked at by eye yet.**
   - 2026-11-09: **shop portal v2** (web + server).
     - A sidebar replaces the top bar: Patient records at the top, Account and Log out at the bottom. It folds to icons on a laptop (remembered in settings) and opens as a drawer on phones.
