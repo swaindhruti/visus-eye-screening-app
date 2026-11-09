@@ -11,7 +11,7 @@ import { cn } from "@/components/cn";
 import { Icon, type IconName } from "@/components/Icon";
 import { Disclaimer, Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { LinkBadge } from "@/components/ShopShell";
+import { LinkBadge, useShopReady } from "@/components/ShopShell";
 import { ErrorState } from "@/components/States";
 import { MONTHS } from "@/lib/dates";
 import { sessionSub, sessionTitle } from "@/lib/history";
@@ -25,7 +25,8 @@ import { useCheck } from "@/store/check";
 export default function Patient() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const q = useQuery({ queryKey: ["shop-patient", id], queryFn: () => getPatient(id), staleTime: 0 });
+  const ready = useShopReady();
+  const q = useQuery({ queryKey: ["shop-patient", id], queryFn: () => getPatient(id), staleTime: 0, enabled: ready });
   const start = useStartCheck();
 
   if (q.isError) return <ErrorState title="Couldn't open this patient" body={q.error.message} onRetry={() => q.refetch()} retrying={q.isFetching} />;

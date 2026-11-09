@@ -15,10 +15,14 @@ import { Icon, type IconName } from "./Icon";
 
 /** The signed-in account (cached), for role checks. */
 export const useMe = () => useQuery({ queryKey: ["me"], queryFn: me, staleTime: 60_000 });
+/** A shop account is signed in: shop pages start their data requests only then. */
+export const useShopReady = () => isShop(useMe().data?.user);
 
 /**
  * Shop portal frame: a top bar with the shop name, Patients, New patient and Log out.
  * Only shop accounts get in; others go to Home, and a signed-out visit goes to the shop log in.
+ * The page is always rendered (Next.js validates every segment for instant navigation) but stays
+ * invisible until the shop account is confirmed; its data requests wait for `useShopReady()`.
  */
 export function ShopShell({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -32,7 +36,7 @@ export function ShopShell({ children }: { children: ReactNode }) {
     else if (q.isSuccess && q.data && !isShop(q.data.user)) router.replace("/home");
   }, [q.isSuccess, q.data, router]);
 
-  if (!user || !isShop(user)) return <div className="min-h-dvh bg-pearl" />;
+  const ready = !!user && isShop(user);
 
   const out = () => {
     logout();
@@ -52,35 +56,37 @@ export function ShopShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-dvh bg-pearl">
-      <header className="sticky top-0 z-20 border-b border-line bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-[1200px] items-center gap-3 px-5 py-3 md:gap-6 md:px-8 md:py-3.5">
-          <Link href="/shop" className="flex min-w-0 flex-col leading-tight">
-            <span className="text-[20px] font-bold tracking-[-0.01em] md:text-[22px]">Visus</span>
-            <span className="truncate text-[12px] font-semibold uppercase tracking-[0.12em] text-faint">{user.shopName ?? "Shop"}</span>
-          </Link>
-          <nav aria-label="Shop" className="hidden flex-1 gap-1 md:flex">
-            {tab("/shop", "Patients", pathname === "/shop")}
-            {tab("/shop/patients/new", "New patient", pathname === "/shop/patients/new")}
-          </nav>
-          <span className="flex-1 md:hidden" />
-          <Link
-            href="/shop/patients/new"
-            className="flex h-11 items-center gap-1.5 rounded-[14px] bg-ink px-4 text-[15px] font-semibold text-white transition-colors hover:bg-[#2a2a2a] md:hidden"
-          >
-            <Icon name="plusSm" size={18} />
-            Patient
-          </Link>
-          <button
-            type="button"
-            onClick={out}
-            className="flex h-11 items-center gap-2 rounded-[14px] border border-line-strong bg-white px-3.5 text-[15px] font-semibold hover:bg-[#FBFBF9]"
-          >
-            <Icon name="logout" size={18} />
-            <span className="hidden md:inline">Log out</span>
-          </button>
-        </div>
-      </header>
-      {children}
+      {ready && (
+        <header className="sticky top-0 z-20 border-b border-line bg-white/95 backdrop-blur">
+          <div className="mx-auto flex max-w-[1200px] items-center gap-3 px-5 py-3 md:gap-6 md:px-8 md:py-3.5">
+            <Link href="/shop" className="flex min-w-0 flex-col leading-tight">
+              <span className="text-[20px] font-bold tracking-[-0.01em] md:text-[22px]">Visus</span>
+              <span className="truncate text-[12px] font-semibold uppercase tracking-[0.12em] text-faint">{user?.shopName ?? "Shop"}</span>
+            </Link>
+            <nav aria-label="Shop" className="hidden flex-1 gap-1 md:flex">
+              {tab("/shop", "Patients", pathname === "/shop")}
+              {tab("/shop/patients/new", "New patient", pathname === "/shop/patients/new")}
+            </nav>
+            <span className="flex-1 md:hidden" />
+            <Link
+              href="/shop/patients/new"
+              className="flex h-11 items-center gap-1.5 rounded-[14px] bg-ink px-4 text-[15px] font-semibold text-white transition-colors hover:bg-[#2a2a2a] md:hidden"
+            >
+              <Icon name="plusSm" size={18} />
+              Patient
+            </Link>
+            <button
+              type="button"
+              onClick={out}
+              className="flex h-11 items-center gap-2 rounded-[14px] border border-line-strong bg-white px-3.5 text-[15px] font-semibold hover:bg-[#FBFBF9]"
+            >
+              <Icon name="logout" size={18} />
+              <span className="hidden md:inline">Log out</span>
+            </button>
+          </div>
+        </header>
+      )}
+      <div className={ready ? undefined : "invisible"}>{children}</div>
     </div>
   );
 }

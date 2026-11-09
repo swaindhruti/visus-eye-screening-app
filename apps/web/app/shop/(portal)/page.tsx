@@ -8,7 +8,7 @@ import { Button } from "@/components/Button";
 import { cn } from "@/components/cn";
 import { Icon } from "@/components/Icon";
 import { Screen } from "@/components/Screen";
-import { LinkBadge } from "@/components/ShopShell";
+import { LinkBadge, useShopReady } from "@/components/ShopShell";
 import { ErrorState } from "@/components/States";
 import { fmtFull, fmtShort, useToday } from "@/lib/dates";
 import { initials } from "@/services/profiles";
@@ -19,8 +19,9 @@ export default function ShopHome() {
   const today = useToday();
   const [q, setQ] = useState("");
   const term = useDeferredValue(q);
-  const list = useQuery({ queryKey: ["shop-patients", term], queryFn: () => listPatients(term) });
-  const all = useQuery({ queryKey: ["shop-patients", ""], queryFn: () => listPatients("") });
+  const ready = useShopReady();
+  const list = useQuery({ queryKey: ["shop-patients", term], queryFn: () => listPatients(term), enabled: ready });
+  const all = useQuery({ queryKey: ["shop-patients", ""], queryFn: () => listPatients(""), enabled: ready });
 
   if (list.isError) return <ErrorState onRetry={() => list.refetch()} retrying={list.isFetching} />;
   const patients = list.data ?? [];
