@@ -34,7 +34,10 @@ Hono on Cloudflare Workers. Types come from `packages/shared` (`@visus/shared`).
 | `GET /shop/patients?q=` | — (shop accounts; others 403) | `ShopPatient[]`, newest first; `q` matches name or phone | D | live |
 | `POST /shop/patients` | `CreatePatientRequest` | `PatientDetail` (201). `linkStatus: "pending"` when a Visus account has this phone, else `"none"`. 409 for a phone already in the list | D | live |
 | `GET /shop/patients/:id` | — | `PatientDetail`: the patient and their finished checks (all of them once linked) | D | live |
+| `PATCH /shop/patients/:id` | `UpdatePatientRequest` (`{ phone }`) | `PatientDetail`. Adds or changes the mobile number of a walk-in added without one; a Visus account with it gets a link request (`pending`), else `none`. 400 for a bad number or a linked patient, 409 if another patient has it | D | live |
 | `POST /shop/patients/:id/link` | — | `PatientDetail` with `linkStatus: "pending"`. 404 when no account has the phone yet | D | live |
+| `GET /shop` | — | `ShopAccount`: the shop (name, address, city), the owner's name and login, and the number of patients | D | live |
+| `PATCH /shop` | `UpdateShopRequest` (`{ name, address, city }`) | `ShopAccount` | D | live |
 | `GET /me/shop-requests` | — | `ShopRequest[]`: shops asking to see your records (also ones made before you signed up with that phone) | D | live |
 | `POST /me/shop-requests/:id` | `ShopRequestAnswer` (`{ approve }`) | `ShopRequest` with the new status. 400 before onboarding (no own profile yet) | D | live |
 | `GET /me/shops` | — | `ShopRequest[]`: linked shops | D | live |
@@ -68,6 +71,7 @@ An optical shop registers (`POST /shops/register`) and logs in with the normal `
   - The shop's earlier checks of that walk-in move into the patient's account (their own "self" profile).
   - `checkProfileId` becomes the patient's own profile, so the checks the shop runs from then on are saved in the patient's account, with `SessionSummary.shopName` set.
   - The shop can open all of the patient's checks (read only).
+- **Number added later:** a walk-in added without a mobile number gets one with `PATCH /shop/patients/:id`. If a Visus account uses it, the patient gets the same request; once they allow it, the shop sees their past checks.
 - **Unlink** (`DELETE /me/shops/:id`): the shop keeps only the checks it ran itself, and can't start new ones on the patient's profile.
 - A check's `sessions.shop_id` records which shop ran it.
 

@@ -20,6 +20,15 @@ Area: mobile app + server (setup, auth, agent). Claude updates this file at the 
     - No credits (402) or a refused key (403) turns Sarvam off for 10 min; the apps switch to the device voice. Checked with a fake key (no credits used).
     - New `GET /voice`; Settings on web and mobile shows which voice talk mode uses.
     - The Worker bundle builds (`wrangler deploy --dry-run`, 275 KB gzipped). Smoke not rerun: it would spend credits.
+  - 2026-11-09: **shop portal v2** (web + server).
+    - A sidebar replaces the top bar: Patient records at the top, Account and Log out at the bottom. It folds to icons on a laptop (remembered in settings) and opens as a drawer on phones.
+    - Patient records has *Add new patient* at the top.
+    - A walk-in's mobile number can be added later (`PATCH /shop/patients/:id`); if they use Visus, they get the request and their past results follow once they allow it.
+    - New Account page (`/shop/account`, `GET`/`PATCH /shop`).
+    - The log in and sign up pages have an optical shop option.
+    - The portal always renders its page (Next.js instant-navigation check); data waits for the shop login.
+    - Smoke 85/85 on the local test DB with `SARVAM_API_KEY=` (no Sarvam credits used). `src/local.ts` now takes `PORT` and an empty `SARVAM_API_KEY` from the shell.
+    - **Not looked at by eye yet.**
   - `feat/visus-next` is based on `feat/web-landing` (the landing branch restyles login/signup, which the portal touches). Merge the landing PR first.
 - Mobile now has every web feature (`feat/mobile-web-parity`, 2026-10-23): guest mode, voice input, onboarding "Later", skip-saves-profile fix, more distance-watched tests; server Gemini calls are hedged. Pushed for a PR. **Needs a new EAS development build** (voice input adds a native package), then a phone check.
 - Docs (2026-10-24): new root `README.md` (banner `docs/assets/banner.png`), `docs/SETUP.md` (run server + web + mobile together, EAS build, network changes, troubleshooting, deploy), `docs/ARCHITECTURE.md`, and README per app.

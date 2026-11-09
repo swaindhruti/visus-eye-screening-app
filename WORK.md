@@ -81,6 +81,8 @@ New priority order agreed on 2026-11-08 (replaces "Visus: Plan to 15 November").
 - [x] D: Web: shop register, shop dashboard, new patient, patient detail with records and "Start check"
 - [x] D: Mobile + web: link requests ("Optics X wants to see your eye records"), Linked shops in Settings, "At <shop>" on shop-run checks
 
+- [x] D: Shop portal v2: sidebar (Patient records; Account and Log out at the bottom; folds to icons, drawer on phones), Add new patient at the top, add a patient's mobile number later (`PATCH /shop/patients/:id`, links past results), Account page (`GET`/`PATCH /shop`); optical shop option on log in and sign up
+
 2. Multilingual voice agent (English, Hindi, Odia)
 
 - [x] D: Server: `language` on intake chat, sessions and verdict; prompts reply in that language; Hindi / Odia rule fallbacks; Hindi / Odia urgent words in the red-flag rules
