@@ -91,11 +91,12 @@ export async function intakeTurn(input: { messages: IntakeMessage[]; person: Per
 // ---------- Plan ----------
 
 /** Fixed plans for every mode except an adult's full check. */
-export async function planTests(input: { mode: SessionMode; testId?: TestIdT; intake: string; person: Person; apiKey: string; language?: Language }): Promise<Plan> {
+export async function planTests(input: { mode: SessionMode; testId?: TestIdT; testIds?: TestIdT[]; intake: string; person: Person; apiKey: string; language?: Language }): Promise<Plan> {
   const { mode, person } = input;
   const lang = input.language ?? 'en';
   const t = TEXT[lang];
   if (mode === 'single') return { summary: t.single, plan: [item(input.testId!, lang)] };
+  if (mode === 'custom') return { summary: t.custom, plan: [...new Set(input.testIds)].map((id) => item(id, lang)) };
   if (mode === 'glasses') return { summary: t.glasses.summary, plan: [item('tumbling_e', lang, t.glasses.off), item('tumbling_e', lang, t.glasses.on)] };
   if (mode === 'quick') return { summary: t.quick, plan: [item('tumbling_e', lang), item('amsler', lang), item('clock_dial', lang)] };
   if (isKid(person)) return { summary: t.kids, plan: [item('kids_tumbling_e', lang), item('kids_colour_shapes', lang)] };

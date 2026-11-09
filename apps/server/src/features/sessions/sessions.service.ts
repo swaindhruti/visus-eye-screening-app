@@ -38,10 +38,11 @@ export async function getOwnSession(db: Db, userId: string, id: string, read = f
 
 export async function createSession(db: Db, env: Bindings, userId: string, input: z.infer<typeof CreateSessionRequest>) {
   if (input.mode === 'single' && !input.testId) fail(400, 'testId: pick a test for a single-test check');
+  if (input.mode === 'custom' && !input.testIds?.length) fail(400, 'testIds: pick the tests for this check');
   // A shop's check for a linked patient is saved in the patient's account, marked with the shop.
   const { ownerId, profile, shopId } = await checkTarget(db, userId, input.profileId);
   const language = input.language ?? 'en';
-  const { summary, plan } = await planTests({ mode: input.mode, testId: input.testId, intake: input.intake, person: profile, apiKey: env.GEMINI_API_KEY, language });
+  const { summary, plan } = await planTests({ mode: input.mode, testId: input.testId, testIds: input.testIds, intake: input.intake, person: profile, apiKey: env.GEMINI_API_KEY, language });
   const [row] = await db
     .insert(sessions)
     .values({ userId: ownerId, profileId: profile.id, shopId, mode: input.mode, language, intake: input.intake, summary, plan })

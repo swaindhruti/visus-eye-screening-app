@@ -17,6 +17,7 @@ type Text = {
   urgentSummary: string;
   reasons: Record<TestId, string>;
   single: string;
+  custom: string;
   glasses: { summary: string; off: string; on: string };
   quick: string;
   kids: string;
@@ -54,6 +55,7 @@ export const TEXT: Record<Language, Text> = {
       kids_colour_shapes: 'Tells colours apart',
     },
     single: 'The test you picked.',
+    custom: 'The tests you picked.',
     glasses: { summary: 'Distance acuity twice: without, then with your glasses.', off: 'Round 1: without your glasses', on: 'Round 2: with your glasses on' },
     quick: 'Three fast tests for a quick read on your eyes.',
     kids: 'Kids tests, done together with a parent.',
@@ -105,6 +107,7 @@ export const TEXT: Record<Language, Text> = {
       kids_colour_shapes: 'रंगों में फ़र्क पहचानना',
     },
     single: 'आपका चुना हुआ टेस्ट।',
+    custom: 'आपके चुने हुए टेस्ट।',
     glasses: { summary: 'दूर की नज़र दो बार: पहले चश्मे के बिना, फिर चश्मे के साथ।', off: 'राउंड 1: चश्मे के बिना', on: 'राउंड 2: चश्मा पहनकर' },
     quick: 'आँखों की जल्दी जाँच के लिए तीन छोटे टेस्ट।',
     kids: 'बच्चों के टेस्ट, माता-पिता के साथ।',
@@ -156,6 +159,7 @@ export const TEXT: Record<Language, Text> = {
       kids_colour_shapes: 'ରଙ୍ଗ ଚିହ୍ନିବା',
     },
     single: 'ଆପଣ ବାଛିଥିବା ଟେଷ୍ଟ।',
+    custom: 'ଆପଣ ବାଛିଥିବା ଟେଷ୍ଟଗୁଡ଼ିକ।',
     glasses: { summary: 'ଦୂର ଦୃଷ୍ଟି ଦୁଇଥର: ପ୍ରଥମେ ଚଷମା ବିନା, ତା\'ପରେ ଚଷମା ସହ।', off: 'ରାଉଣ୍ଡ 1: ଚଷମା ବିନା', on: 'ରାଉଣ୍ଡ 2: ଚଷମା ପିନ୍ଧି' },
     quick: 'ଆଖିର ଶୀଘ୍ର ଯାଞ୍ଚ ପାଇଁ ତିନୋଟି ଛୋଟ ଟେଷ୍ଟ।',
     kids: 'ପିଲାଙ୍କ ଟେଷ୍ଟ, ବାପାମାଙ୍କ ସହ।',

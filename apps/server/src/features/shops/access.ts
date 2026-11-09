@@ -1,12 +1,12 @@
 // Who may run or read a check. A person: their own profiles and checks. A shop: its walk-in
 // patients, the checks it ran, and (read only) the checks of patients who approved a link.
-import { and, eq, inArray, or, type SQL } from 'drizzle-orm';
+import { and, eq, inArray, notInArray, or, type SQL } from 'drizzle-orm';
 
 import type { Db } from '../../db/client';
 import { profiles, sessions, shopPatients, shops } from '../../db/schema';
 import { fail } from '../../lib/errors';
 import { isUuid } from '../../lib/validate';
-import { toProfile } from '../profiles/profiles.service';
+import { createProfile, toProfile } from '../profiles/profiles.service';
 
 /** The shop this account owns, or null for a personal account. */
 export async function shopIdOf(db: Db, userId: string) {
@@ -38,6 +38,11 @@ export function sessionAccess(db: Db, userId: string, read = false): SQL {
  * profile (the check is then saved in the patient's account, marked with the shop).
  */
 export async function checkTarget(db: Db, userId: string, profileId: string) {
+  if (profileId === '') {
+    const shopId = await shopIdOf(db, userId);
+    if (!shopId) fail(400, 'profileId: pick who this check is for');
+    return { ownerId: userId, profile: await walkInProfile(db, userId, shopId), shopId };
+  }
   if (!isUuid(profileId)) fail(404, 'Profile not found');
   const [row] = await db.select().from(profiles).where(eq(profiles.id, profileId));
   if (!row) fail(404, 'Profile not found');
@@ -51,4 +56,27 @@ export async function checkTarget(db: Db, userId: string, profileId: string) {
     if (link) return { ownerId: row.userId, profile: toProfile(row), shopId };
   }
   fail(404, 'Profile not found');
+}
+
+/**
+ * A shop's checks without a patient record (Test library: "No patient"). They are saved on one
+ * profile per shop that is no patient's: a shop account's other profiles all belong to its patients.
+ */
+async function walkInProfile(db: Db, userId: string, shopId: string) {
+  const patients = db.select({ id: shopPatients.profileId }).from(shopPatients).where(eq(shopPatients.shopId, shopId));
+  const [row] = await db
+    .select()
+    .from(profiles)
+    .where(and(eq(profiles.userId, userId), notInArray(profiles.id, patients)));
+  if (row) return toProfile(row);
+  return createProfile(db, userId, {
+    name: 'Walk-in (no record)',
+    age: 30,
+    isChild: false,
+    wearsGlasses: false,
+    eyewear: 'none',
+    healthConditions: [],
+    screenHoursPerDay: 0,
+    relation: 'other',
+  });
 }

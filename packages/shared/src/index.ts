@@ -134,10 +134,12 @@ export type Language = z.infer<typeof Language>;
 export const SPEECH_LOCALE: Record<Language, string> = { en: "en-IN", hi: "hi-IN", or: "or-IN" };
 
 export const CreateSessionRequest = z.object({
+  /** Who the check is for. A shop may send "" for a walk-in it doesn't keep a record of (Test library). */
   profileId: z.string(),
   intake: z.string().max(2000), // what the user typed
-  mode: z.enum(["full", "quick", "single", "glasses"]).default("full"), // same values as SessionMode
+  mode: z.enum(["full", "quick", "single", "glasses", "custom"]).default("full"), // same values as SessionMode
   testId: TestId.optional(), // for mode "single"
+  testIds: z.array(TestId).min(1).max(8).optional(), // for mode "custom": the tests picked, in order
   language: Language.optional(), // default "en"; the plan reasons and verdict text are written in it
 });
 
@@ -230,7 +232,7 @@ export type Verdict = z.infer<typeof Verdict>;
 
 // ---------- Past checks & sharing ----------
 
-export const SessionMode = z.enum(["full", "quick", "single", "glasses"]);
+export const SessionMode = z.enum(["full", "quick", "single", "glasses", "custom"]);
 export type SessionMode = z.infer<typeof SessionMode>;
 
 /** One row of GET /sessions, newest first. */

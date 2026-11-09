@@ -242,6 +242,17 @@ TOKEN=$(get "d['token']")
 call GET /me/shop-requests
 check "signing up later with that phone shows the request" 200 "len(d) == 1 and d[0]['shopName'] == 'Smoke Optics'"
 TOKEN=$SHOP
+call POST /sessions '{"profileId":"","intake":"","mode":"custom","testIds":["clock_dial","amsler","clock_dial"]}'
+check "Test library: picked tests, no patient record" 201 "[p['testId'] for p in d['plan']] == ['clock_dial', 'amsler']"
+LIB_CHECK=$(get "d['sessionId']")
+call POST "/sessions/$LIB_CHECK/results" '{"testId":"clock_dial","eye":"both","durationSec":20,"answers":{"right":{"darker":[],"allSame":true},"left":{"darker":[],"allSame":true}}}'
+check "no-patient check: next test is the Amsler grid" 200 "d['type'] == 'next_test' and d['testId'] == 'amsler'"
+call POST /sessions "{\"profileId\":\"$WALKIN_PROFILE\",\"intake\":\"\",\"mode\":\"custom\",\"testIds\":[\"tumbling_e\",\"contrast\"]}"
+check "Test library: picked tests for a patient" 201 "len(d['plan']) == 2 and d['summary'] == 'The tests you picked.'"
+call POST /sessions '{"profileId":"","intake":"","mode":"custom"}'
+check "picked tests without any → 400" 400
+call GET /shop/patients
+check "the no-patient record isn't in the patient list" 200 "all(p['name'] != 'Walk-in (no record)' for p in d)"
 call GET /shop
 check "shop account" 200 "d['name'] == 'Smoke Optics' and d['ownerName'] == 'Shop Owner' and d['patients'] == 3"
 call PATCH /shop '{"name":"Smoke Optics","address":"1 Main Road","city":"Cuttack"}'
