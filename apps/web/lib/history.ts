@@ -3,10 +3,10 @@ import type { SessionSummary, TestId } from "@visus/shared";
 import { MONTHS } from "./dates";
 import { categoryOf, TEST_COPY, testInfo } from "./tests";
 
-/** "Full eye check", "Quick check", or the test name for a single test. */
+/** "Full eye check", "Quick check", "Selected tests", or the test name for a single test. */
 export function sessionTitle(s: SessionSummary) {
   if (s.mode === "single" && s.tests[0]) return TEST_COPY[s.tests[0]].title;
-  return s.mode === "quick" ? "Quick check" : s.mode === "glasses" ? "Glasses check" : "Full eye check";
+  return s.mode === "quick" ? "Quick check" : s.mode === "glasses" ? "Glasses check" : s.mode === "custom" ? "Selected tests" : "Full eye check";
 }
 
 /** Second line on a past check: the test's group for a single test, else "4 tests"; "At <shop>" when a shop ran it. */

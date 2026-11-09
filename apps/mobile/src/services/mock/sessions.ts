@@ -43,6 +43,7 @@ const PLANS: Record<NewSession['mode'], TestId[]> = {
   // Round 1 glasses off, round 2 glasses on (answers.round).
   glasses: ['tumbling_e', 'tumbling_e'],
   single: [],
+  custom: [], // the tests picked (shop Test library)
 };
 /** A child's check: the kids versions, done with a parent. */
 const KIDS_PLAN: TestId[] = ['kids_tumbling_e', 'kids_colour_shapes'];

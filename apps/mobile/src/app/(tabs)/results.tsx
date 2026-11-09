@@ -24,7 +24,7 @@ const METRICS: { label: string; testId: TestId }[] = [
 ];
 const POINTS = 6;
 const ROWS = 4;
-const MODE_TITLE = { full: 'Full eye check', quick: 'Quick check', glasses: 'Glasses check' } as const;
+const MODE_TITLE = { full: 'Full eye check', quick: 'Quick check', glasses: 'Glasses check', custom: 'Selected tests' } as const;
 
 const month = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { month: 'short' });
 

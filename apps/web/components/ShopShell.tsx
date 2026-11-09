@@ -20,7 +20,7 @@ export const useMe = () => useQuery({ queryKey: ["me"], queryFn: me, staleTime: 
 export const useShopReady = () => isShop(useMe().data?.user);
 
 /**
- * Shop portal frame: a sidebar with Patient records, and Account and Log out at the bottom. On a laptop
+ * Shop portal frame: a sidebar with Patient records and the Test library, and Account and Log out at the bottom. On a laptop
  * it sits beside the page and folds to icons; on a phone a menu button opens it as a drawer.
  * Only shop accounts get in; others go to Home, and a signed-out visit goes to the shop log in.
  * The page is always rendered (Next.js validates every segment for instant navigation) but stays
@@ -94,6 +94,8 @@ function ShopSidebar({ shopName, onLogout, onClose }: { shopName?: string; onLog
   const pathname = usePathname();
   const folded = useSettings((s) => s.shopSidebarCollapsed) && !onClose;
   const onAccount = pathname.startsWith("/shop/account");
+  const onLibrary = pathname.startsWith("/shop/tests");
+  const onRecords = !onAccount && !onLibrary;
   const item = cn(
     "flex h-11 w-full items-center gap-3 rounded-[12px] text-[15px] font-semibold transition-colors",
     folded ? "justify-center px-0" : "px-3",
@@ -129,9 +131,13 @@ function ShopSidebar({ shopName, onLogout, onClose }: { shopName?: string; onLog
       </div>
 
       <div className="mt-6 flex flex-col gap-1">
-        <Link href="/shop" onClick={onClose} aria-current={!onAccount ? "page" : undefined} title={folded ? "Patient records" : undefined} className={cn(item, tone(!onAccount))}>
+        <Link href="/shop" onClick={onClose} aria-current={onRecords ? "page" : undefined} title={folded ? "Patient records" : undefined} className={cn(item, tone(onRecords))}>
           <Icon name="doc" size={20} strokeWidth={1.8} className="flex-none" />
           {label("Patient records")}
+        </Link>
+        <Link href="/shop/tests" onClick={onClose} aria-current={onLibrary ? "page" : undefined} title={folded ? "Test library" : undefined} className={cn(item, tone(onLibrary))}>
+          <Icon name="eye" size={20} strokeWidth={1.8} className="flex-none" />
+          {label("Test library")}
         </Link>
       </div>
 
@@ -153,7 +159,7 @@ function ShopSidebar({ shopName, onLogout, onClose }: { shopName?: string; onLog
 
 /**
  * Personal-app screens a shop account lands on (Home after a check, a "Go to Home" button):
- * back to the patient the check was for, else the shop dashboard.
+ * back to the patient the check was for, else the Test library (a check with no patient record).
  */
 export function ShopRedirect() {
   const router = useRouter();
@@ -161,7 +167,7 @@ export function ShopRedirect() {
   useEffect(() => {
     if (!isShop(q.data?.user)) return;
     const patient = useCheck.getState().shopPatient;
-    router.replace(patient ? `/shop/patients/${patient.id}` : "/shop");
+    router.replace(patient ? `/shop/patients/${patient.id}` : "/shop/tests");
   }, [q.data, router]);
   return null;
 }
