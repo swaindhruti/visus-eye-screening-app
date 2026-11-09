@@ -28,7 +28,7 @@ src/
     agent/                  Gemini intake chat / plan / re-plan / verdict + prompts  Dhrutinandan
     intake/                 POST /intake/chat (route only; logic in agent/)         Dhrutinandan
     shops/                  shop portal: register, patients, link by phone, access   Dhrutinandan
-    voice/                  POST /voice/tts, /voice/stt (Sarvam AI Indian voice)     Dhrutinandan
+    voice/                  GET /voice, POST /voice/tts, /voice/stt (Sarvam AI)      Dhrutinandan
     scoring/                one scorer per test: answers → ScoredResult             Teammate
     rules/                  red flags + simple next-test rules                       Teammate
     lens/                   ZEISS lens catalog + recommendation                      Teammate
@@ -67,5 +67,5 @@ src/
 - Smoke test of every route: `bun run smoke` (server running), or `API=https://… bun run smoke` for the deployed Worker.
 - Test without Aiven: run a throwaway Postgres (e.g. `bunx @electric-sql/pglite-socket` style `pglite-server -p 55432`), then `DATABASE_URL='postgres://postgres:pw@127.0.0.1:55432/postgres?sslmode=disable' bunx drizzle-kit push --force` and the same `DATABASE_URL=… bun src/local.ts`.
 - Who may use a check: `features/shops/access.ts` (`sessionAccess`, `checkTarget`). A shop may run checks for its walk-ins and linked patients and read a linked patient's past checks.
-- Sarvam AI: `src/lib/sarvam.ts` (TTS bulbul:v3, STT saaras:v3, chat sarvam-105b-conversations); routes in `features/voice/`.
+- Sarvam AI: `src/lib/sarvam.ts` through the official SDK `sarvamai` (only the `sarvamai/textToSpeech`, `/speechToText` and `/chat` clients, so the Worker skips the SDK's WebSocket code). TTS `bulbul:v4-flash` (Ritu medical persona; `bulbul:v3` for Odia), STT `saaras:v4`, chat `sarvam-105b-conversations`. SDK retries are off. 402/403 turn Sarvam off for 10 min (`sarvamReady`). Docs: https://docs.sarvam.ai (append `.md` to any page). Routes in `features/voice/`.
 - Gemini models: `GEMINI_MODELS` in `src/lib/gemini.ts` (hedged: Flash-Lite first, the next model joins after 2.5 s, first valid answer wins, rule fallback after 7 s; busy models skipped for 60 s).

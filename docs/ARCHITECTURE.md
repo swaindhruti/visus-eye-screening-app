@@ -154,12 +154,13 @@ erDiagram
 - **Languages:** `Language` is `en`, `hi` or `or`.
   - The intake chat replies in the language the person writes or speaks in.
   - The check keeps that language (`sessions.language`), so Gemini and Sarvam write the plan and verdict text in it.
-- **Speaking:** the apps send text to `POST /voice/tts`. The server asks Sarvam (bulbul:v3) and returns a WAV for the app to play.
+- **Speaking:** the apps send text to `POST /voice/tts`. The server asks Sarvam through its SDK (`bulbul:v4-flash`, voice Ritu in a medical style; `bulbul:v3` for Odia, which v4 doesn't have yet) and returns an MP3 for the app to play.
 - **Listening:**
   1. The apps record until a pause, using a simple level check (Web Audio on the web, `expo-audio` metering on the phone).
-  2. They upload the clip to `POST /voice/stt`, where Sarvam saaras:v3 transcribes it and detects the language.
+  2. They upload the clip to `POST /voice/stt`, where Sarvam `saaras:v4` transcribes it and detects the language (keyterms such as Amsler and ZEISS help it spell eye words).
 - **The key:** it stays on the server. Without it, the apps use the browser's or phone's own speech.
 - **AI model:** `lib/gemini.ts` hedges across Gemini models and `sarvam-105b-conversations`, so a busy Gemini free tier doesn't stall a check.
+- **Out of credits:** a 402 (no credits) or 403 (key refused) from Sarvam turns it off for 10 minutes. `GET /voice` then says `voice: false`, the voice routes answer 503, and the apps use the device voice and Gemini. Settings shows which voice is in use.
 - **No LiveKit:** the visualizer (`VoiceOrb`) is our own.
 
 ```mermaid
@@ -169,11 +170,11 @@ sequenceDiagram
   participant Sarvam
   participant AI as Gemini / sarvam-105b-conversations
   App->>Server: POST /voice/tts (AI question, language)
-  Server->>Sarvam: bulbul:v3
-  Server-->>App: WAV, played aloud
+  Server->>Sarvam: bulbul:v4-flash (v3 for Odia)
+  Server-->>App: MP3, played aloud
   App->>App: record until a pause
   App->>Server: POST /voice/stt (clip)
-  Server->>Sarvam: saaras:v3
+  Server->>Sarvam: saaras:v4
   Server-->>App: transcript + language
   App->>Server: POST /intake/chat (answer, language)
   Server->>AI: next question in that language

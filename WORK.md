@@ -88,7 +88,9 @@ New priority order agreed on 2026-11-08 (replaces "Visus: Plan to 15 November").
 - [x] D: Mobile: language picker, talk mode (speak → auto-send → reply read aloud → listen again), `expo-audio`
 - [x] D: Mobile: test instructions, switch-eye and next-test text in Hindi and Odia, read aloud automatically in talk mode
 - [x] D: Web: same language picker, talk mode and translated instructions
-- [ ] D: Add `SARVAM_API_KEY` to `apps/server/.dev.vars` (Dhrutinandan) and try talk mode end to end; native speaker checks the Hindi/Odia text
+- [x] D: `SARVAM_API_KEY` in `apps/server/.dev.vars`; key checked (voice, speech to text and chat each answered once)
+- [x] D: Server: Sarvam through its official SDK `sarvamai`: `bulbul:v4-flash` Ritu medical voice (v3 for Odia), MP3, `saaras:v4` with eye-check keyterms, `sarvam-105b-conversations` (under 1 s), off for 10 min on 402/403, `GET /voice`; Settings on web and mobile shows which voice is in use
+- [ ] D: Try talk mode end to end by ear once there are credits; native speaker checks the Hindi/Odia text
 - [ ] D: New EAS development build for the installed app (adds `expo-audio`)
 
 3. Faster AI and offline checks

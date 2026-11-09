@@ -131,7 +131,7 @@ Not new screens: controls on existing ones, on both web and mobile.
 | Issue intake (9) | Language picker (EN / हिं / ଓଡ଼ି) and a "Talk instead" switch. In talk mode, a bar with the voice visualizer (VoiceOrb) and Speak / Done buttons |
 | Test instructions (13) | Hindi and Odia text (`INSTRUCTIONS_I18N`, `WEB_STEPS_I18N` in `@visus/shared`), Listen in the Visus voice, plays by itself in talk mode |
 | Your test plan, Between tests (14), Results (16), Switch eye (44) | Read aloud in talk mode, in the chosen language |
-| Settings (24) | Language (English, हिन्दी, ଓଡ଼ିଆ) and Talk mode |
+| Settings (24) | Language (English, हिन्दी, ଓଡ଼ିଆ) and Talk mode, with which voice is in use (Visus voice by Sarvam, or the device's own) |
 
 Screens themselves stay in English. The AI's text (questions, plan reasons, verdict) and every spoken line follow the language.
 

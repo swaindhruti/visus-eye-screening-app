@@ -50,7 +50,7 @@ A walk-in customer at any optical counter can get a screening, and the shop keep
   4. When the chat is done, your test plan opens by itself.
 - **Read aloud during the whole check:** the plan, every test's instructions (in Hindi and Odia too), the "now cover your right eye" prompt, what comes next, and the result.
 - **Voice visualizer:** a small animated orb shows when Visus is speaking, listening or thinking. We built it ourselves instead of pulling in a voice SDK.
-- **Indian voice:** it comes from **Sarvam AI** (text to speech and speech to text, built for Indian languages). The key stays on our server. Without it, the app falls back to the phone's or browser's own voice, so nothing breaks.
+- **Indian voice:** it comes from **Sarvam AI** (text to speech and speech to text, built for Indian languages). The voice is Ritu, in Sarvam's medical style, the same in all three languages. The server uses Sarvam's official SDK and the key stays on the server. Without the key, or when the credits run out, the app switches to the phone's or browser's own voice, so nothing breaks; Settings shows which voice is in use.
 
 ### 3. Safety rules in every language
 
@@ -81,9 +81,9 @@ Setup is in [SETUP.md](SETUP.md). Add the optional `SARVAM_API_KEY` to `apps/ser
 - **Server:**
   - Hono on Cloudflare Workers, Postgres (Aiven) with Drizzle.
   - New: the `shops` and `shop_patients` tables, a role and phone number on users, a shop and a language on each check.
-  - New routes: `/shops/register`, `/shop/patients…`, `/me/shop-requests`, `/me/shops`, `/voice/tts`, `/voice/stt`.
+  - New routes: `/shops/register`, `/shop/patients…`, `/me/shop-requests`, `/me/shops`, `/voice`, `/voice/tts`, `/voice/stt`.
   - All routes are listed in [API.md](API.md).
-- **AI:** Gemini and Sarvam AI (`sarvam-105b-conversations` for chat, `bulbul:v3` for voice, `saaras:v3` for speech recognition).
+- **AI:** Gemini and Sarvam AI through Sarvam's JS SDK (`sarvam-105b-conversations` for chat, `bulbul:v4-flash` for voice with `bulbul:v3` for Odia, `saaras:v4` for speech recognition).
 - **Web:** Next.js. **Android:** Expo SDK 57 (`expo-audio` for recording and playback).
 - **Shared:** Hindi and Odia instructions and the spoken lines live in `packages/shared`, so the web and the phone say the same thing.
 
@@ -95,7 +95,7 @@ How it fits together: [ARCHITECTURE.md](ARCHITECTURE.md) → *Shop portal and li
 - **Web:** production build passes, with typecheck and lint.
 - **Android:** typecheck and lint pass.
 - **Still to check by hand:**
-  - the Sarvam voice with a real key;
+  - the Sarvam voice by ear (the key works: voice, speech to text and chat each answered once; full tests wait for more credits);
   - talk mode on a phone;
   - the shop pages on screen;
   - the Hindi and Odia wording, with a native speaker.

@@ -12,7 +12,14 @@ Area: mobile app + server (setup, auth, agent). Claude updates this file at the 
     - **Web and mobile:** language picker, talk mode (question spoken, the app records until a pause, then transcribes and sends), Hindi and Odia instructions from `@visus/shared`, and spoken plan, next test, switch eye and result.
     - **Mobile:** added `expo-audio` and `expo-file-system`, loaded lazily so an older development build still runs.
     - **Checks:** smoke 75/75, `next build`, and typecheck/lint on all three apps.
-    - **Not tested with a real Sarvam key or by ear**, because the key isn't set yet.
+    - **Not tested by ear yet.**
+  - 2026-11-09: **Sarvam key set and the server moved to Sarvam's official SDK** (`sarvamai` in `apps/server`).
+    - The key works: one voice, one speech-to-text and one chat call answered. Then we stopped testing to save the credits.
+    - Chat: `sarvam-105b-conversations` (0.3–0.6 s); plain `sarvam-105b` thinks for 7–16 s, past our AI budget.
+    - Voice: Ritu in Sarvam's medical style (`bulbul:v4-flash`; `bulbul:v3` for Odia, since v4 has no Odia), MP3. Speech to text: `saaras:v4` with eye-check keyterms.
+    - No credits (402) or a refused key (403) turns Sarvam off for 10 min; the apps switch to the device voice. Checked with a fake key (no credits used).
+    - New `GET /voice`; Settings on web and mobile shows which voice talk mode uses.
+    - The Worker bundle builds (`wrangler deploy --dry-run`, 275 KB gzipped). Smoke not rerun: it would spend credits.
   - `feat/visus-next` is based on `feat/web-landing` (the landing branch restyles login/signup, which the portal touches). Merge the landing PR first.
 - Mobile now has every web feature (`feat/mobile-web-parity`, 2026-10-23): guest mode, voice input, onboarding "Later", skip-saves-profile fix, more distance-watched tests; server Gemini calls are hedged. Pushed for a PR. **Needs a new EAS development build** (voice input adds a native package), then a phone check.
 - Docs (2026-10-24): new root `README.md` (banner `docs/assets/banner.png`), `docs/SETUP.md` (run server + web + mobile together, EAS build, network changes, troubleshooting, deploy), `docs/ARCHITECTURE.md`, and README per app.
@@ -20,7 +27,7 @@ Area: mobile app + server (setup, auth, agent). Claude updates this file at the 
 
 ## Next (resume here, Phase 4 on `feat/visus-next`)
 Phase 2 (voice) is done in code on all three apps (2026-11-09). Next:
-1. **Dhrutinandan:** add `SARVAM_API_KEY=` to `apps/server/.dev.vars` (dashboard.sarvam.ai, free ₹100 credits). Run `bun run dev:phone`, then try talk mode on the web (`/check/intake`, "Talk instead") and on the phone.
+1. **Dhrutinandan:** once there are Sarvam credits, run `bun run dev:phone` and `bun run smoke`, then try talk mode by ear on the web (`/check/intake`, "Talk instead") and on the phone. The key is already in `.dev.vars`; for production run `bunx wrangler secret put SARVAM_API_KEY`.
    - Expo Go has `expo-audio`, so talk mode works there.
    - The installed app needs a new development build: `cd apps/mobile && bunx eas-cli build --profile development --platform android`.
 2. A native speaker checks the Hindi and Odia text: `packages/shared/src/voice.ts` and `apps/server/src/features/agent/i18n.ts`.

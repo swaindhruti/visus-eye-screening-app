@@ -27,8 +27,9 @@ Hono on Cloudflare Workers. Types come from `packages/shared` (`@visus/shared`).
 | `POST /sessions/:id/share` | — | `ShareLink` (`{ url: WEB_URL/r/<token>, expiresAt }`, 24 h) | T | live |
 | `GET /reports/:token` | — (no login) | `Verdict` behind a share link, 404 when expired. For the web report page `/r/<token>` | T | live |
 | `POST /reports/guest-score` | — (no login) `SubmitResult` + optional `age` | `NextStep` (`red_flag` or `done`). Guest mode (web + mobile): same scorer and red-flag rules, nothing saved | T | live |
-| `POST /voice/tts` | `TtsRequest` (`{ text, language }`) | `TtsResponse` (`{ audio: base64, mime: "audio/wav" }`): Indian voice (Sarvam bulbul:v3, speaker priya). 503 without `SARVAM_API_KEY` → apps use the device voice | D | live |
-| `POST /voice/stt` | multipart `file` (≤ 30 s, webm/m4a/wav…), optional `language` | `SttResponse` (`{ transcript, language }`, language detected when not sent). 503 without the key → apps use device speech recognition | D | live |
+| `GET /voice` | none | `VoiceStatus` (`{ voice: boolean }`): is the Visus voice on. Free, doesn't call Sarvam. Settings shows which voice talk mode uses | D | live |
+| `POST /voice/tts` | `TtsRequest` (`{ text, language }`) | `TtsResponse` (`{ audio: base64, mime: "audio/mpeg" }`): Indian voice, Ritu (Sarvam `bulbul:v4-flash` medical persona for English and Hindi, `bulbul:v3` for Odia). 503 when Sarvam is off (no key, credits used up, key refused) → apps use the device voice | D | live |
+| `POST /voice/stt` | multipart `file` (≤ 30 s, webm/m4a/wav…), optional `language` | `SttResponse` (`{ transcript, language }`, language detected when not sent). Sarvam `saaras:v4` with eye-check keyterms. 503 when Sarvam is off → apps use device speech recognition | D | live |
 | `POST /shops/register` | — (no login) `ShopRegisterRequest` | `AuthResponse` (201) with `role: "shop"`, `shopName`. 409 if the login is taken | D | live |
 | `GET /shop/patients?q=` | — (shop accounts; others 403) | `ShopPatient[]`, newest first; `q` matches name or phone | D | live |
 | `POST /shop/patients` | `CreatePatientRequest` | `PatientDetail` (201). `linkStatus: "pending"` when a Visus account has this phone, else `"none"`. 409 for a phone already in the list | D | live |
@@ -50,7 +51,7 @@ Server code: `apps/server` (feature folders, see `apps/server/CLAUDE.md`). Smoke
   - The app keeps the returned `language` for the next turn, the voice and `POST /sessions`.
 - **Saved on the check:** `sessions.language` stores it. The plan summary and reasons, the re-plan reason and the verdict `headline` and `advice` are written in it, by Gemini or by the rule fallbacks in `features/agent/i18n.ts`.
 - **What stays English:** test ids, scores, statuses and the per-test `summary` from the scorers. Screens are not translated.
-- **Voice:** `/voice/tts` and `/voice/stt` go to Sarvam AI with the server's key. The apps never see the key. Talk mode in the intake chat works like this:
+- **Voice:** `/voice/tts` and `/voice/stt` go to Sarvam AI through its official JS SDK (`sarvamai`, in `src/lib/sarvam.ts`) with the server's key. The apps never see the key. When Sarvam answers 402 (no credits left) or 403 (key refused), the server turns Sarvam off for 10 minutes: voice routes answer 503 and the AI uses Gemini only. The SDK's own retries are off, so a failed call never spends credits twice. Talk mode in the intake chat works like this:
   1. The AI reply is spoken with `/voice/tts`.
   2. The mic records until the person stops talking.
   3. `/voice/stt` turns the recording into text, which is sent as the answer.
