@@ -114,12 +114,16 @@ Not in the Claude Design handoff: built from the existing components and auth la
 | S4 | New patient (mobile number optional) | `/shop/patients/new` | Web | `POST /shop/patients` |
 | S5 | Patient (link status, add or change the mobile number, start a check, past checks) | `/shop/patients/[id]` | Web | `GET /shop/patients/:id`, `PATCH /shop/patients/:id`, `POST /shop/patients/:id/link` |
 | S8 | Account (shop name, city, address; login; number of patients) | `/shop/account` | Web | `GET /shop`, `PATCH /shop` |
+| S10 | Ask Visus AI (who it's for: a patient, no record, or add one; then the AI chat) | `/shop/ask` → `/check/intake` (with a *For* bar to pick or add the patient mid-chat) | Web | `POST /intake/chat`, `POST /sessions` (`profileId: ""` for no patient) |
+| S11 | Orders (totals: open, ready, collected, due; status filter; search) | `/shop/orders` | Web | `GET /shop/orders` |
+| S12 | New order (patient or customer, type, item, total, advance, ready by, notes) | `/shop/orders/new` (`?patient=<id>` from a patient's page) | Web | `POST /shop/orders` |
+| S13 | Order (status steps, cancel; payments and record a payment) | `/shop/orders/[id]` | Web | `GET`/`PATCH /shop/orders/:id`, `POST /shop/orders/:id/payments` |
 | S9 | Test library (by category; run one test for a quick analysis, or tick up to 8 and run them as a set; for a patient or no patient record) | `/shop/tests` | Web | `GET /shop/patients`, `POST /sessions` (`single` or `custom`, `profileId: ""` for no patient) |
 | — | The check itself | the normal `/check/*` and `/results/*` screens, for the patient's profile | Web | as a normal check |
 
 Way in: *Log in as an optical shop* on `/login`, *Sign up as an optical shop* on `/signup`, and *For optical shops* in the landing footer. The shop pages link back to the personal log in and sign up.
 
-Layout: a sidebar instead of a top bar. **Patient records** and **Test library** at the top; **Account** and **Log out** at the bottom. On a laptop it folds to icons (remembered); on a phone a menu button opens it as a drawer.
+Layout: a sidebar instead of a top bar. **Ask Visus AI** first, as a highlighted capsule; then **Patient records**, **Test library** and **Orders**; **Account** and **Log out** at the bottom. On a laptop it folds to icons (remembered); on a phone a menu button opens it as a drawer.
 
 Patient side:
 

@@ -36,6 +36,11 @@ Hono on Cloudflare Workers. Types come from `packages/shared` (`@visus/shared`).
 | `GET /shop/patients/:id` | — | `PatientDetail`: the patient and their finished checks (all of them once linked) | D | live |
 | `PATCH /shop/patients/:id` | `UpdatePatientRequest` (`{ phone }`) | `PatientDetail`. Adds or changes the mobile number of a walk-in added without one; a Visus account with it gets a link request (`pending`), else `none`. 400 for a bad number or a linked patient, 409 if another patient has it | D | live |
 | `POST /shop/patients/:id/link` | — | `PatientDetail` with `linkStatus: "pending"`. 404 when no account has the phone yet | D | live |
+| `GET /shop/orders?status=&patientId=&q=` | — | `ShopOrders`: orders newest first, filtered; `summary` (`open`, `ready`, `collected`, `due` in ₹) covers all orders | D | live |
+| `POST /shop/orders` | `CreateOrderRequest` (`patientId` or `customerName`, `item`, `kind`, `total`, optional `advance`, `dueDate`, `notes`) | `ShopOrder` (201). 400 without a customer, or an advance above the total | D | live |
+| `GET /shop/orders/:id` | — | `ShopOrder` (`paid`, `due`, `paymentStatus` worked out from `payments`) | D | live |
+| `PATCH /shop/orders/:id` | `UpdateOrderRequest` (`status`, `item`, `total`, `dueDate`, `notes`) | `ShopOrder`. 400 for a total below what's paid | D | live |
+| `POST /shop/orders/:id/payments` | `Payment` (`{ amount, method: cash \| upi \| card }`) | `ShopOrder`. 400 above what's due, or on a cancelled order | D | live |
 | `GET /shop` | — | `ShopAccount`: the shop (name, address, city), the owner's name and login, and the number of patients | D | live |
 | `PATCH /shop` | `UpdateShopRequest` (`{ name, address, city }`) | `ShopAccount` | D | live |
 | `GET /me/shop-requests` | — | `ShopRequest[]`: shops asking to see your records (also ones made before you signed up with that phone) | D | live |
@@ -72,6 +77,8 @@ An optical shop registers (`POST /shops/register`) and logs in with the normal `
   - `checkProfileId` becomes the patient's own profile, so the checks the shop runs from then on are saved in the patient's account, with `SessionSummary.shopName` set.
   - The shop can open all of the patient's checks (read only).
 - **Number added later:** a walk-in added without a mobile number gets one with `PATCH /shop/patients/:id`. If a Visus account uses it, the patient gets the same request; once they allow it, the shop sees their past checks.
+- **Ask Visus AI / no patient record:** a shop may send `profileId: ""` to `POST /intake/chat` and `POST /sessions`. The check is kept on one hidden walk-in profile per shop (an adult, age 30), never shown in its patient list.
+- **Orders:** amounts are whole rupees. An order is for a shop patient (`patientId`, name and phone copied) or a customer without a record (`customerName`). Status: `new` → `in_progress` → `ready` → `delivered`, or `cancelled`. Payments are appended; `paid`, `due` and `paymentStatus` (`unpaid`, `partial`, `paid`) are worked out from them.
 - **Unlink** (`DELETE /me/shops/:id`): the shop keeps only the checks it ran itself, and can't start new ones on the patient's profile.
 - A check's `sessions.shop_id` records which shop ran it.
 

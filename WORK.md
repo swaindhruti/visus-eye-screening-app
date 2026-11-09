@@ -85,6 +85,9 @@ New priority order agreed on 2026-11-08 (replaces "Visus: Plan to 15 November").
 
 - [x] D: Shop Test library in the sidebar (`/shop/tests`): tests by category; run one for a quick analysis or tick a set (`mode: "custom"`, `testIds`); patient optional (`profileId: ""` keeps it on the shop's walk-in record)
 
+- [x] D: Shop Ask Visus AI (`/shop/ask`, first in the sidebar as a highlighted capsule): AI chat and plan for a customer with or without a patient record; pick or add the patient mid-chat. Fixed the chat's Send button for shops
+- [x] D: Shop Orders (`shop_orders` table, `/shop/orders` routes; list with totals, new order, status steps, payments; orders on the patient page). **Aiven needs `bun run db:push`** (new table)
+
 2. Multilingual voice agent (English, Hindi, Odia)
 
 - [x] D: Server: `language` on intake chat, sessions and verdict; prompts reply in that language; Hindi / Odia rule fallbacks; Hindi / Odia urgent words in the red-flag rules

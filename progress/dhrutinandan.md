@@ -20,6 +20,10 @@ Area: mobile app + server (setup, auth, agent). Claude updates this file at the 
     - No credits (402) or a refused key (403) turns Sarvam off for 10 min; the apps switch to the device voice. Checked with a fake key (no credits used).
     - New `GET /voice`; Settings on web and mobile shows which voice talk mode uses.
     - The Worker bundle builds (`wrangler deploy --dry-run`, 275 KB gzipped). Smoke not rerun: it would spend credits.
+  - 2026-11-09: **shop Ask Visus AI and Orders**.
+    - Ask Visus AI (`/shop/ask`, first in the sidebar, a highlighted capsule): pick a patient, no record, or add one, then the normal AI chat (`/check/intake`) with a *For* bar to change or add the patient mid-chat. No patient: `profileId: ""` on `/intake/chat` and `/sessions`. Also fixed the chat's Send button being greyed out for shops.
+    - Orders: new `shop_orders` table (payments as JSON); `GET/POST /shop/orders`, `GET/PATCH /shop/orders/:id`, `POST /shop/orders/:id/payments`. Web: `/shop/orders` (totals, status filter, search), `/shop/orders/new`, `/shop/orders/[id]` (status steps, payments); a patient's page lists their orders.
+    - Smoke 101/101 on the local test DB. **Aiven needs `bun run db:push`** for the new table. **Not looked at by eye yet.**
   - 2026-11-09: fix: a shop couldn't find accounts made before phone numbers were stored (their `users.phone` is empty until they log in again). The lookup now also matches the phone login and saves it; the patient's request list does the same.
   - 2026-11-09: **shop Test library** (`/shop/tests`, in the sidebar): tests by category; run one test, or tick up to 8 and run them as a set; a patient is optional. Server: `mode: "custom"` with `testIds`, and `profileId: ""` for a shop check with no patient (one hidden walk-in profile per shop, not in the patient list). After a no-patient check, Done goes back to the library. Smoke 90/90. **Not looked at by eye yet.**
   - 2026-11-09: **shop portal v2** (web + server).
