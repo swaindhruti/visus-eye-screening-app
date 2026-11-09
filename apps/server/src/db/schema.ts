@@ -1,7 +1,7 @@
 // All database tables (Drizzle). One owner: Dhrutinandan.
 // Teammate: ask for new tables or columns instead of editing this file.
-import type { Prescription, ScoredResult, TestId, Verdict } from '@visus/shared';
-import { boolean, index, integer, jsonb, pgTable, real, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import type { Payment, Prescription, ScoredResult, TestId, Verdict } from '@visus/shared';
+import { boolean, date, index, integer, jsonb, pgTable, real, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull().defaultNow();
 
@@ -117,4 +117,28 @@ export const shopPatients = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index('shop_patients_shop_idx').on(t.shopId), index('shop_patients_phone_idx').on(t.phone)],
+);
+
+/** A shop's order (spectacles, lenses…) and the payments against it (shop portal → Orders). */
+export const shopOrders = pgTable(
+  'shop_orders',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    shopId: uuid('shop_id')
+      .notNull()
+      .references(() => shops.id, { onDelete: 'cascade' }),
+    patientId: uuid('patient_id').references(() => shopPatients.id, { onDelete: 'set null' }),
+    customerName: text('customer_name').notNull(),
+    phone: text('phone').notNull().default(''),
+    item: text('item').notNull(),
+    kind: text('kind').notNull().default('spectacles'), // OrderKind
+    total: integer('total').notNull(), // whole rupees
+    payments: jsonb('payments').$type<Payment[]>().notNull().default([]),
+    status: text('status').notNull().default('new'), // OrderStatus
+    dueDate: date('due_date'),
+    notes: text('notes').notNull().default(''),
+    createdAt: createdAt(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('shop_orders_shop_idx').on(t.shopId), index('shop_orders_patient_idx').on(t.patientId)],
 );

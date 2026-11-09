@@ -326,5 +326,71 @@ export type ShopAccount = z.infer<typeof ShopAccount>;
 /** PATCH /shop: change the shop's name, address or city. */
 export const UpdateShopRequest = z.object({ name: z.string().min(2).max(100), address: z.string().max(200), city: z.string().max(80) });
 
+// ---------- Shop orders and payments (shop portal → Orders) ----------
+
+export const OrderKind = z.enum(["spectacles", "lenses", "contact_lenses", "frames", "sunglasses", "other"]);
+export type OrderKind = z.infer<typeof OrderKind>;
+/** new → in_progress (at the lab) → ready (for pickup) → delivered; or cancelled. */
+export const OrderStatus = z.enum(["new", "in_progress", "ready", "delivered", "cancelled"]);
+export type OrderStatus = z.infer<typeof OrderStatus>;
+export const PaymentMethod = z.enum(["cash", "upi", "card"]);
+export type PaymentMethod = z.infer<typeof PaymentMethod>;
+/** Paid from the payments against the total. */
+export type PaymentStatus = "unpaid" | "partial" | "paid";
+
+/** Amounts are whole rupees. */
+export const Payment = z.object({ amount: z.number().int().positive().max(10_000_000), method: PaymentMethod });
+export type Payment = z.infer<typeof Payment> & { at: string };
+
+export type ShopOrder = {
+  id: string;
+  /** The shop's patient this order is for, or null for a customer without a record. */
+  patientId: string | null;
+  customerName: string;
+  phone: string;
+  item: string;
+  kind: OrderKind;
+  total: number;
+  paid: number;
+  due: number;
+  paymentStatus: PaymentStatus;
+  payments: Payment[];
+  status: OrderStatus;
+  /** Promised for (ISO date), or null. */
+  dueDate: string | null;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** GET /shop/orders: the orders (newest first) and the shop's totals. */
+export type ShopOrders = {
+  orders: ShopOrder[];
+  summary: { open: number; ready: number; collected: number; due: number };
+};
+
+/** POST /shop/orders. A patient, or a customer name (and phone) for someone without a record. */
+export const CreateOrderRequest = z.object({
+  patientId: z.string().optional(),
+  customerName: z.string().max(100).default(""),
+  phone: z.string().max(16).default(""),
+  item: z.string().min(1).max(200),
+  kind: OrderKind.default("spectacles"),
+  total: z.number().int().min(0).max(10_000_000),
+  /** Paid now (an advance), optional. */
+  advance: Payment.optional(),
+  dueDate: z.iso.date().optional(),
+  notes: z.string().max(500).default(""),
+});
+
+/** PATCH /shop/orders/:id: move it along, or fix its details. */
+export const UpdateOrderRequest = z.object({
+  status: OrderStatus.optional(),
+  item: z.string().min(1).max(200).optional(),
+  total: z.number().int().min(0).max(10_000_000).optional(),
+  dueDate: z.iso.date().nullable().optional(),
+  notes: z.string().max(500).optional(),
+});
+
 // Hindi and Odia instructions, spoken lines and the voice routes (Sarvam AI via the server).
 export * from "./voice";

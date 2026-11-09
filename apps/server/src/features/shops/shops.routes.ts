@@ -1,6 +1,15 @@
-// Shop portal. POST /shops/register (no login); /shop/* for shop accounts; /me/shop-requests and
-// /me/shops for the patient's side (approve or decline a shop, unlink it later).
-import { CreatePatientRequest, ShopRegisterRequest, ShopRequestAnswer, UpdatePatientRequest, UpdateShopRequest } from '@visus/shared';
+// Shop portal. POST /shops/register (no login); /shop/* for shop accounts (patients, orders, account);
+// /me/shop-requests and /me/shops for the patient's side (approve or decline a shop, unlink it later).
+import {
+  CreateOrderRequest,
+  CreatePatientRequest,
+  Payment,
+  ShopRegisterRequest,
+  ShopRequestAnswer,
+  UpdateOrderRequest,
+  UpdatePatientRequest,
+  UpdateShopRequest,
+} from '@visus/shared';
 import { Hono } from 'hono';
 import { createMiddleware } from 'hono/factory';
 
@@ -8,6 +17,7 @@ import type { AppEnv } from '../../lib/env';
 import { fail } from '../../lib/errors';
 import { validate } from '../../lib/validate';
 import { requireAuth } from '../auth/auth.middleware';
+import { addPayment, createOrder, getOrder, listOrders, updateOrder } from '../orders/orders.service';
 import { shopIdOf } from './access';
 import {
   answerRequest,
@@ -60,6 +70,22 @@ shopRoutes.patch('/patients/:id', validate('json', UpdatePatientRequest), async 
 );
 
 shopRoutes.post('/patients/:id/link', async (c) => c.json(await requestLink(c.var.db, c.var.shopId, c.req.param('id'))));
+
+shopRoutes.get('/orders', async (c) =>
+  c.json(await listOrders(c.var.db, c.var.shopId, { status: c.req.query('status'), patientId: c.req.query('patientId'), q: c.req.query('q') })),
+);
+
+shopRoutes.post('/orders', validate('json', CreateOrderRequest), async (c) => c.json(await createOrder(c.var.db, c.var.shopId, c.req.valid('json')), 201));
+
+shopRoutes.get('/orders/:id', async (c) => c.json(await getOrder(c.var.db, c.var.shopId, c.req.param('id'))));
+
+shopRoutes.patch('/orders/:id', validate('json', UpdateOrderRequest), async (c) =>
+  c.json(await updateOrder(c.var.db, c.var.shopId, c.req.param('id'), c.req.valid('json'))),
+);
+
+shopRoutes.post('/orders/:id/payments', validate('json', Payment), async (c) =>
+  c.json(await addPayment(c.var.db, c.var.shopId, c.req.param('id'), c.req.valid('json'))),
+);
 
 export const myShopsRoutes = new Hono<AppEnv>();
 myShopsRoutes.use('*', requireAuth);

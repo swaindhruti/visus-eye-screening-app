@@ -253,6 +253,32 @@ call POST /sessions '{"profileId":"","intake":"","mode":"custom"}'
 check "picked tests without any → 400" 400
 call GET /shop/patients
 check "the no-patient record isn't in the patient list" 200 "all(p['name'] != 'Walk-in (no record)' for p in d)"
+call POST /intake/chat '{"profileId":"","messages":[{"from":"me","text":"Things far away look blurry"}]}'
+check "Ask Visus AI: chat with no patient record" 200 "d['reply'] and not d['done']"
+
+echo "Shop orders and payments"
+call POST /shop/orders "{\"patientId\":\"$WALKIN\",\"item\":\"ZEISS SmartLife single vision + frame\",\"kind\":\"spectacles\",\"total\":4500,\"advance\":{\"amount\":1500,\"method\":\"upi\"},\"dueDate\":\"2026-12-01\"}"
+check "order for a patient, with an advance" 201 "d['customerName'] == 'Walk-in One' and d['paid'] == 1500 and d['due'] == 3000 and d['paymentStatus'] == 'partial' and d['status'] == 'new'"
+ORDER=$(get "d['id']")
+call POST /shop/orders '{"customerName":"Counter Customer","item":"Sunglasses","kind":"sunglasses","total":1200}'
+check "order without a patient record" 201 "d['patientId'] is None and d['paymentStatus'] == 'unpaid'"
+call POST /shop/orders '{"item":"Frames","total":900}'
+check "order with no customer → 400" 400
+call POST "/shop/orders/$ORDER/payments" '{"amount":5000,"method":"cash"}'
+check "paying more than is due → 400" 400
+call POST "/shop/orders/$ORDER/payments" '{"amount":3000,"method":"cash"}'
+check "pay the rest" 200 "d['paid'] == 4500 and d['due'] == 0 and d['paymentStatus'] == 'paid' and len(d['payments']) == 2"
+call PATCH "/shop/orders/$ORDER" '{"status":"ready"}'
+check "order ready for pickup" 200 "d['status'] == 'ready'"
+call PATCH "/shop/orders/$ORDER" '{"total":4000}'
+check "total below what's paid → 400" 400
+call GET /shop/orders
+check "orders and totals" 200 "len(d['orders']) == 2 and d['summary'] == {'open': 1, 'ready': 1, 'collected': 4500, 'due': 1200}"
+call GET "/shop/orders?patientId=$WALKIN"
+check "a patient's orders" 200 "len(d['orders']) == 1 and d['orders'][0]['id'] == '$ORDER'"
+call GET "/shop/orders?q=sunglass"
+check "search orders" 200 "len(d['orders']) == 1 and d['orders'][0]['customerName'] == 'Counter Customer'"
+
 call GET /shop
 check "shop account" 200 "d['name'] == 'Smoke Optics' and d['ownerName'] == 'Shop Owner' and d['patients'] == 3"
 call PATCH /shop '{"name":"Smoke Optics","address":"1 Main Road","city":"Cuttack"}'
