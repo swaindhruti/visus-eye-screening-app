@@ -14,7 +14,7 @@ import { fmtFull, fmtShort, useToday } from "@/lib/dates";
 import { initials } from "@/services/profiles";
 import { listPatients, type ShopPatient } from "@/services/shops";
 
-/** Shop portal home: find a patient, add a walk-in, see today's checks. */
+/** Shop portal: Patient records. Add a walk-in at the top, then today's numbers and the searchable list. */
 export default function ShopHome() {
   const today = useToday();
   const [q, setQ] = useState("");
@@ -34,7 +34,21 @@ export default function ShopHome() {
   ];
 
   return (
-    <Screen wide gap="gap-5 md:gap-7" eyebrow={today ? fmtFull(today) : " "} title="Patients" actions={<Button href="/shop/patients/new" leading={<Icon name="plusSm" size={18} />} className="hidden md:flex">New patient</Button>}>
+    <Screen wide gap="gap-5 md:gap-7" eyebrow={today ? fmtFull(today) : " "} title="Patient records">
+      <Link
+        href="/shop/patients/new"
+        className="flex min-h-[80px] items-center gap-4 rounded-[20px] bg-ink px-5 py-4 text-white transition-[transform,background-color] duration-150 hover:bg-[#2a2a2a] active:scale-[.99]"
+      >
+        <span className="grid size-12 flex-none place-items-center rounded-full bg-white/15">
+          <Icon name="plus" size={24} />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="text-[18px] font-bold tracking-[-0.01em]">Add new patient</span>
+          <span className="text-[14px] text-white/70">Name, age and glasses. The mobile number is optional; you can add it later.</span>
+        </span>
+        <Icon name="arrowRight" size={20} className="flex-none" />
+      </Link>
+
       <div className="grid grid-cols-3 gap-2.5 md:gap-4">
         {stats.map(([label, n]) => (
           <div key={label} className="flex flex-col gap-0.5 rounded-[20px] border border-line bg-white p-3.5 md:p-5">
@@ -65,11 +79,13 @@ export default function ShopHome() {
           </span>
           <h2 className="m-0 mt-5 text-[22px] font-bold tracking-[-0.02em]">{q ? "No patient found" : "No patients yet"}</h2>
           <p className="m-0 mt-2 max-w-[320px] text-[16px] leading-normal text-muted text-pretty">
-            {q ? "Check the spelling or the phone number, or add them as a new patient." : "Add your first walk-in to start an eye check for them."}
+            {q ? "Check the spelling or the phone number, or add them as a new patient." : "Add your first walk-in above to start an eye check for them."}
           </p>
-          <Button href="/shop/patients/new" className="mt-6 h-[52px] px-7 text-[16px]">
-            New patient
-          </Button>
+          {q && (
+            <Button href="/shop/patients/new" className="mt-6 h-[52px] px-7 text-[16px]">
+              Add new patient
+            </Button>
+          )}
         </div>
       ) : (
         <div className="overflow-hidden rounded-[20px] border border-line bg-white" aria-busy={list.isPending}>

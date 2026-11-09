@@ -16,6 +16,8 @@ type SettingsState = {
   onboarded: boolean;
   /** ISO date until which the re-check reminder stays hidden. */
   reminderSnoozedUntil: string | null;
+  /** Shop portal: the sidebar shows icons only. */
+  shopSidebarCollapsed: boolean;
   set: (patch: Partial<Omit<SettingsState, "set">>) => void;
 };
 
@@ -29,6 +31,7 @@ export const useSettings = create<SettingsState>()(
       offlineCleared: false,
       onboarded: false,
       reminderSnoozedUntil: null,
+      shopSidebarCollapsed: false,
       set: (patch) => set(patch),
     }),
     { name: "visus.settings", storage: createJSONStorage(() => localStorage), skipHydration: true },

@@ -18,7 +18,7 @@ import { sessionSub, sessionTitle } from "@/lib/history";
 import { TEST_COPY } from "@/lib/tests";
 import { useStartCheck } from "@/lib/useStartCheck";
 import type { CheckMode } from "@/services/sessions";
-import { getPatient, requestLink, type PatientDetail } from "@/services/shops";
+import { getPatient, requestLink, setPatientPhone, type PatientDetail } from "@/services/shops";
 import { useCheck } from "@/store/check";
 
 /** Shop portal: one patient. Link status, start a check, and their past checks. */
@@ -155,23 +155,41 @@ function SingleTest({ age, onStart, busy }: { age: number; onStart: (id: TestId)
   );
 }
 
-/** Whether the patient's own Visus account is linked, and what the shop can do about it. */
+/**
+ * Whether the patient's own Visus account is linked, and what the shop can do about it. A walk-in
+ * added without a mobile number gets one here; if they use Visus with it, their past checks follow
+ * once they allow it.
+ */
 function LinkCard({ p }: { p: PatientDetail }) {
   const client = useQueryClient();
-  const ask = useMutation({
-    mutationFn: () => requestLink(p.id),
-    onSuccess: (next) => client.setQueryData(["shop-patient", p.id], next),
+  const [editing, setEditing] = useState(false);
+  const [phone, setPhone] = useState(p.phone);
+  const saved = (next: PatientDetail) => {
+    client.setQueryData(["shop-patient", p.id], next);
+    void client.invalidateQueries({ queryKey: ["shop-patients"] });
+  };
+  const ask = useMutation({ mutationFn: () => requestLink(p.id), onSuccess: saved });
+  const save = useMutation({
+    mutationFn: () => setPatientPhone(p.id, phone),
+    onSuccess: (next) => {
+      saved(next);
+      setEditing(false);
+    },
   });
   const first = p.name.split(" ")[0];
   const text = {
     none: p.phone
       ? `No Visus account uses ${p.phone} yet. If ${first} signs up with this number, they'll see your request.`
-      : `Add ${first}'s mobile number to link their own Visus account.`,
-    pending: `Waiting for ${first} to allow it in their Visus app. Until then you see only the checks you run.`,
+      : `Add ${first}'s mobile number. If they use Visus with it, they'll be asked to share their eye records, and their past results will show here.`,
+    pending: `Waiting for ${first} to allow it in their Visus app. Then their past results show here; until then you see only the checks you run.`,
     approved: `Linked to ${first}'s Visus account. You can see all their checks, and the checks you run are saved in their account too.`,
     declined: `${first} declined or removed your shop. You keep the checks you ran.`,
   }[p.linkStatus];
   const canAsk = !!p.phone && (p.linkStatus === "none" || p.linkStatus === "declined");
+  const canEdit = p.linkStatus !== "approved";
+  const digits = phone.replace(/\D/g, "");
+  const phoneOk = digits.length >= 10;
+  const showForm = canEdit && (editing || !p.phone);
 
   return (
     <section className="flex flex-col gap-3 rounded-[20px] border border-line bg-white p-[18px]">
@@ -179,10 +197,59 @@ function LinkCard({ p }: { p: PatientDetail }) {
         <span className="grid size-9 place-items-center rounded-full bg-fill">
           <Icon name="store" size={18} />
         </span>
-        <h2 className="m-0 text-[17px] font-bold">Their Visus account</h2>
+        <h2 className="m-0 flex-1 text-[17px] font-bold">Their Visus account</h2>
+        {canEdit && p.phone && !editing && (
+          <button type="button" onClick={() => setEditing(true)} className="h-9 rounded-[10px] px-2.5 text-[14px] font-semibold text-muted hover:bg-pressed hover:text-ink">
+            Change number
+          </button>
+        )}
       </div>
       <p className="m-0 text-[15px] leading-normal text-ink-soft text-pretty">{text}</p>
-      {canAsk && (
+      {showForm && (
+        <form
+          className="flex flex-col gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (phoneOk && !save.isPending) save.mutate();
+          }}
+        >
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[14px] font-semibold">Mobile number</span>
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              inputMode="tel"
+              autoComplete="off"
+              placeholder="98765 43210"
+              className="h-12 rounded-[14px] border border-line-strong bg-white px-4 text-[16px] outline-none focus:border-ink focus:shadow-[0_0_0_4px_rgba(17,17,17,.06)]"
+            />
+          </label>
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={!phoneOk || save.isPending}
+              className="flex h-11 flex-1 items-center justify-center rounded-[14px] bg-ink px-4 text-[15px] font-semibold text-white disabled:opacity-40"
+            >
+              {save.isPending ? "Saving…" : p.phone ? "Save number" : "Add number"}
+            </button>
+            {editing && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditing(false);
+                  setPhone(p.phone);
+                  save.reset();
+                }}
+                className="flex h-11 items-center justify-center rounded-[14px] border border-line-strong bg-white px-4 text-[15px] font-semibold hover:bg-[#FBFBF9]"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+          {save.isError && <p className="m-0 text-[14px] text-doc">{save.error.message}</p>}
+        </form>
+      )}
+      {canAsk && !editing && (
         <button
           type="button"
           onClick={() => ask.mutate()}

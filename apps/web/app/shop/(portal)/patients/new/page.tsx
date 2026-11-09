@@ -69,7 +69,7 @@ export default function NewPatient() {
           hint={
             <span className={phoneOk ? "text-[13px] leading-normal text-muted" : "text-[13px] text-doc"}>
               {phoneOk
-                ? "If they use Visus with this number, they'll get a request in their app to share their eye records with your shop."
+                ? "If they use Visus with this number, they'll get a request in their app to share their eye records with your shop. No number now? Add it later from their record."
                 : "Enter a 10-digit mobile number, or leave it empty."}
             </span>
           }
