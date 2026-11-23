@@ -9,6 +9,7 @@ import { StatusBadge } from '@/components/Chip';
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { ConsultCard } from '@/components/ConsultCard';
+import { LastPrescriptionCard } from '@/components/LastPrescriptionCard';
 import { ShopRequestCard } from '@/components/ShopRequestCard';
 import { Text } from '@/components/Text';
 import { daysAgo, daysSince, elapsed, RECHECK_DAYS } from '@/constants/report';
@@ -55,20 +56,6 @@ function HomeScreen() {
 
   return (
     <Screen tabs scroll>
-      <ConsultCard />
-      <ShopRequestCard />
-      {recheck && (
-        <Card style={styles.recheck} onPress={() => router.push('/check/recheck')}>
-          <View style={styles.recheckIcon}>
-            <Icon name="bell" size={20} color={Colors.accInk} strokeWidth={2} />
-          </View>
-          <View style={styles.quickText}>
-            <Text style={Type.rowTitle}>Check-up reminder</Text>
-            <Text style={styles.caption}>It&apos;s been {elapsed(last.date)} since your last check</Text>
-          </View>
-          <Icon name="chevronRight" size={16} color={Colors.faint} strokeWidth={2.2} />
-        </Card>
-      )}
       <Card dark style={styles.hero}>
         <View style={styles.heroTop}>
           <View style={styles.due}>
@@ -87,6 +74,21 @@ function HomeScreen() {
           style={styles.heroButton}
         />
       </Card>
+
+      <ConsultCard />
+      <ShopRequestCard />
+      {recheck && (
+        <Card style={styles.recheck} onPress={() => router.push('/check/recheck')}>
+          <View style={styles.recheckIcon}>
+            <Icon name="bell" size={20} color={Colors.accInk} strokeWidth={2} />
+          </View>
+          <View style={styles.quickText}>
+            <Text style={Type.rowTitle}>Check-up reminder</Text>
+            <Text style={styles.caption}>It&apos;s been {elapsed(last.date)} since your last check</Text>
+          </View>
+          <Icon name="chevronRight" size={16} color={Colors.faint} strokeWidth={2.2} />
+        </Card>
+      )}
 
       <Card style={styles.quick} onPress={() => router.push('/check/quick')}>
         <View style={styles.quickIcon}>
@@ -142,6 +144,7 @@ function HomeScreen() {
         </Card>
       </View>
 
+      <LastPrescriptionCard />
     </Screen>
   );
 }
