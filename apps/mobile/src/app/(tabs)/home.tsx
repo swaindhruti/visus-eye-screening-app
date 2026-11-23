@@ -1,13 +1,12 @@
 import { Redirect, router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { alertError } from '@/components/alertError';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { StatusBadge } from '@/components/Chip';
 import { Icon } from '@/components/Icon';
-import { ListRow } from '@/components/ListRow';
 import { Screen } from '@/components/Screen';
 import { ConsultCard } from '@/components/ConsultCard';
 import { ShopRequestCard } from '@/components/ShopRequestCard';
@@ -143,23 +142,6 @@ function HomeScreen() {
         </Card>
       </View>
 
-      <View style={styles.section}>
-        <View style={styles.sectionHead}>
-          <Text style={Type.h3}>Popular tests</Text>
-          <Pressable onPress={() => router.navigate('/tests')} hitSlop={8}>
-            <Text style={styles.seeAll}>See all</Text>
-          </Pressable>
-        </View>
-        <Card flush>
-          <ListRow first icon="E" title="Distance acuity" right="3 min" onPress={() => router.push('/tests/tumbling_e')} />
-          <ListRow
-            icon={<Icon name="colour" size={20} />}
-            title="Colour vision plates"
-            right="3 min"
-            onPress={() => router.push('/tests/colour_plates')}
-          />
-        </Card>
-      </View>
     </Screen>
   );
 }
@@ -206,7 +188,4 @@ const styles = StyleSheet.create({
   tileFoot: { marginTop: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
   ago: { marginTop: 4 },
   badge: { marginTop: 'auto', paddingTop: 10 },
-  section: { gap: 10 },
-  sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  seeAll: { ...Type.rowTitle, fontSize: 15, color: Colors.ink },
 });
