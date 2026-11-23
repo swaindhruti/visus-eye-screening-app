@@ -3,6 +3,7 @@
 // 2. the phone's own "new event" screen, filled in (the user taps Save);
 // 3. the Google Calendar link (also Expo Go).
 // Each failure is logged (Metro) so the reason shows up.
+import * as Calendar from 'expo-calendar';
 import { Linking } from 'react-native';
 
 import type { ConsultSummary } from '@/services/consults';
@@ -11,7 +12,7 @@ export type CalendarResult = 'added' | 'form' | 'opened_link' | 'denied';
 
 const drName = (name: string) => (/^dr\.?\s/i.test(name) ? name : `Dr ${name}`);
 
-type Cal = Awaited<ReturnType<typeof import('expo-calendar').getCalendars>>[number];
+type Cal = Calendar.ExpoCalendar;
 
 /** The calendar people actually look at: a visible, writable, primary (Google) account calendar first. */
 function pickCalendar(calendars: Cal[]) {
@@ -32,8 +33,6 @@ export async function addConsultToCalendar(c: ConsultSummary): Promise<CalendarR
 
   let target: Cal | undefined;
   try {
-    // Loaded on first use: native module (installed app).
-    const Calendar = await import('expo-calendar');
     const permission = await Calendar.requestCalendarPermissions();
     if (!permission.granted) return 'denied';
     target = pickCalendar(await Calendar.getCalendars());
