@@ -56,8 +56,8 @@ function HomeScreen() {
 
   return (
     <Screen tabs scroll>
-      <ShopRequestCard />
       <ConsultCard />
+      <ShopRequestCard />
       {recheck && (
         <Card style={styles.recheck} onPress={() => router.push('/check/recheck')}>
           <View style={styles.recheckIcon}>
