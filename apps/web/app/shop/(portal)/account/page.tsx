@@ -9,6 +9,7 @@ import { Icon } from "@/components/Icon";
 import { Screen } from "@/components/Screen";
 import { useShopReady } from "@/components/ShopShell";
 import { ErrorState } from "@/components/States";
+import { SkeletonPage } from "@/components/Skeleton";
 import { getShopAccount, updateShop, type ShopAccount } from "@/services/shops";
 
 /** Shop portal: Account. The shop's details (editable) and the login it uses. */
@@ -22,7 +23,7 @@ export default function ShopAccountPage() {
   return (
     <Screen wide gap="gap-5 md:gap-7" eyebrow="Shop portal" title="Account">
       {!a ? (
-        <p className="m-0 text-[15px] text-muted">Loading…</p>
+        <SkeletonPage label="Loading your account…" />
       ) : (
         <div className="flex flex-col gap-5 md:flex-row md:items-start md:gap-6">
           <ShopForm a={a} />

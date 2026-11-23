@@ -10,6 +10,7 @@ import { useDoctorReady } from "@/components/DoctorShell";
 import { Icon } from "@/components/Icon";
 import { Screen } from "@/components/Screen";
 import { ErrorState } from "@/components/States";
+import { SkeletonRows } from "@/components/Skeleton";
 import { canJoin, useNow } from "@/lib/consults";
 import { fmtFull } from "@/lib/dates";
 import { listDoctorConsults, type ConsultsWhen } from "@/services/doctor";
@@ -74,7 +75,7 @@ export default function DoctorConsults() {
             consults.map((c, i) => (
               <ConsultRow key={c.id} c={c} now={now} first={i === 0} title={`${c.patient.name}, ${c.patient.age}`} sub={`${c.clinic.name}, ${c.clinic.city}`} href={`/doctor/consults/${c.id}`} />
             ))}
-          {(list.isPending || !now) && <p className="m-0 p-4 text-[15px] text-muted">Loading consults…</p>}
+          {(list.isPending || !now) && <SkeletonRows label="Loading consults…" />}
         </div>
       )}
     </Screen>

@@ -9,6 +9,7 @@ import { Icon } from "@/components/Icon";
 import { Screen } from "@/components/Screen";
 import { useShopReady } from "@/components/ShopShell";
 import { ErrorState } from "@/components/States";
+import { SkeletonCards } from "@/components/Skeleton";
 import { languageName } from "@/lib/consults";
 import { fmtShort } from "@/lib/dates";
 import { addClinicDoctor, listClinicDoctors, removeClinicDoctor, type ClinicDoctor } from "@/services/clinic";
@@ -53,7 +54,7 @@ export default function ShopDoctors() {
 
       <section className="flex flex-col gap-3">
         <h2 className="m-0 text-[20px] font-bold tracking-[-0.01em]">Your doctors</h2>
-        {q.isPending && <p className="m-0 text-[15px] text-muted">Loading doctors…</p>}
+        {q.isPending && <SkeletonCards label="Loading doctors…" />}
         {q.isSuccess && active.length === 0 && (
           <div className="flex flex-col items-center rounded-[20px] border border-line bg-white px-5 py-10 text-center">
             <Icon name="health" size={30} strokeWidth={1.8} />

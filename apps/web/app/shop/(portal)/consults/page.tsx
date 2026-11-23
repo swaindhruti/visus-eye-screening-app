@@ -10,6 +10,7 @@ import { Icon } from "@/components/Icon";
 import { Screen } from "@/components/Screen";
 import { useShopReady } from "@/components/ShopShell";
 import { ErrorState } from "@/components/States";
+import { SkeletonRows } from "@/components/Skeleton";
 import { canJoin, useNow } from "@/lib/consults";
 import { fmtFull } from "@/lib/dates";
 import { listClinicConsults } from "@/services/clinic";
@@ -113,7 +114,7 @@ export default function ShopConsults() {
                 />
               );
             })}
-          {(list.isPending || !now) && <p className="m-0 p-4 text-[15px] text-muted">Loading consults…</p>}
+          {(list.isPending || !now) && <SkeletonRows label="Loading consults…" />}
         </div>
       )}
     </Screen>

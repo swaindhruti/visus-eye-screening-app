@@ -9,6 +9,7 @@ import { useDoctorReady } from "@/components/DoctorShell";
 import { Icon } from "@/components/Icon";
 import { Screen } from "@/components/Screen";
 import { ErrorState } from "@/components/States";
+import { SkeletonCards } from "@/components/Skeleton";
 import { fmtShort } from "@/lib/dates";
 import { answerClinic, leaveClinic, listDoctorClinics, setClinicHours, type DoctorClinic, type HoursBlock } from "@/services/doctor";
 
@@ -41,7 +42,7 @@ export default function DoctorClinics() {
         <p className="m-0 text-[15px] leading-normal text-muted text-pretty">
           Clinics book 15-minute consults inside your weekly hours. Times are India time. A clinic adds you with your Visus ID, shown in Account.
         </p>
-        {q.isPending && <p className="m-0 text-[15px] text-muted">Loading clinics…</p>}
+        {q.isPending && <SkeletonCards label="Loading clinics…" />}
         {q.isSuccess && clinics.length === 0 && (
           <div className="flex flex-col items-center rounded-[20px] border border-line bg-white px-5 py-10 text-center">
             <Icon name="store" size={30} strokeWidth={1.8} />

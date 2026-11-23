@@ -10,6 +10,7 @@ import { OrderRow } from "@/components/Orders";
 import { Screen } from "@/components/Screen";
 import { useShopReady } from "@/components/ShopShell";
 import { ErrorState } from "@/components/States";
+import { SkeletonRows } from "@/components/Skeleton";
 import { listOrders, ORDER_STATUS, rupees, type OrderStatus } from "@/services/orders";
 
 const FILTERS: (OrderStatus | undefined)[] = [undefined, "new", "in_progress", "ready", "delivered", "cancelled"];
@@ -94,7 +95,7 @@ export default function ShopOrdersPage() {
           {orders.map((o, i) => (
             <OrderRow key={o.id} o={o} first={i === 0} />
           ))}
-          {list.isPending && <p className="m-0 p-4 text-[15px] text-muted">Loading orders…</p>}
+          {list.isPending && <SkeletonRows label="Loading orders…" />}
         </div>
       )}
     </Screen>

@@ -13,6 +13,7 @@ import { GlassesTable, PrescriptionCard } from "@/components/PrescriptionCard";
 import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { ErrorState, LoadingState } from "@/components/States";
+import { SkeletonCards } from "@/components/Skeleton";
 import { canJoin, fmtDay, fmtTime, JOIN_EARLY_MIN, JOIN_FROM_LABEL, languageName, setDoctorReturn, useNow } from "@/lib/consults";
 import { fmtFull, fmtShort } from "@/lib/dates";
 import { sessionTitle } from "@/lib/history";
@@ -72,7 +73,7 @@ export default function PatientFilePage() {
       {file.isError ? (
         <ErrorState title="Couldn't load the records" body="Try again in a moment." onRetry={() => file.refetch()} retrying={file.isFetching} />
       ) : !file.data ? (
-        <p className="m-0 text-[15px] text-muted">Loading the patient&apos;s records…</p>
+        <SkeletonCards count={3} label="Loading the patient’s records…" />
       ) : (
         <Records f={file.data} consultId={c.id} now={now} />
       )}
