@@ -1,6 +1,6 @@
 # Visus API
 
-Hono on Cloudflare Workers, with Postgres on Aiven (Drizzle + `pg`) and Gemini for the agent. It owns all the logic: scoring, red-flag rules, AI planning and verdicts, and lens suggestions.
+Hono on Cloudflare Workers, with Postgres on Neon (Drizzle + `pg`) and Gemini for the agent. It owns all the logic: scoring, red-flag rules, AI planning and verdicts, and lens suggestions.
 
 - [`docs/API.md`](../../docs/API.md): every route.
 - [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md): how a check flows.
@@ -17,7 +17,7 @@ bun run db:push                   # create the tables
 
 | Key | Value |
 |---|---|
-| `DATABASE_URL` | Postgres URL (Aiven *Service URI*) |
+| `DATABASE_URL` | Postgres URL (Neon console → *Connect* → connection string, with `?sslmode=require`) |
 | `GEMINI_API_KEY` | Google AI Studio key |
 | `JWT_SECRET` | long random string |
 | `PASSWORD_PEPPER` | long random string |
@@ -27,7 +27,7 @@ bun run db:push                   # create the tables
 | Command | What |
 |---|---|
 | `bun run dev:phone` | Runs the app on Bun at `0.0.0.0:8787` (`src/local.ts`), so phones on your Wi-Fi can reach it. Use this for local integration. |
-| `bun run dev` | Runs on the local Workers runtime (wrangler). Needs the Aiven CA at `aiven-ca.pem` (gitignored). |
+| `bun run dev` | Runs on the local Workers runtime (wrangler). Neon's certificate is publicly trusted, so no CA file is needed. |
 | `bun run smoke` | Checks every route against a running server. Use `API=https://… bun run smoke` for a deployed one. |
 | `bun run typecheck` | TypeScript check |
 | `bun run db:push` | Syncs the Drizzle schema (`src/db/schema.ts`) to the database |

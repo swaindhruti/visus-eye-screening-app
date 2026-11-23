@@ -121,7 +121,7 @@ prescriptions         id, consult_id (unique), doctor_id, shop_id, profile_id, k
                       translated jsonb, status, created_at, updated_at
 ```
 
-Aiven needs `bun run db:push` after these are added.
+The database needs `bun run db:push` after these are added (done on Neon, 2026-11-23).
 
 ## Secrets (server only)
 

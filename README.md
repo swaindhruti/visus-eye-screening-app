@@ -72,7 +72,7 @@ You describe your eye problem in a short chat. An AI agent then picks the right 
 |---|---|
 | Mobile (`apps/mobile`) | Expo SDK 57, Expo Router, React Native, Skia, VisionCamera v5 + ML Kit face detection, `expo-audio` + `expo-speech-recognition` (talk mode), local Kotlin module (Screen Coach), `react-native-agora` + `expo-calendar` (consult), zustand, TanStack Query, EAS Build |
 | Web (`apps/web`) | Next.js (App Router), Tailwind CSS, MediaPipe (camera distance), `agora-rtc-sdk-ng` (consult call), zustand, TanStack Query, Vercel |
-| Server (`apps/server`) | Hono on Cloudflare Workers, Drizzle ORM + `pg`, Postgres on Aiven (Hyperdrive in production), zod, JWT + PBKDF2, Gemini API, Sarvam AI through its JS SDK `sarvamai` (Indian voice: bulbul TTS, saaras STT, sarvam-105b-conversations), Agora tokens for the consult call |
+| Server (`apps/server`) | Hono on Cloudflare Workers, Drizzle ORM + `pg`, Postgres on Neon (Hyperdrive in production), zod, JWT + PBKDF2, Gemini API, Sarvam AI through its JS SDK `sarvamai` (Indian voice: bulbul TTS, saaras STT, sarvam-105b-conversations), Agora tokens for the consult call |
 | Shared (`packages/shared`) | zod schemas, types and the test catalog used by all three |
 | Tooling | Bun workspaces (Bun only), TypeScript everywhere |
 

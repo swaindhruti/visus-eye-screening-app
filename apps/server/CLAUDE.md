@@ -7,7 +7,7 @@ Read the root `CLAUDE.md`, `docs/API.md` and (for the final) `docs/CONSULT.md` f
 ## Stack
 
 - Hono on Cloudflare Workers (`wrangler.jsonc`, `nodejs_compat` on), TypeScript
-- Postgres on Aiven, via Cloudflare Hyperdrive in production; Drizzle ORM + `pg`
+- Postgres on Neon (moved from Aiven on 2026-11-23), via Cloudflare Hyperdrive in production; Drizzle ORM + `pg`
 - `zod` + `@hono/zod-validator`, types from `@visus/shared`
 - Auth: phone/email + password (PBKDF2 via Web Crypto), JWT via `hono/jwt`
 - Gemini (Google AI Studio API) for the agent; Sarvam AI for voice
@@ -58,20 +58,20 @@ src/
 
 1. `bunx wrangler login`.
 2. `bunx wrangler hyperdrive create visus-db --connection-string="<DATABASE_URL>"`, then add to `wrangler.jsonc`: `"hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<id>", "localConnectionString": "<DATABASE_URL>" }]`.
-3. `bunx wrangler secret put DATABASE_URL` (and `GEMINI_API_KEY`, `JWT_SECRET`, `PASSWORD_PEPPER`, `SARVAM_API_KEY`; final: `AGORA_APP_ID`, `AGORA_APP_CERTIFICATE`, `GEMINI_KEYS`, `SARVAM_KEYS`). Run `bun run db:push` against Aiven first (shop orders + consult tables).
+3. `bunx wrangler secret put DATABASE_URL` (and `GEMINI_API_KEY`, `JWT_SECRET`, `PASSWORD_PEPPER`, `SARVAM_API_KEY`; final: `AGORA_APP_ID`, `AGORA_APP_CERTIFICATE`, `GEMINI_KEYS`, `SARVAM_KEYS`). The Neon tables are already pushed (2026-11-23); run `bun run db:push` again only after a schema change.
 4. Set `WEB_URL` in `wrangler.jsonc` to the Vercel URL, then `bunx wrangler deploy`.
 5. `API=https://visus-api.<subdomain>.workers.dev bun run smoke`, then point the APK's `EXPO_PUBLIC_API_URL` there.
 
 ## Secrets and running
 
 - Local secrets in `.dev.vars` (gitignored, copy from `.dev.vars.example`): `DATABASE_URL`, `GEMINI_API_KEY`, `JWT_SECRET`, `PASSWORD_PEPPER`, and optional `SARVAM_API_KEY` (Indian voice + sarvam-105b-conversations; free ₹100 credits at dashboard.sarvam.ai). Final: `AGORA_APP_ID`, `AGORA_APP_CERTIFICATE` (Agora console → project; the apps get the App ID from `POST /consults/:id/join`), optional key pools `GEMINI_KEYS`, `SARVAM_KEYS` (comma-separated, two teammates' own keys; never log them). Production: `bunx wrangler secret put <NAME>`.
-- `bun run dev` → `http://localhost:8787` on the local Workers runtime (needs `aiven-ca.pem`, below).
+- `bun run dev` → `http://localhost:8787` on the local Workers runtime.
 - `bun run dev:phone` → the same app on Bun (`src/local.ts`), on `0.0.0.0:8787` for the phone on your Wi-Fi. No CA file needed. Use this for local integration with the mobile app.
 - Free Workers have a small CPU budget: test signup/login on the deployed Worker early.
-- Aiven CA: download it (Aiven console → service → Connection information → CA certificate) to `apps/server/aiven-ca.pem` (gitignored). `bun run dev` trusts it via `NODE_EXTRA_CA_CERTS`; without it the local Worker can't open TLS to Aiven.
+- Database: Neon. Its certificate is publicly trusted, so neither `bun run dev` nor `dev:phone` needs a CA file (the old `aiven-ca.pem` is no longer used).
 - Tables: `bun run db:push` (drizzle-kit reads `DATABASE_URL` from `.dev.vars`, or from the environment).
 - Smoke test of every route: `bun run smoke` (server running), or `API=https://… bun run smoke` for the deployed Worker.
-- Test without Aiven: run a throwaway Postgres (e.g. `bunx @electric-sql/pglite-socket` style `pglite-server -p 55432`), then `DATABASE_URL='postgres://postgres:pw@127.0.0.1:55432/postgres?sslmode=disable' bunx drizzle-kit push --force` and the same `DATABASE_URL=… bun src/local.ts`. Add `PORT=8788` to run it next to your own server, and `SARVAM_API_KEY=` (empty) so the smoke test doesn't spend Sarvam credits: `API=http://localhost:8788 bun run smoke`.
+- Test without the real database: run a throwaway Postgres (e.g. `bunx @electric-sql/pglite-socket` style `pglite-server -p 55432`), then `DATABASE_URL='postgres://postgres:pw@127.0.0.1:55432/postgres?sslmode=disable' bunx drizzle-kit push --force` and the same `DATABASE_URL=… bun src/local.ts`. Add `PORT=8788` to run it next to your own server, and `SARVAM_API_KEY=` (empty) so the smoke test doesn't spend Sarvam credits: `API=http://localhost:8788 bun run smoke`.
 - Agora (final): `src/lib/agora.ts` makes 2-hour tokens (`agora-token`, runs on Workers). `bun scripts/agora-token.ts [channel]` prints test tokens for uid 1 and 2 (for Agora's web demo); `src/local.ts` (Bun only, never the Worker) also answers `GET /dev/agora-token?uid=2` for the app's developer Call check screen. On start, `local.ts` logs which secrets are set (names only). Consults can be joined from 10 min before the start; `CONSULT_JOIN_EARLY_MIN=30` (shell for `local.ts`, or a `wrangler.jsonc` var) widens it for a demo and the smoke test.
 - Who may use a check: `features/shops/access.ts` (`sessionAccess`, `checkTarget`). A shop may run checks for its walk-ins and linked patients and read a linked patient's past checks.
 - Sarvam AI: `src/lib/sarvam.ts` through the official SDK `sarvamai` (only the `sarvamai/textToSpeech`, `/speechToText` and `/chat` clients, so the Worker skips the SDK's WebSocket code). TTS `bulbul:v4-flash` (Ritu medical persona; `bulbul:v3` for Odia), STT `saaras:v4`, chat `sarvam-105b-conversations`. SDK retries are off. 402/403 turn Sarvam off for 10 min (`sarvamReady`). Docs: https://docs.sarvam.ai (append `.md` to any page). Routes in `features/voice/`.

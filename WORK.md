@@ -68,8 +68,8 @@ Polish:
 
 Integration and deploy:
 
-- [ ] D: Merge both PRs into `feat/final`; web mocks off; one consult end to end on three devices
-- [ ] D: Deploy the server: Aiven `bun run db:push`, Hyperdrive, secrets (the 4 + `AGORA_*`, key pools, `SARVAM_API_KEY`), `WEB_URL` = Vercel URL, `wrangler deploy`, smoke on the live URL, CORS for the Vercel URL
+- [ ] D: Merge both PRs into `feat/final`; web mocks off; one consult end to end on three devices (web side done by T on 2026-11-23: mocks off against the local server on Neon, one consult in three browsers; still to do on the deployed server with the phone)
+- [ ] D: Deploy the server: Neon (tables already pushed on 2026-11-23), Hyperdrive pointed at Neon, secrets (the 4 + `AGORA_*`, key pools, `SARVAM_API_KEY`), `WEB_URL` = Vercel URL, `wrangler deploy`, smoke on the live URL, CORS for the Vercel URL
 - [ ] D: Final APK (EAS `preview`) on the live API
 - [ ] D: README + docs final pass; PR `feat/final` → `main`
 - [ ] D: Delete PGlite from the laptop: `rm -rf ~/.claude/jobs/3d970588/tmp/pg` and `bun pm cache rm`

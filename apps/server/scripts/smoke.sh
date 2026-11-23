@@ -198,6 +198,13 @@ TOKEN=""
 call POST /auth/signup "{\"name\":\"Patient Smoke\",\"identifier\":\"+91 $PHONE\",\"password\":\"secret123\"}"
 check "patient signs up with a phone number" 201 "d['user']['phone'] == '$PHONE' and d['user']['role'] == 'user'"
 PATIENT=$(get "d['token']")
+TOKEN=""
+call POST /auth/login "{\"identifier\":\"$PHONE\",\"password\":\"secret123\"}"
+check "phone login without +91 (signed up with +91)" 200 "d['user']['phone'] == '$PHONE'"
+call POST /auth/login "{\"identifier\":\"0$PHONE\",\"password\":\"secret123\"}"
+check "phone login with a leading 0" 200 "d['user']['phone'] == '$PHONE'"
+call POST /auth/login "{\"identifier\":\"$PHONE\",\"password\":\"wrong-password\"}"
+check "phone login, wrong password → 401" 401
 TOKEN=$PATIENT
 call POST /profiles '{"name":"Patient Smoke","age":52,"isChild":false,"wearsGlasses":true,"healthConditions":[],"screenHoursPerDay":3}'
 PATIENT_ME=$(get "d['id']")

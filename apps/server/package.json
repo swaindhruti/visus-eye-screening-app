@@ -15,7 +15,7 @@
     "@visus/shared": "workspace:*",
     "agora-token": "^2.0.7",
     "drizzle-orm": "^0.45.4",
-    "hono": "^4.13.13",
+    "hono": "^4.13.19",
     "pg": "^8.23.1",
     "sarvamai": "^1.1.18",
     "zod": "^4.6.7"

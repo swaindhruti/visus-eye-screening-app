@@ -1,6 +1,6 @@
 // Create a user, check login, load the current user.
 import type { AuthResponse, LoginRequest, Role, SignupRequest } from '@visus/shared';
-import { eq } from 'drizzle-orm';
+import { eq, inArray, or } from 'drizzle-orm';
 import { sign } from 'hono/jwt';
 import type { z } from 'zod';
 
@@ -59,7 +59,23 @@ export async function signup(db: Db, env: Bindings, input: z.infer<typeof Signup
 
 export async function login(db: Db, env: Bindings, input: z.infer<typeof LoginRequest>) {
   let [user] = await db.select().from(users).where(eq(users.identifier, normalize(input.identifier)));
-  const ok = user && (await verifyPassword(input.password, env.PASSWORD_PEPPER, user.passwordHash));
+  let ok = !!user && (await verifyPassword(input.password, env.PASSWORD_PEPPER, user.passwordHash));
+  // A phone typed another way than at signup ("9876543210" for "+91 98765 43210", or with a 0):
+  // find the account by its 10-digit phone, or by the usual ways of writing that number.
+  const typed = !ok ? normalizePhone(input.identifier) : null;
+  if (typed) {
+    const forms = [typed, `+91${typed}`, `91${typed}`, `0${typed}`];
+    const matches = await db
+      .select()
+      .from(users)
+      .where(or(eq(users.phone, typed), inArray(users.identifier, forms)));
+    for (const m of matches) {
+      if (await verifyPassword(input.password, env.PASSWORD_PEPPER, m.passwordHash)) {
+        [user, ok] = [m, true];
+        break;
+      }
+    }
+  }
   if (!ok) fail(401, 'Wrong phone, email or password.');
   // Accounts from before phone numbers were stored: fill it in from a phone login.
   const phone = normalizePhone(user.identifier);

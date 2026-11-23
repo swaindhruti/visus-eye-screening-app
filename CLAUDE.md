@@ -17,7 +17,7 @@ AI eye-screening app for the ZEISS BeyondCode'26 hackathon. The user describes t
 |---|---|---|
 | `apps/mobile/` | Expo SDK 57 patient app (Expo Router), deployed with EAS | Dhrutinandan |
 | `apps/web/` | Next.js: patient web, shop (clinic) portal `/shop`, doctor portal `/doctor`; Vercel | Sidhartha |
-| `apps/server/` | Hono API on Cloudflare Workers, Postgres on Aiven | Dhrutinandan for the final; Sidhartha only tunes `scoring/`, `rules/`, `lens/` (see `apps/server/CLAUDE.md`) |
+| `apps/server/` | Hono API on Cloudflare Workers, Postgres on Neon | Dhrutinandan for the final; Sidhartha only tunes `scoring/`, `rules/`, `lens/` (see `apps/server/CLAUDE.md`) |
 | `packages/shared/` | Shared zod types + test catalog. No logic | Both |
 | `docs/CONSULT.md` | The remote consult: flow, call, captions, live tests, prescription, data model | Both |
 | `docs/API.md` | Every server route: owner, request, response | Both |

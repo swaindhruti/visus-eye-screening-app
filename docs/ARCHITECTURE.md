@@ -12,7 +12,7 @@ flowchart LR
   end
   A["Agora<br/>video + voice only"]
   S["API<br/>Hono on Cloudflare Workers"]
-  DB[("Postgres<br/>Aiven")]
+  DB[("Postgres<br/>Neon")]
   G["Gemini API"]
   SH["packages/shared<br/>zod types + test catalog"]
 
