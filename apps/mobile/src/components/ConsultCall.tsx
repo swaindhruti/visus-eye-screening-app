@@ -2,13 +2,13 @@
 // Agora carries only video and voice. Captions, the tests the doctor sends and the consult's state come
 // from GET /consults/:id/live, polled every 2 s. Your own speech is captioned on this phone
 // (expo-speech-recognition, in the consult's language) and each finished sentence goes to the server,
-// which translates it for the doctor. A test the doctor sends opens full screen; the call goes on.
+// which translates it for the doctor. Captions are off until turned on; then they show in a panel. A test the doctor sends opens full screen; the call goes on.
 // Loaded lazily by app/consults/[id]/call.tsx, so Expo Go never loads react-native-agora.
 import { SPEECH_LOCALE, type Eye, type Language } from '@visus/shared';
 import { requireOptionalNativeModule } from 'expo';
 import { router } from 'expo-router';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
-import { ActivityIndicator, PermissionsAndroid, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, PermissionsAndroid, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import {
   ChannelProfileType,
   ClientRoleType,
@@ -46,7 +46,7 @@ export default function ConsultCall({ id }: { id: string }) {
   const [muted, setMuted] = useState(false);
   const [cameraOff, setCameraOff] = useState(false);
   const [audioOnly, setAudioOnly] = useState(false);
-  const [captionsOn, setCaptionsOn] = useState(true);
+  const [captionsOn, setCaptionsOn] = useState(false);
   const [captions, setCaptions] = useState<Caption[]>([]);
   const [partial, setPartial] = useState('');
   const [pending, setPending] = useState<ConsultTest | null>(null);
@@ -112,7 +112,7 @@ export default function ConsultCall({ id }: { id: string }) {
       const live = await getLive(id, lastCaption.current);
       if (live.captions.length) {
         lastCaption.current = live.captions[live.captions.length - 1].id;
-        setCaptions((c) => [...c, ...live.captions.filter((n) => !c.some((x) => x.id === n.id))].slice(-20));
+        setCaptions((c) => [...c, ...live.captions.filter((n) => !c.some((x) => x.id === n.id))].slice(-100));
       }
       setPending(live.pendingTest);
       if (live.pendingTest && !dismissed.current.has(live.pendingTest.id)) setTestOpen((open) => open ?? live.pendingTest!.id);
@@ -137,7 +137,7 @@ export default function ConsultCall({ id }: { id: string }) {
   const onFinal = useEffectEvent((text: string) => {
     const t = text.trim();
     setPartial('');
-    if (t) void sendCaption(id, t, language).then((c) => setCaptions((list) => (list.some((x) => x.id === c.id) ? list : [...list, c].slice(-20))), () => undefined);
+    if (t) void sendCaption(id, t, language).then((c) => setCaptions((list) => (list.some((x) => x.id === c.id) ? list : [...list, c].slice(-100))), () => undefined);
   });
   useEffect(() => {
     if (!listening || !Speech) return;
@@ -196,7 +196,7 @@ export default function ConsultCall({ id }: { id: string }) {
   const doctorName = consult ? drName(consult.doctor.name) : 'Doctor';
   const big = remotes.includes(DOCTOR_UID) ? DOCTOR_UID : remotes[0];
   const speaker = (c: Caption) => (c.from === 'patient' ? 'You' : c.from === 'doctor' ? doctorName : (consult?.clinic.name ?? 'Clinic'));
-  const shown = captions.slice(-3);
+  const panel = useRef<ScrollView>(null);
   const test = pending && testOpen === pending.id ? pending : null;
 
   if (phase === 'error' || phase === 'ended')
@@ -245,21 +245,32 @@ export default function ConsultCall({ id }: { id: string }) {
         </Pressable>
       )}
 
-      {/* Captions: the last three lines, each in your language. */}
-      <View style={[styles.captions, { bottom: insets.bottom + 108 }]}>
-        {shown.map((c) => (
-          <Text key={c.id} style={styles.caption}>
-            <Text style={styles.captionWho}>{speaker(c)}: </Text>
-            {c.from === 'patient' ? c.text : (c.translations[language] ?? c.text)}
-          </Text>
-        ))}
-        {!!partial && (
-          <Text style={[styles.caption, styles.captionPartial]}>
-            <Text style={styles.captionWho}>You: </Text>
-            {partial}
-          </Text>
-        )}
-      </View>
+      {/* Captions (only while on): the whole call so far, newest at the bottom, each line in your language. */}
+      {captionsOn && (
+        <View style={[styles.panel, { bottom: insets.bottom + 96 }]}>
+          <View style={styles.panelHead}>
+            <Text style={styles.panelTitle}>Captions</Text>
+            <Pressable accessibilityRole="button" onPress={() => setCaptionsOn(false)} hitSlop={8}>
+              <Text style={styles.panelOff}>Turn off</Text>
+            </Pressable>
+          </View>
+          <ScrollView ref={panel} style={styles.panelList} contentContainerStyle={styles.panelBody} onContentSizeChange={() => panel.current?.scrollToEnd({ animated: true })}>
+            {!captions.length && !partial && <Text style={styles.panelEmpty}>What you and {doctorName} say shows here, in your language. It is saved with the consult.</Text>}
+            {captions.map((c) => (
+              <Text key={c.id} style={styles.caption}>
+                <Text style={styles.captionWho}>{speaker(c)}: </Text>
+                {c.from === 'patient' ? c.text : (c.translations[language] ?? c.text)}
+              </Text>
+            ))}
+            {!!partial && (
+              <Text style={[styles.caption, styles.captionPartial]}>
+                <Text style={styles.captionWho}>You: </Text>
+                {partial}
+              </Text>
+            )}
+          </ScrollView>
+        </View>
+      )}
 
       <View style={[styles.controls, { paddingBottom: insets.bottom + 16 }]}>
         <Control icon={muted ? 'micOff' : 'mic'} label={muted ? 'Unmute' : 'Mute'} on={muted} onPress={toggleMute} />
@@ -384,8 +395,14 @@ const styles = StyleSheet.create({
   topSub: { fontFamily: Fonts.regular, fontSize: 13, color: 'rgba(255,255,255,0.75)' },
   testBanner: { position: 'absolute', left: 18, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, height: 40, borderRadius: Radius.pill, backgroundColor: Colors.white },
   testBannerText: { fontFamily: Fonts.semibold, fontSize: 14, color: Colors.ink },
-  captions: { position: 'absolute', left: 14, right: 14, gap: 6 },
-  caption: { alignSelf: 'flex-start', maxWidth: '100%', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(0,0,0,0.62)', fontFamily: Fonts.regular, fontSize: 17, lineHeight: 23, color: Colors.white },
+  panel: { position: 'absolute', left: 12, right: 12, maxHeight: '42%', borderRadius: Radius.card, backgroundColor: 'rgba(15,16,17,0.88)', overflow: 'hidden' },
+  panelHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
+  panelTitle: { fontFamily: Fonts.bold, fontSize: 16, color: Colors.white },
+  panelOff: { fontFamily: Fonts.semibold, fontSize: 14, color: Colors.accBright },
+  panelList: { flexGrow: 0 },
+  panelBody: { paddingHorizontal: 16, paddingBottom: 14, gap: 8 },
+  panelEmpty: { fontFamily: Fonts.regular, fontSize: 15, lineHeight: 21, color: 'rgba(255,255,255,0.75)' },
+  caption: { fontFamily: Fonts.regular, fontSize: 17, lineHeight: 23, color: Colors.white },
   captionWho: { fontFamily: Fonts.semibold, color: Colors.accBright },
   captionPartial: { opacity: 0.75 },
   controls: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', justifyContent: 'center', gap: 12, paddingTop: 14, backgroundColor: 'rgba(0,0,0,0.35)' },
