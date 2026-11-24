@@ -1,11 +1,11 @@
 // Create a user, check login, load the current user.
 import type { AuthResponse, LoginRequest, Role, SignupRequest } from '@visus/shared';
-import { eq } from 'drizzle-orm';
+import { eq, inArray, or } from 'drizzle-orm';
 import { sign } from 'hono/jwt';
 import type { z } from 'zod';
 
 import type { Db } from '../../db/client';
-import { shops, users } from '../../db/schema';
+import { doctors, shops, users } from '../../db/schema';
 import type { Bindings } from '../../lib/env';
 import { fail } from '../../lib/errors';
 import { hashPassword, verifyPassword } from './password';
@@ -30,7 +30,8 @@ type PublicUser = z.infer<typeof AuthResponse>['user'];
 async function publicUser(db: Db, u: User): Promise<PublicUser> {
   const role = u.role as Role;
   const [shop] = role === 'shop' ? await db.select({ name: shops.name }).from(shops).where(eq(shops.ownerId, u.id)) : [];
-  return { id: u.id, name: u.name, identifier: u.identifier, role, shopName: shop?.name, phone: u.phone ?? undefined };
+  const [doctor] = role === 'doctor' ? await db.select({ visusId: doctors.visusId }).from(doctors).where(eq(doctors.userId, u.id)) : [];
+  return { id: u.id, name: u.name, identifier: u.identifier, role, shopName: shop?.name, phone: u.phone ?? undefined, visusId: doctor?.visusId };
 }
 
 export async function issue(db: Db, env: Bindings, user: User): Promise<z.infer<typeof AuthResponse>> {
@@ -39,7 +40,7 @@ export async function issue(db: Db, env: Bindings, user: User): Promise<z.infer<
   return { token, user: await publicUser(db, user) };
 }
 
-/** A new account (a person, or a shop owner from POST /shops/register). Not yet logged in. */
+/** A new account (a person, a shop owner from POST /shops/register, a doctor from POST /doctors/register). Not yet logged in. */
 export async function createUser(db: Db, env: Bindings, input: z.infer<typeof SignupRequest>, role: Role = 'user') {
   const identifier = normalize(input.identifier);
   const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.identifier, identifier));
@@ -58,7 +59,23 @@ export async function signup(db: Db, env: Bindings, input: z.infer<typeof Signup
 
 export async function login(db: Db, env: Bindings, input: z.infer<typeof LoginRequest>) {
   let [user] = await db.select().from(users).where(eq(users.identifier, normalize(input.identifier)));
-  const ok = user && (await verifyPassword(input.password, env.PASSWORD_PEPPER, user.passwordHash));
+  let ok = !!user && (await verifyPassword(input.password, env.PASSWORD_PEPPER, user.passwordHash));
+  // A phone typed another way than at signup ("9876543210" for "+91 98765 43210", or with a 0):
+  // find the account by its 10-digit phone, or by the usual ways of writing that number.
+  const typed = !ok ? normalizePhone(input.identifier) : null;
+  if (typed) {
+    const forms = [typed, `+91${typed}`, `91${typed}`, `0${typed}`];
+    const matches = await db
+      .select()
+      .from(users)
+      .where(or(eq(users.phone, typed), inArray(users.identifier, forms)));
+    for (const m of matches) {
+      if (await verifyPassword(input.password, env.PASSWORD_PEPPER, m.passwordHash)) {
+        [user, ok] = [m, true];
+        break;
+      }
+    }
+  }
   if (!ok) fail(401, 'Wrong phone, email or password.');
   // Accounts from before phone numbers were stored: fill it in from a phone login.
   const phone = normalizePhone(user.identifier);

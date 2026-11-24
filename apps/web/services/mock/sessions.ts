@@ -112,6 +112,9 @@ export async function submit(sessionId: string, r: SubmitResult): Promise<NextSt
 }
 
 /** Guest mode: one test, scored, nothing kept. */
+/** A plausible scored result for a test (mock only: the server scores real answers). */
+export const cannedResult = (testId: TestId, eye: ScoredResult["eye"]): ScoredResult => ({ testId, eye, ...CANNED[testId] });
+
 export async function guestScore(r: SubmitResult): Promise<NextStep> {
   await delay(500);
   const result: ScoredResult = { testId: r.testId, eye: r.eye, ...CANNED[r.testId] };

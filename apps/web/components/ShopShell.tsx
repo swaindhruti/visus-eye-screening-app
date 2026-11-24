@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { doctorReturn } from "@/lib/consults";
 import { logout, me } from "@/services/auth";
 import { isShop, LINK_LABEL, type ShopPatient } from "@/services/shops";
 import { useCheck } from "@/store/check";
@@ -21,7 +22,7 @@ export const useShopReady = () => isShop(useMe().data?.user);
 
 /**
  * Shop portal frame: a sidebar with Ask Visus AI (a highlighted capsule at the top), Patient
- * records, the Test library and Orders, and Account and Log out at the bottom. On a laptop
+ * records, Consults, Doctors, the Test library and Orders, and Account and Log out at the bottom. On a laptop
  * it sits beside the page and folds to icons; on a phone a menu button opens it as a drawer.
  * Only shop accounts get in; others go to Home, and a signed-out visit goes to the shop log in.
  * The page is always rendered (Next.js validates every segment for instant navigation) but stays
@@ -36,7 +37,7 @@ export function ShopShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (q.isSuccess && !q.data) router.replace("/shop/login");
-    else if (q.isSuccess && q.data && !isShop(q.data.user)) router.replace("/home");
+    else if (q.isSuccess && q.data && !isShop(q.data.user)) router.replace(q.data.user.role === "doctor" ? "/doctor" : "/home");
   }, [q.isSuccess, q.data, router]);
 
   useEffect(() => {
@@ -98,7 +99,9 @@ function ShopSidebar({ shopName, onLogout, onClose }: { shopName?: string; onLog
   const onLibrary = pathname.startsWith("/shop/tests");
   const onAsk = pathname.startsWith("/shop/ask");
   const onOrders = pathname.startsWith("/shop/orders");
-  const onRecords = !onAccount && !onLibrary && !onAsk && !onOrders;
+  const onConsults = pathname.startsWith("/shop/consults");
+  const onDoctors = pathname.startsWith("/shop/doctors");
+  const onRecords = !onAccount && !onLibrary && !onAsk && !onOrders && !onConsults && !onDoctors;
   const item = cn(
     "flex h-11 w-full items-center gap-3 rounded-[12px] text-[15px] font-semibold transition-colors",
     folded ? "justify-center px-0" : "px-3",
@@ -156,6 +159,14 @@ function ShopSidebar({ shopName, onLogout, onClose }: { shopName?: string; onLog
           <Icon name="doc" size={20} strokeWidth={1.8} className="flex-none" />
           {label("Patient records")}
         </Link>
+        <Link href="/shop/consults" onClick={onClose} aria-current={onConsults ? "page" : undefined} title={folded ? "Consults" : undefined} className={cn(item, tone(onConsults))}>
+          <Icon name="camera" size={20} strokeWidth={1.8} className="flex-none" />
+          {label("Consults")}
+        </Link>
+        <Link href="/shop/doctors" onClick={onClose} aria-current={onDoctors ? "page" : undefined} title={folded ? "Doctors" : undefined} className={cn(item, tone(onDoctors))}>
+          <Icon name="health" size={20} strokeWidth={1.8} className="flex-none" />
+          {label("Doctors")}
+        </Link>
         <Link href="/shop/tests" onClick={onClose} aria-current={onLibrary ? "page" : undefined} title={folded ? "Test library" : undefined} className={cn(item, tone(onLibrary))}>
           <Icon name="eye" size={20} strokeWidth={1.8} className="flex-none" />
           {label("Test library")}
@@ -185,11 +196,14 @@ function ShopSidebar({ shopName, onLogout, onClose }: { shopName?: string; onLog
 /**
  * Personal-app screens a shop account lands on (Home after a check, a "Go to Home" button):
  * back to the patient the check was for, else the Test library (a check with no patient record).
+ * Doctors go back to the patient file they opened the check from.
  */
 export function ShopRedirect() {
   const router = useRouter();
   const q = useMe();
   useEffect(() => {
+    // A doctor closing a check they opened from a patient file goes back to that file.
+    if (q.data?.user.role === "doctor") return router.replace((doctorReturn() ?? "/doctor") as Route);
     if (!isShop(q.data?.user)) return;
     const patient = useCheck.getState().shopPatient;
     router.replace(patient ? `/shop/patients/${patient.id}` : "/shop/tests");

@@ -40,8 +40,9 @@ shopRegisterRoutes.post('/register', validate('json', ShopRegisterRequest), asyn
   c.json(await registerShop(c.var.db, c.env, c.req.valid('json')), 201),
 );
 
-/** Shop accounts only; sets c.var.shopId. */
-const requireShop = createMiddleware<AppEnv>(async (c, next) => {
+/** Shop accounts only; sets c.var.shopId (once, when several /shop routers match). */
+export const requireShop = createMiddleware<AppEnv>(async (c, next) => {
+  if (c.var.shopId) return next();
   const shopId = await shopIdOf(c.var.db, c.var.userId);
   if (!shopId) fail(403, 'This is for optical shops. Register your shop first.');
   c.set('shopId', shopId);

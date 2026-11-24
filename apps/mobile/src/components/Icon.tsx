@@ -402,6 +402,44 @@ const ICONS = {
       </>
     ),
   },
+  // Remote consult call controls.
+  video: {
+    box: 24,
+    el: (
+      <>
+        <Rect x={3} y={6.5} width={12.5} height={11} rx={2.5} />
+        <Path d="M15.5 10.5l5.5-3v9l-5.5-3" />
+      </>
+    ),
+  },
+  videoOff: {
+    box: 24,
+    el: (
+      <>
+        <Path d="M15.5 13.5v1.5a2.5 2.5 0 0 1-2.5 2.5H5.5A2.5 2.5 0 0 1 3 15V9a2.5 2.5 0 0 1 2.5-2.5h1M10 6.5h3a2.5 2.5 0 0 1 2.5 2.5v1.5l5.5-3v9" />
+        <Path d="M3 3l18 18" />
+      </>
+    ),
+  },
+  micOff: {
+    box: 24,
+    el: (
+      <>
+        <Path d="M9 9V6a3 3 0 0 1 6 0v5M15 13.5A3 3 0 0 1 9 11M5.5 11a6.5 6.5 0 0 0 10.6 5M18.5 11a6.4 6.4 0 0 1-.6 2.7M12 17.5V21" />
+        <Path d="M3 3l18 18" />
+      </>
+    ),
+  },
+  hangUp: { box: 24, el: <Path d="M3 14.5c0-2.5 4-4.5 9-4.5s9 2 9 4.5v1.5a1 1 0 0 1-1.2 1l-3.3-.7a1 1 0 0 1-.8-1V13.5a12 12 0 0 0-7.4 0v1.8a1 1 0 0 1-.8 1l-3.3.7A1 1 0 0 1 3 16z" /> },
+  document: {
+    box: 24,
+    el: (
+      <>
+        <Path d="M6.5 3h7.5l4.5 4.5V20a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+        <Path d="M13.5 3v5h5M8.5 12.5h7M8.5 16h5" />
+      </>
+    ),
+  },
 } satisfies Record<string, { box: number; el: ReactNode }>;
 
 export type IconName = keyof typeof ICONS;

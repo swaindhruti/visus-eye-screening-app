@@ -2,7 +2,7 @@
 
 # apps/mobile: Expo app
 
-Owner: Dhrutinandan. Read the root `CLAUDE.md` first.
+Owner: Dhrutinandan. Read the root `CLAUDE.md` first; for the final also `docs/CONSULT.md` and `WORK.md` → Final submission (D tasks).
 
 ## Stack
 
@@ -17,6 +17,13 @@ Owner: Dhrutinandan. Read the root `CLAUDE.md` first.
 2. **Native features (done, EAS development build):** camera distance (`react-native-vision-camera` v5 + `react-native-vision-camera-face-detector`, `components/FaceCamera.tsx`, loaded lazily through `components/DistanceCamera.tsx`) and Screen Coach (local Expo module `modules/screen-coach`, Kotlin: usage-stats screen time, foreground service, break overlay). Build: `bunx eas-cli build --profile development --platform android` (`eas.json`), then `bunx expo start` (dev client).
 - Voice input (intake chat) uses `expo-speech-recognition` via `services/voice.ts` (installed app only; the mic is hidden in Expo Go). Guest mode: `useAuth().guest` (not saved), single tests with session `guest` scored by `POST /reports/guest-score` (`services/sessions.ts`), Guest mode bar instead of the tabs.
 - Native code must never be imported at the top of a file Expo Go loads: use `requireOptionalNativeModule` (`services/coach.ts`) or `lazy(() => import(...))` (`DistanceCamera`).
+
+## Remote consult (final)
+
+- Screens: `src/app/consults/` (list, `[id]` detail, `[id]/call`), `src/app/profile/prescriptions/`, next consult card on Home. No booking screen: only the clinic books.
+- `react-native-agora` for the call (native: development build only, load it lazily like `DistanceCamera`), `expo-calendar` for Add to calendar (alarms 1 h and 10 min before).
+- The call screen polls `GET /consults/:id/live` every 2 s; captions from `expo-speech-recognition` (`services/voice.ts`), finished sentences to `POST /consults/:id/captions`. A pushed test opens the existing test component from `src/tests/` full screen.
+- Services: `src/services/consults.ts` (+ `mock/consults.ts`).
 
 ## Layout
 

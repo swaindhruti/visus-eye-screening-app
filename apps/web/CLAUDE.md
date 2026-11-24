@@ -2,7 +2,7 @@
 
 # apps/web: Next.js app
 
-Owner: Teammate. Read the root `CLAUDE.md` first.
+Owner: Sidhartha. Read the root `CLAUDE.md` first; for the final also `docs/CONSULT.md` and `WORK.md` → Final submission (T tasks).
 
 ## Stack
 
@@ -10,7 +10,8 @@ Owner: Teammate. Read the root `CLAUDE.md` first.
 - SVG / Canvas for drawing tests
 - `zustand` for check state, `@tanstack/react-query` for server data
 - `@visus/shared` for types and the test catalog (already in `transpilePackages`)
-- Build sprint: `@mediapipe/tasks-vision` for camera distance
+- `@mediapipe/tasks-vision` for camera distance
+- Final: `agora-rtc-sdk-ng` for the consult call (browser only: import it inside a client component with a dynamic `import()`, never during server rendering)
 
 ## Look and layout
 
@@ -28,6 +29,18 @@ services/       api.ts + one file per server area (auth, sessions, profiles)
 tests/          one component per test, keyed by TestId
 store/          zustand stores (current check, calibration)
 ```
+
+## Remote consult (final)
+
+Three areas in this app, all on mock data first (`services/mock/consults.ts`, `services/mock/doctor.ts`) shaped exactly like the shared types:
+
+- **Doctor portal** `app/doctor/`: register, login, consults, clinics + hours, patient file, consult room, prescriptions, account. Same sidebar layout as the shop portal (`app/shop/(portal)`).
+- **Clinic additions** in `app/shop/(portal)/`: doctors, consults, book consult, join at the clinic, consults + prescriptions on the patient page.
+- **Patient web** `app/consults/` and `app/profile/prescriptions/`: My consults, consult detail, call, prescriptions; next consult card on Home.
+
+Services: `services/doctor.ts`, `services/consults.ts` (one function per route in `docs/API.md` → Remote consult).
+
+One call component (`components/call/`) for all three roles: Agora video, controls, captions, live test takeover (patient and clinic) or test picker + prescription panel (doctor). The call screen polls `GET /consults/:id/live` every 2 s (TanStack Query `refetchInterval`); captions come from the browser's `SpeechRecognition` (`lib/useVoiceInput.ts` shows how), finished sentences go to `POST /consults/:id/captions`. Live tests reuse the existing test components and the calibration store.
 
 ## Rules
 

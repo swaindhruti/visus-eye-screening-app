@@ -9,8 +9,10 @@ import { profilesRoutes } from './features/profiles/profiles.routes';
 import { sessionsRoutes } from './features/sessions/sessions.routes';
 import { voiceRoutes } from './features/voice/voice.routes';
 import { myShopsRoutes, shopRegisterRoutes, shopRoutes } from './features/shops/shops.routes';
+import { clinicDoctorRoutes, doctorRegisterRoutes, doctorRoutes } from './features/doctors/doctors.routes';
+import { clinicConsultRoutes, consultRoutes, doctorConsultRoutes, myConsultRoutes } from './features/consults/consults.routes';
 import { createDb } from './db/client';
-import { setSarvamKey } from './lib/gemini';
+import { setKeyPools } from './lib/keys';
 import type { AppEnv } from './lib/env';
 import { errorHandler } from './lib/errors';
 
@@ -23,7 +25,7 @@ app.use(
   cors({
     origin: (origin) => (ALLOWED.some((re) => re.test(origin)) ? origin : null),
     allowHeaders: ['Content-Type', 'Authorization'],
-    allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   }),
 );
 
@@ -31,7 +33,7 @@ app.use(
 app.use('*', async (c, next) => {
   const { db, close } = createDb(c.env);
   c.set('db', db);
-  setSarvamKey(c.env.SARVAM_API_KEY);
+  setKeyPools(c.env); // Gemini and Sarvam key pools (lib/keys.ts)
   try {
     await next();
   } finally {
@@ -50,6 +52,13 @@ app.route('/sessions', historyRoutes); // list, one check, share
 app.route('/reports', reportRoutes); // shared report, no login
 app.route('/shops', shopRegisterRoutes); // register a shop, no login
 app.route('/shop', shopRoutes); // shop portal: patients, link requests
+app.route('/shop', clinicDoctorRoutes); // clinic side of the consult: doctors, free slots
+app.route('/doctors', doctorRegisterRoutes); // doctor sign up, no login
+app.route('/doctor', doctorRoutes); // doctor portal: account, clinics, hours
+app.route('/shop', clinicConsultRoutes); // clinic books, moves, cancels consults
+app.route('/doctor', doctorConsultRoutes); // the doctor's consults
+app.route('/me', myConsultRoutes); // the patient's consults
+app.route('/consults', consultRoutes); // one consult: detail, calendar, join, end, live
 app.route('/voice', voiceRoutes); // Indian voice: text to speech, speech to text (Sarvam AI)
 
 app.notFound((c) => c.json({ error: 'Not found' }, 404));

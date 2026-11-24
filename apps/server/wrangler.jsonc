@@ -5,10 +5,12 @@
   "compatibility_date": "2026-10-20",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
-    // Report links from POST /sessions/:id/share point here.
-    "WEB_URL": "https://visus.app"
+    // Report and join links point here. Set to the Vercel URL once the web is deployed.
+    "WEB_URL": "https://visus.app",
+    // Consults can be joined this many minutes before the start (default 10); 30 for the demo.
+    "CONSULT_JOIN_EARLY_MIN": "30"
   },
+  // Production database: Neon (direct connection) through Hyperdrive's connection pool.
+  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "99c13193d80849148cfd5f59053ae5b8" }],
   "observability": { "enabled": true }
-  // Production database: create a Hyperdrive config for the Aiven URL, then add:
-  // "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<id from `bunx wrangler hyperdrive create`>" }]
 }

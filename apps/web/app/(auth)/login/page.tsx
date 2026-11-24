@@ -12,6 +12,7 @@ import { Spacer } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { AccountSwitch } from "@/components/ShopShell";
 import { login } from "@/services/auth";
+import { isDoctor } from "@/services/doctor";
 import { listProfiles } from "@/services/profiles";
 import { isShop } from "@/services/shops";
 import { useSettings } from "@/store/settings";
@@ -25,11 +26,11 @@ export default function LogIn() {
   const m = useMutation({
     mutationFn: async () => {
       const user = await login({ identifier: id.trim(), password: pw });
-      return isShop(user) ? null : listProfiles();
+      return { portal: isShop(user) ? ("/shop" as const) : isDoctor(user) ? ("/doctor" as const) : null, profiles: isShop(user) || isDoctor(user) ? [] : await listProfiles() };
     },
-    onSuccess: (profiles) => {
-      // Optical shops log in here too and go to their portal.
-      if (!profiles) return router.push("/shop");
+    onSuccess: ({ portal, profiles }) => {
+      // Optical shops and doctors log in here too and go to their portal.
+      if (portal) return router.push(portal);
       // An account without a profile yet (signed up, left onboarding) finishes onboarding first.
       useSettings.getState().set({ onboarded: profiles.length > 0 });
       router.push(profiles.length ? "/home" : "/onboarding");
@@ -87,6 +88,7 @@ export default function LogIn() {
           </div>
           <ContinueAsGuest className="mx-auto mt-2 h-11 px-3 text-[15px] font-medium text-muted underline-offset-4 hover:text-ink hover:underline" />
           <AccountSwitch href="/shop/login" icon="store" title="Log in as an optical shop" sub="Test walk-in customers and keep their records" />
+          <AccountSwitch href="/doctor/login" icon="health" title="Log in as a doctor" sub="Video consults booked by clinics" />
         </div>
       </AuthBody>
     </AuthShell>

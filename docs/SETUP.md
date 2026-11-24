@@ -9,7 +9,7 @@ How to run the whole Visus stack, with the server, web and mobile app talking to
 | Need | For |
 |---|---|
 | [Bun](https://bun.sh) 1.4.2 or newer | everything |
-| Postgres database (we use [Aiven](https://aiven.io), free tier) | server |
+| Postgres database (we use [Neon](https://neon.tech), free tier) | server |
 | [Gemini API key](https://aistudio.google.com/apikey) | AI agent (without one, the server falls back to rules) |
 | An Android phone on the same network as your computer | mobile app |
 | [Expo account](https://expo.dev) | EAS build of the Android app |
@@ -35,7 +35,7 @@ This installs all workspaces (`apps/*`, `packages/*`).
    ```
    | Key | Value |
    |---|---|
-   | `DATABASE_URL` | Postgres URL (Aiven console → service → *Service URI*, ends in `?sslmode=require`) |
+   | `DATABASE_URL` | Postgres URL (Neon console → *Connect* → connection string, ends in `?sslmode=require`) |
    | `GEMINI_API_KEY` | Google AI Studio key |
    | `JWT_SECRET` | any long random string, e.g. from `openssl rand -hex 32` |
    | `PASSWORD_PEPPER` | another long random string |
@@ -46,7 +46,7 @@ This installs all workspaces (`apps/*`, `packages/*`).
    ```bash
    bun run db:push
    ```
-3. Optional: put the Aiven CA certificate in `apps/server/aiven-ca.pem` (gitignored). Get it from the Aiven console → *Connection information* → *CA certificate*. Only `bun run dev` (the Workers runtime) needs it; `bun run dev:phone` does not.
+3. No CA certificate is needed: Neon's certificate is publicly trusted.
 
 ## 4. Run everything together
 
@@ -64,7 +64,7 @@ This runs the API on Bun at `0.0.0.0:8787`, so the phone can reach it. It logs e
 
 - To check it, open `http://localhost:8787/health`; it should return `{"ok":true}`.
 - To test every route, run `bun run smoke` in another terminal while the server runs.
-- `bun run dev` runs the same app on the local Workers runtime (wrangler) instead. That needs `aiven-ca.pem`, and it listens on localhost only.
+- `bun run dev` runs the same app on the local Workers runtime (wrangler) instead. It listens on localhost only.
 
 ### Find your computer's IP
 
@@ -160,7 +160,7 @@ The `preview` profile bakes its `env` from `eas.json` into the APK. Set `EXPO_PU
 
 | Symptom | Fix |
 |---|---|
-| The server logs `Connection terminated due to connection timeout` | The network blocks the Aiven port. Test it with `nc -vz -G 5 <aiven host> <port>`. Switch to a phone hotspot, and check that the Aiven service is *Running* (free services power off when idle). |
+| The server logs `Connection terminated due to connection timeout` or `ENOTFOUND` | The network blocks port 5432, or the database is gone. Test it with `nc -vz -G 5 <neon host> 5432`, try a phone hotspot, and check the project in the Neon console. |
 | The app says it can't reach the server | Make sure the phone and the computer are on the same network and the IP in `.env` is current. Open `http://<IP>:8787/health` on the phone, then restart Metro with `-c`. |
 | AI answers are slow or generic | Gemini is slow or busy. The server races the models in `src/lib/gemini.ts` and falls back to rules after 7 s, so the check still works. |
 | EAS fails with `Unknown lockfile version` | Keep `"bun": "1.4.2"` in the `base` profile of `eas.json`. |
@@ -171,7 +171,7 @@ The `preview` profile bakes its `env` from `eas.json` into the APK. Set `EXPO_PU
 
 | App | How |
 |---|---|
-| Server (Cloudflare Workers) | Follow the steps in [`apps/server/CLAUDE.md`](../apps/server/CLAUDE.md#deploy-dhrutinandan): `bunx wrangler login`, then create Hyperdrive for the Aiven URL, `bunx wrangler secret put` each secret, and `bunx wrangler deploy`. Check it with `API=https://visus-api.<subdomain>.workers.dev bun run smoke`. |
+| Server (Cloudflare Workers) | Follow the steps in [`apps/server/CLAUDE.md`](../apps/server/CLAUDE.md#deploy-dhrutinandan): `bunx wrangler login`, then create Hyperdrive for the Neon URL, `bunx wrangler secret put` each secret, and `bunx wrangler deploy`. Check it with `API=https://visus-api.<subdomain>.workers.dev bun run smoke`. |
 | Web (Vercel) | Import the repo with root directory `apps/web`. Set `NEXT_PUBLIC_API_URL` to the Worker URL and `NEXT_PUBLIC_USE_MOCK=0`. Every push to `main` deploys. |
 | Mobile | Point the `preview` env in `eas.json` to the Worker URL, then run `bunx eas-cli build --profile preview --platform android` and share the APK link. |
 

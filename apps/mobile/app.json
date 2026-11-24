@@ -65,6 +65,12 @@
         {
           "microphonePermission": "Visus uses the microphone so you can talk to it instead of typing during the eye check."
         }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Visus adds your eye doctor consults to your calendar, with reminders."
+        }
       ]
     ],
     "experiments": {

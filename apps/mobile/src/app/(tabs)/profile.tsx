@@ -149,6 +149,22 @@ export default function ProfileTab() {
                 : undefined
             }
           />
+          {owner && (
+            <ListRow
+              icon={<Icon name="video" size={20} strokeWidth={1.8} />}
+              title="My consults"
+              subtitle="Video consults booked by your clinic"
+              onPress={() => router.push('/consults')}
+            />
+          )}
+          {owner && (
+            <ListRow
+              icon={<Icon name="document" size={20} strokeWidth={1.8} />}
+              title="Prescriptions"
+              subtitle="From your eye doctor consults"
+              onPress={() => router.push('/profile/prescriptions')}
+            />
+          )}
           <ListRow
             icon={<Icon name="sliders" size={20} strokeWidth={1.8} />}
             title="Settings"

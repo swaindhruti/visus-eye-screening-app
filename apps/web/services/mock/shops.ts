@@ -1,8 +1,10 @@
-// Mock shop portal (NEXT_PUBLIC_USE_MOCK=1): patients live in localStorage, nothing is linked.
+// Mock shop portal (NEXT_PUBLIC_USE_MOCK=1): patients live in localStorage. The patients of the mock
+// consult world (./consults) are already linked, so the clinic can book consults for them.
 import type { PatientDetail, ShopAccount, ShopPatient } from "@visus/shared";
 
 import type { AuthResult } from "../auth";
 import type { NewPatient, ShopDetails, ShopSignup } from "../shops";
+import { CLINICS, PATIENTS, sessionsFor } from "./consults";
 import { delay, load, save, uid } from "./store";
 
 export async function register(input: ShopSignup): Promise<AuthResult> {
@@ -13,7 +15,25 @@ export async function register(input: ShopSignup): Promise<AuthResult> {
   return { token: "mock-" + user.id, user };
 }
 
-const all = () => load<ShopPatient[]>("shopPatients", []);
+const daysAgo = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString();
+const linked = (key: keyof typeof PATIENTS, phone: string, wearsGlasses: boolean, lastCheck: number | null, added: number): ShopPatient => {
+  const p = PATIENTS[key];
+  return { id: "sp-" + key, name: p.name, age: p.age, phone, wearsGlasses, linkStatus: "approved", checkProfileId: p.profileId, lastCheck: lastCheck === null ? null : daysAgo(lastCheck), createdAt: daysAgo(added) };
+};
+const SEEDED: ShopPatient[] = [
+  linked("asha", "9861203344", true, 3, 90),
+  linked("ravi", "9437115620", true, 4, 60),
+  linked("sunita", "9938450071", false, null, 30),
+  linked("arjun", "9776012398", false, null, 20),
+  { id: "sp-kiran", name: "Kiran Behera", age: 54, phone: "", wearsGlasses: true, linkStatus: "none", checkProfileId: "p-sp-kiran", lastCheck: null, createdAt: daysAgo(5) },
+];
+
+/** The shop's patients: the ones added in this browser, then the seeded ones. */
+export const patients = () => {
+  const mine = load<ShopPatient[]>("shopPatients", []);
+  return [...mine, ...SEEDED.filter((s) => !mine.some((p) => p.id === s.id))];
+};
+const all = patients;
 
 export async function list(q: string): Promise<ShopPatient[]> {
   await delay(150);
@@ -43,7 +63,7 @@ export async function get(id: string): Promise<PatientDetail> {
   await delay(150);
   const patient = all().find((p) => p.id === id);
   if (!patient) throw new Error("Patient not found");
-  return { ...patient, sessions: [] };
+  return { ...patient, sessions: patient.linkStatus === "approved" ? sessionsFor(patient.checkProfileId) : [] };
 }
 
 export async function setPhone(id: string, phone: string): Promise<PatientDetail> {
@@ -57,7 +77,7 @@ export async function setPhone(id: string, phone: string): Promise<PatientDetail
 export async function account(): Promise<ShopAccount> {
   await delay(150);
   const user = load<{ id: string; name: string; identifier: string }>("user", { id: "shop", name: "Shop owner", identifier: "" });
-  const shop = load("shop", { name: "My shop", address: "", city: "" });
+  const shop = load("shop", { name: CLINICS.c1.name, address: CLINICS.c1.address, city: CLINICS.c1.city });
   return { id: user.id, ...shop, ownerName: user.name, identifier: user.identifier, patients: all().length };
 }
 

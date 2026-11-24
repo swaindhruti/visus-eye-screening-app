@@ -3,3 +3,9 @@ GEMINI_API_KEY=
 JWT_SECRET=
 PASSWORD_PEPPER=
 SARVAM_API_KEY=
+# Final: remote consult (Agora console → your project)
+AGORA_APP_ID=
+AGORA_APP_CERTIFICATE=
+# Optional key pools: comma-separated, the two teammates' own keys (fall back to the single keys above)
+GEMINI_KEYS=
+SARVAM_KEYS=

@@ -1,8 +1,60 @@
 # Progress: Dhrutinandan
 
-Area: mobile app + server (setup, auth, agent). Claude updates this file at the end of every task. Newest entry on top.
+Area: mobile app + server (final: the whole server, deploy and integration). Claude updates this file at the end of every task. Newest entry on top.
 
-## Now
+## Final submission (from 2026-11-22, branch `feat/final`)
+
+Plan: `WORK.md` → Final submission (D tasks), spec `docs/CONSULT.md`. Area for the final: **the whole server, the mobile app, deploy and integration.** Sidhartha does the web (doctor portal, clinic additions, patient web).
+
+- 2026-11-22: **setup done** on `feat/final` (from `main` at 0b2c704): shared consult types (`packages/shared/src/index.ts` → "Remote consult", `Role` gains `doctor`, `AuthResponse.user.visusId`), `docs/CONSULT.md`, consult routes in `docs/API.md` (planned), screens in `docs/SCREENS.md`, `WORK.md` rewritten with the split, CLAUDE.md files and both progress files updated. Typecheck passes on server, web and mobile. Offline checks and the on-device model are scrapped.
+- Video: **Agora** (10,000 free minutes a month), video and voice only. Captions, live tests and the prescription go through our server (`GET /consults/:id/live`, polled every 2 s).
+
+- 2026-11-22: **Day 1 checks, part 1** (branch `feat/final-d`, pushed; `feat/final` pushed for Sidhartha).
+  - Agora App ID and certificate added to `apps/server/.dev.vars`; the local server now logs which secrets are set (names only). `GEMINI_KEYS` and `SARVAM_KEYS` are **not set yet** (optional: the single keys still work).
+  - Agora token: `agora-token` (`lib/agora.ts`) **runs on the Workers runtime** (local workerd, `scripts/agora-check.ts`) and the Worker bundles (279 KB gzip). No fallback needed so far; last step: you join a test channel with a real token (`bun scripts/agora-token.ts`).
+  - Mobile: `react-native-agora` 4.6.4 and `expo-calendar` added; Settings → **Call check** (developer only) tests speech recognition during an Agora call and lists the phone's speech languages. EAS development build started (8a3281ac).
+  - `local.ts` now strips quotes around `.dev.vars` values (the Worker's own loader already did).
+
+- 2026-11-22: **Phase 1 (doctors) done.** Plan changed: all of D's code first, phase by phase (1 doctors → 2 consults → 3 in the call → 4 mobile → 5 integration + deploy), then one hand-test pass at the end.
+  - Schema: all 6 consult tables (`doctors`, `clinic_doctors`, `consults`, `consult_tests`, `consult_captions` with a growing integer id for `?after=`, `prescriptions`); `users.role` can be `doctor`. Local test DB pushed; **Aiven not yet** (asks you first).
+  - `features/doctors/`: `POST /doctors/register` (Visus ID `VIS-D-XXXX`, no 0/O/1/I; clinics may type it in any case), `GET`/`PATCH /doctor`, `GET /doctor/clinics`, approve/decline, `PUT …/hours` (no overlaps, each block ≥ 15 min), leave; `/auth/login` returns `role: "doctor"` + `visusId`; clinic `GET`/`POST /shop/doctors`, `DELETE /shop/doctors/:linkId`, free slots (India time; not booked at any clinic; not past). Leaving or removing cancels future consults on that link.
+  - CORS now allows `PUT` (prescription, hours).
+  - Smoke 122/122 on the local test DB (Sarvam off).
+
+- 2026-11-22: **Phase 2 (consults) done.** `features/consults/`: clinic books (`POST /shop/consults`, linked patients only, a free slot only; `kind` is `follow_up` when this doctor already completed a consult with them), moves / changes where they join / cancels (`PATCH`, only before it starts); lists for clinic, doctor (`?when=today|upcoming|past`, India-time days) and patient (`/me/consults`, no cancelled ones); `GET /consults/:id` with the caller's `role`; Google Calendar link + `.ics` (no login, token in the link, alarms 1 h and 10 min); `POST /join` (Agora token, uid doctor 1 / patient 2 / clinic 3, first join → `live`), `POST /end` (doctor only), `GET /live` (one access query + three reads). `missed` is worked out on read.
+  - New optional server var `CONSULT_JOIN_EARLY_MIN` (default 10): for the demo set 30, so a consult booked in the next slot can be joined at once. The smoke test runs with it.
+  - Smoke 149/149.
+
+- 2026-11-22: **Phase 3 (in the call) done: the whole consult server is built.** All 31 consult routes are live in `docs/API.md`.
+  - Captions: `POST /consults/:id/captions` (only while live), translated into the other sides' languages by `lib/translate.ts` (Gemini Flash-Lite, Sarvam joins the hedge, else untranslated).
+  - Live tests: the doctor pushes a test (one at a time, can cancel); it is a normal single check in the patient's account marked with the clinic; the patient's or clinic's device sends the raw answers; scored by the existing scorers + red-flag rules + verdict, so it is in the patient's Results. A red flag's finding goes in `result.meaning` (the contract has no `finding` field; see Asks).
+  - Prescription: draft autosave, final once (409 after); final → translated (not English), follow-up booked in the doctor's first free slot that day at the same clinic (`followUpConsultId`, or null), consult completed, pending test cancelled. `/me/prescriptions` (final only), `/doctor/prescriptions` (drafts too), `/shop/patients/:id/consults`.
+  - Patient file: `GET /consults/:id/file` (doctor): AI summary first (`PATIENT_SUMMARY_PROMPT`, cached on the consult until a newer check or prescription; rule summary when the AI fails), then checks, glasses, prescriptions, other consults. Doctors can open their consult patients' checks (`GET /sessions/:id`, `features/shops/access.ts`).
+  - Key pool `lib/keys.ts`: takes turns over `GEMINI_KEYS` + `GEMINI_API_KEY` and `SARVAM_KEYS` + `SARVAM_API_KEY`; Gemini 429 rests that key for that model only (free quotas are per model), Sarvam 402/403 rests the key 10 min; logs say "key 2 of 3", never values. `SARVAM_API_KEY=` empty in the shell also turns `SARVAM_KEYS` off (smoke spends no credits).
+  - Smoke **184/184**. Seen today: Gemini Flash-Lite answered 503 (busy) and this key's Flash quota ran out, so the AI summary and the prescription translation fell back (by design). **Add `GEMINI_KEYS`** (your teammate's key) before the demo.
+  - Development build with Agora + calendar finished: https://expo.dev/artifacts/eas/zCZKBAdtSXNbwM-b9RraaBtu78DrxJvZ7q0LOA6Zfz0.apk (for the test pass at the end).
+
+- 2026-11-22: **Phase 4 (mobile) done**, on the development build from 22 Nov (Agora + calendar already in it; no new native package since).
+  - `services/consults.ts` (+ `mock/consults.ts`), `services/calendar.ts` (expo-calendar's new API: primary writable calendar, alarms 1 h and 10 min before; falls back to the Google Calendar link).
+  - Home: next-consult card ("Consult with Dr X · Today 4:15 pm", dark with **Join now** from 10 min before). Profile: My consults and Prescriptions rows (account owner only).
+  - `/consults` (upcoming, past), `/consults/[id]` (doctor, time, where, caption language, reason; Join now; Add to calendar; the prescription once saved), `/profile/prescriptions` and `/profile/prescriptions/[id]` (`PrescriptionView`: in your language, **Show original**, glasses table, medicines, daily care, follow-up).
+  - `/consults/[id]/call` → `components/ConsultCall.tsx` (lazy, Expo Go shows a note): doctor full screen, own preview, mute / camera / audio-only / captions / leave; speaker phone on; polls `/live` every 2 s; your speech captioned in the consult's language (restarts after pauses), finished sentences to `POST captions`; others' lines in your language. A pushed test opens full screen with the normal test component (right then left when the doctor asked for both eyes), raw answers to `POST …/result`; the doctor stays in a corner; closing it leaves an "Open" banner. When the doctor ends: "The consult has ended" → the consult page.
+  - Typecheck and lint pass. **Not tried on the phone yet** (your test pass).
+
+**Next (in order):**
+1. Push the branch: `git push -u origin feat/final`, then `git switch -c feat/final-d` for your own work.
+2. Day 1 checks in `WORK.md`: Agora project + keys in `.dev.vars`, the Agora token on Workers, speech recognition during an Agora call on Android, Odia recognition.
+3. Server: schema → doctors → clinic doctors + slots → consults → join + live → captions → live tests → prescription → patient file → key pool. Smoke test as you go; flip `docs/API.md` rows to live.
+4. Mobile: My consults + calendar → call screen → live test → prescriptions → new EAS dev build.
+5. Polish, then integration and deploy (`WORK.md`).
+
+**Asks from Sidhartha:** (write here what the web needs from the server, with the date)
+- none yet
+
+**Proposals for Sidhartha (contract, need both OKs):**
+- 2026-11-22: optional `finding: string | null` on `ConsultTest` for the red-flag text. Until then the server puts the finding in `result.meaning`, so the doctor's result card can show `result.meaning` under the score.
+
+## Now (before the final)
 - **Phase 4 (Nov) on `feat/visus-next`** (plan in `WORK.md` → Phase 4): shop portal, multilingual voice, faster AI + offline, web accessibility. Deploy is postponed.
   - 2026-11-08: shop portal backend done: `users.role`/`users.phone`, `shops`, `shop_patients`, `sessions.shop_id`; routes in `docs/API.md` → Shop portal; smoke test 66/66 on a local Postgres (PGlite). **Aiven needs `bun run db:push`** before the shop routes work there (only adds tables and columns).
   - 2026-11-08: shop portal web screens (`/shop/register`, `/shop/login`, `/shop`, `/shop/patients/new`, `/shop/patients/[id]`) and the patient side on web + mobile (request card on Home, Optical shops in Settings, "At <shop>" on past checks). Typecheck, lint and `next build` pass. **Not looked at in a browser yet** (no browser on this Mac for Claude): check the shop pages by eye.

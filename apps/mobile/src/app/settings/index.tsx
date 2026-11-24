@@ -194,6 +194,13 @@ export default function Settings() {
             <Text style={styles.rowTitle}>About &amp; disclaimer</Text>
             <Icon name="chevronRight" size={16} color={Colors.faint} strokeWidth={2.2} />
           </Pressable>
+          {__DEV__ && (
+            <Pressable accessibilityRole="button" onPress={() => router.push('/settings/call-check')} style={[styles.row, styles.divider]}>
+              <Icon name="info" size={20} strokeWidth={1.8} />
+              <Text style={styles.rowTitle}>Call check (developer)</Text>
+              <Icon name="chevronRight" size={16} color={Colors.faint} strokeWidth={2.2} />
+            </Pressable>
+          )}
         </View>
 
         <View style={styles.spacer} />

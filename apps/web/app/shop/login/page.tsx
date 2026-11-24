@@ -25,7 +25,7 @@ export default function ShopLogin() {
       const user = await login({ identifier: id.trim(), password: pw });
       if (!isShop(user)) {
         logout();
-        throw new Error("This is a personal account. Use the normal log in instead.");
+        throw new Error(user.role === "doctor" ? "This is a doctor account. Use the doctor log in instead." : "This is a personal account. Use the normal log in instead.");
       }
     },
     onSuccess: () => router.replace("/shop"),

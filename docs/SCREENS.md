@@ -132,6 +132,45 @@ Patient side:
 | S6 | Shop request card (Allow / Decline) | on Home | Both | `GET /me/shop-requests`, `POST /me/shop-requests/:id` |
 | S7 | Optical shops: mobile number, linked shops, Remove | web: section in `/settings`; mobile: `/settings/shops` | Both | `PATCH /me`, `GET /me/shops`, `DELETE /me/shops/:id` |
 
+## Remote consult (final, added 2026-11-22)
+
+Not in the Claude Design handoff: build from the existing components (the shop portal's sidebar, cards, buttons, the auth layout). Flow and rules: [CONSULT.md](CONSULT.md). Web screens: **T**. Mobile screens: **D**.
+
+Doctor portal (web only, new, same sidebar as the shop portal: Consults, Clinics, Prescriptions; Account and Log out at the bottom):
+
+| # | Screen | Route | Platform | Data |
+|---|---|---|---|---|
+| R1 | Doctor sign up (name, login, password, specialty, registration number, languages; then the Visus ID with Copy) | `/doctor/register` | Web | `POST /doctors/register` |
+| R2 | Doctor log in (the normal `/login` also sends doctors here) | `/doctor/login` | Web | `POST /auth/login` |
+| R3 | Consults (today, upcoming, past; Join now banner; calendar links) | `/doctor` | Web | `GET /doctor/consults` |
+| R4 | Clinics (requests with Approve / Decline; clinics with weekly hours editor; Leave) | `/doctor/clinics` | Web | `GET /doctor/clinics`, `POST /doctor/clinics/:linkId`, `PUT …/hours`, `DELETE` |
+| R5 | Patient file (AI summary first, then checks, glasses, prescriptions, consults; Join) | `/doctor/consults/[id]` | Web | `GET /consults/:id`, `GET /consults/:id/file`, `GET /sessions/:id` |
+| R6 | Consult room (video, captions panel, test picker + result cards, prescription panel, Save and end) | `/doctor/consults/[id]/call` | Web | `POST /join`, `GET /live`, `POST /captions`, `POST`/`DELETE /tests`, `PUT /prescription`, `POST /end` |
+| R7 | Prescriptions (list, open one) | `/doctor/prescriptions` | Web | `GET /doctor/prescriptions` |
+| R8 | Account (name, specialty, registration number, languages, Visus ID) | `/doctor/account` | Web | `GET`/`PATCH /doctor` |
+
+Clinic portal additions (web only, in the shop portal sidebar: **Consults** and **Doctors** under Patient records):
+
+| # | Screen | Route | Platform | Data |
+|---|---|---|---|---|
+| S14 | Doctors (add by Visus ID, pending / active, hours, remove) | `/shop/doctors` | Web | `GET`/`POST /shop/doctors`, `DELETE /shop/doctors/:linkId` |
+| S15 | Consults (today, upcoming, past; Join for "at the clinic") | `/shop/consults` | Web | `GET /shop/consults` |
+| S16 | Book consult (linked patient → doctor → date → free slot → from home / at the clinic → reason + language); also move / cancel | `/shop/consults/new` (`?patient=<id>` from a patient's page) | Web | `GET /shop/patients`, `GET /shop/doctors`, `GET …/slots`, `POST`/`PATCH /shop/consults` |
+| S17 | Join at the clinic (the patient's call screen, role `clinic`) | `/shop/consults/[id]/call` | Web | as C1 |
+| — | Patient page: Consults and Prescriptions section, "Book consult" (linked patients only) | `/shop/patients/[id]` | Web | `GET /shop/patients/:id/consults` |
+
+Patient (no booking screen: only the clinic books). Mobile (D): built on `feat/final-d` (2026-11-22), files under `apps/mobile/src/app/consults/` and `src/app/profile/prescriptions/`:
+
+| # | Screen | Route | Platform | Data |
+|---|---|---|---|---|
+| C1 | Call (doctor's video, own preview, mute, camera, audio-only, leave; captions bar; a pushed test opens full screen, then back to the call) | `/consults/[id]/call` | Both | `POST /join`, `GET /live`, `POST /captions`, `POST …/tests/:rowId/result` |
+| C2 | My consults (upcoming, past) | `/consults` | Both | `GET /me/consults` |
+| C3 | Consult (doctor, clinic, time, where to join; Add to calendar; Join now; prescription once saved) | `/consults/[id]` | Both | `GET /consults/:id`, `GET /consults/:id/prescription` |
+| C4 | Prescriptions (list → one prescription, in the patient's language with "Show original") | `/profile/prescriptions` | Both | `GET /me/prescriptions` |
+| — | Home card: next consult ("Dr X · Today 4:15 pm", Join now from 10 min before) | on Home | Both | `GET /me/consults` |
+| — | Add to calendar | on C3 | Mobile: `expo-calendar` (alarms 1 h and 10 min before); web: Google Calendar link + `.ics` | `ConsultSummary.calendar` |
+| — | Print view (extra) | `/rx/[id]` | Web | `GET /consults/:id/prescription` |
+
 ## Languages and talk mode (added 2026-11-09)
 
 Not new screens: controls on existing ones, on both web and mobile.

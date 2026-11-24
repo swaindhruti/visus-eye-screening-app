@@ -3,20 +3,21 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 // The browser's speech recognition (Chrome, Edge, Safari). Not in Firefox: the mic button hides there.
-type Recognition = {
+export type Recognition = {
   lang: string;
   interimResults: boolean;
   continuous: boolean;
   start(): void;
   stop(): void;
   abort(): void;
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onresult: ((e: { resultIndex?: number; results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal?: boolean }> }) => void) | null;
   onerror: ((e: { error: string }) => void) | null;
   onend: (() => void) | null;
 };
 type RecognitionCtor = new () => Recognition;
 
-const getCtor = () => {
+/** The browser's SpeechRecognition constructor, or undefined (Firefox, server render). Also used for consult captions. */
+export const getCtor = () => {
   if (typeof window === "undefined") return undefined;
   const w = window as unknown as { SpeechRecognition?: RecognitionCtor; webkitSpeechRecognition?: RecognitionCtor };
   return w.SpeechRecognition ?? w.webkitSpeechRecognition;

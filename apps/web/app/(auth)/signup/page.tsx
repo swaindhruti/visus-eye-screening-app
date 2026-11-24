@@ -110,6 +110,7 @@ export default function SignUp() {
             </Link>
           </p>
           <AccountSwitch href="/shop/register" icon="store" title="Sign up as an optical shop" sub="Register your shop to test customers and keep records" />
+          <AccountSwitch href="/doctor/register" icon="health" title="Join as a doctor" sub="Consult patients of rural clinics by video" />
         </div>
       </AuthBody>
     </AuthShell>

@@ -1,122 +1,121 @@
 # Work plan
 
-Tick a task in the same PR that finishes it. **D** = Dhrutinandan, **T** = Teammate.
+Tick a task in the same PR that finishes it. **D** = Dhrutinandan, **T** = Sidhartha (teammate).
 
-Key dates: idea submission **24 Oct** · shortlist **30 Oct** · build sprint **1–8 Nov**.
+Key dates: idea submission **24 Oct** · shortlist **30 Oct** · build sprint **1–8 Nov** · mid-term update **9 Nov** · **final evaluation: date to confirm** (write it here).
 
-## Phase 0: setup (both)
+## Final submission (branch `feat/final`, plan agreed on 2026-11-22)
 
-- [x] D: Repo created, apps generated, pushed to GitHub
-- [ ] D + T: Agree shared types in `packages/shared/src/index.ts`
-- [ ] T: Vercel project connected (root `apps/web`)
-- [ ] D: Cloudflare Workers Builds connected (root `apps/server`)
-- [x] D: Aiven Postgres created, `DATABASE_URL` in `apps/server/.dev.vars`
+One new feature, the **remote consult** ([docs/CONSULT.md](docs/CONSULT.md)), plus polish and the free-tier deploy. **Scrapped:** the on-device model and full offline checks (`packages/engine`, `POST /sessions/import`, offline sync).
 
-## Phase 1: core flow on mock data (by 23 Oct, for the demo video)
+### How we work
 
-Mobile (D) and Web (T) each build these screens on mock data:
+1. **The contract is already written** (this setup commit): shared types in `packages/shared/src/index.ts` → "Remote consult", routes in `docs/API.md` → Remote consult, screens in `docs/SCREENS.md` → Remote consult. Build against them. A change to them needs both people's OK (write it in your progress file first).
+2. **Stay in your folders** (table below). Never edit the other person's folders; write what you need in your progress file → "Asks".
+3. **Mock first:** T builds the web on mock data (`services/mock/`) shaped exactly like the shared types, so the web doesn't wait for the server. D builds the server and the mobile app.
+4. **Branches:** both start from `feat/final`. D works on `feat/final-d`, T on `feat/final-web` (in T's fork). Each opens a PR into `feat/final`. Pull `feat/final` daily.
+5. **Integration (D, at the end):** merge both PRs into `feat/final`, switch the web's mocks off, run one consult end to end (doctor web ↔ patient phone ↔ clinic web), deploy, then `feat/final` → `main`.
 
-- [x] D [x] T: Welcome, Sign up, Log in, Onboarding
-- [x] D [x] T: Home, Tests library, Test detail
-- [x] D [x] T: Issue intake → Your test plan → Calibration → Test instructions
-- [x] D [x] T: Tests: Tumbling E, Clock dial, Amsler grid, Contrast
-- [x] D [x] T: Between-test analysis, Red-flag alert, Analysing
-- [x] D [x] T: Results & analysis, Lens recommendation
+### Who owns which folders (final)
+
+| Folder | Owner |
+|---|---|
+| `apps/server/**` (all of it for the final, incl. new `features/doctors/`, `features/consults/`, `lib/translate.ts`, `lib/agora.ts`, `lib/keys.ts`) | D |
+| `apps/server/src/features/{scoring,rules,lens}/` (tuning after the accuracy check only) | T |
+| `apps/mobile/**` | D |
+| `apps/web/**` (doctor portal `app/doctor/`, clinic additions in `app/shop/`, patient web `app/consults/`) | T |
+| `packages/shared/**` | Both (contract; change only with both OKs) |
+| `docs/API.md`, `docs/CONSULT.md` | D (T asks) |
+| `docs/SCREENS.md` web rows, demo video, slides | T |
+| Deploy: server + APK | D |
+| Deploy: Vercel | T |
+
+### Dhrutinandan (D): server, mobile app, deploy, integration
+
+Day 1 checks (do these first; they decide the fallbacks in `docs/CONSULT.md`):
+
+- [x] D: Agora account + project; App ID and App Certificate in `apps/server/.dev.vars` (`AGORA_APP_ID`, `AGORA_APP_CERTIFICATE`). Send T the App ID only for web testing until `POST /consults/:id/join` is live (or use a testing-mode project)
+- [x] D: Agora token built on Workers (`agora-token` package, `wrangler deploy --dry-run`); if it can't run there, use a testing-mode project (`token: null`)
+- [ ] D: `expo-speech-recognition` while an Agora call is on (Android dev build): does it still hear the mic? If not, the doctor side makes the patient's captions (see CONSULT.md → risks)
+- [ ] D: Odia (`or-IN`) recognition on Android and Chrome; if missing, 5-second pieces to `POST /voice/stt`
 
 Server:
 
-- [x] D: Hono setup, `GET /health`, CORS, error handling
-- [x] D: Database schema (Drizzle) + auth: signup, login, `GET /me`
-- [x] D: Agent: `POST /sessions` → AI test plan (Gemini)
-- [x] T: Scoring for Tumbling E, Clock dial, Amsler, Contrast (built by D)
-- [x] T: Red-flag rules + simple next-test rules (built by D)
-- [x] D: `POST /sessions/:id/results` wiring scoring + rules + AI re-plan
-- [x] T: Lens recommendation mapping (built by D)
-- [x] D: `POST /sessions/:id/verdict`
+- [x] D: Schema: `doctors`, `clinic_doctors`, `consults`, `consult_tests`, `consult_captions`, `prescriptions`; `users.role` gains `doctor` (CONSULT.md → Data model)
+- [x] D: Doctors: `POST /doctors/register` (Visus ID), `GET`/`PATCH /doctor`, requests (`GET /doctor/clinics`, `POST /doctor/clinics/:linkId`), hours (`PUT /doctor/clinics/:linkId/hours`), leave (`DELETE /doctor/clinics/:linkId`); `/auth/login` returns `role: "doctor"` + `visusId`
+- [x] D: Clinic side: `GET`/`POST /shop/doctors`, `DELETE /shop/doctors/:linkId`, free slots `GET /shop/doctors/:doctorId/slots?date=`
+- [x] D: Consults: `POST`/`GET /shop/consults`, `PATCH /shop/consults/:id`, `GET /doctor/consults`, `GET /me/consults`, `GET /consults/:id`; `missed` worked out on read; calendar links + `GET /consults/:id/calendar.ics?t=`
+- [x] D: Call: `POST /consults/:id/join` (Agora token, status → live), `POST /consults/:id/end`, `GET /consults/:id/live`
+- [x] D: Captions: `POST /consults/:id/captions` + `lib/translate.ts` (Gemini Flash-Lite → Sarvam → untranslated)
+- [x] D: Live tests: `POST /consults/:id/tests`, `DELETE /consults/:id/tests/:rowId`, `POST /consults/:id/tests/:rowId/result` (reuses sessions + scoring + red-flag rules)
+- [x] D: Prescription: `PUT`/`GET /consults/:id/prescription`; final → translate, book the follow-up, consult completed; `GET /me/prescriptions`, `GET /doctor/prescriptions`, `GET /shop/patients/:id/consults`
+- [x] D: Patient file: `GET /consults/:id/file` with the AI summary (cached, rule fallback); doctors added to `sessionAccess` for their consult patients
+- [x] D: Key pool: `GEMINI_KEYS`, `SARVAM_KEYS` (two teammates' own keys) with cooldowns; never log key values
+- [x] D: Smoke test covers every new route; `docs/API.md` status planned → live as each lands
 
-## Phase 2: complete the app (24–30 Oct)
+Mobile (patient app):
 
-- [x] D [x] T: Results tab, Test result detail (+ peripheral map), Single test complete, Share report
-- [x] D [x] T: Remaining screens: Profile, Family, Edit profile, My glasses, Settings, About
-- [x] D [x] T: Remaining tests: Near reading, Near point, Duochrome, Colour plates, Peripheral, Kids tests, 3 questionnaires
-- [x] D [x] T: Quick check, Glasses check, Who is this for, Kids intro, test-flow extras (switch eye, pause, exit), Permissions
-- [x] D [x] T: Distance warning (47): needs camera distance tracking (Phase 3)
-- [x] D [x] T: States: offline, error, re-check reminder; Tests library filter and search
-- [x] D [x] T: Switch services from mock to real API
-- [x] T: Scoring for remaining tests (built by D)
-- [x] T: `GET /sessions`, `GET /sessions/:id`, share link (built by D, + `GET /reports/:token`)
-- [x] D: Profiles: list, create, update
+- [x] D: My consults: Home card ("Consult with Dr X · Today 4:15 pm"), `/consults` list (upcoming, past), `/consults/[id]` detail; Add to calendar (`expo-calendar`, alarms 1 h and 10 min before); "Join now" banner
+- [x] D: Call screen `/consults/[id]/call` (`react-native-agora`): doctor's video, own preview, mute, camera, audio-only, leave; captions bar (own speech → `POST captions`, others from `/live`)
+- [x] D: Live test in the call: `pendingTest` opens the existing test full screen, answers to `POST …/tests/:rowId/result`, back to the call
+- [x] D: Prescriptions: on the consult detail and in Profile → Prescriptions (`/profile/prescriptions`), in the patient's language with "Show original"
+- [x] D: New EAS development build (`react-native-agora`, `expo-calendar`, `expo-audio`)
 
-## Phase 3: final stretch
+Polish:
 
-Split agreed on 2026-10-22: Dhrutinandan (with Claude Code) built the native mobile features (done) and does the deployment later; **Sidhartha does everything else**. Until the deploy, everyone runs the API locally (`cd apps/server && bun run dev:phone`).
+- [ ] D: Bug pass on the phone: every screen of the app, by hand
+- [ ] D: Talk mode by ear; a native speaker checks the Hindi and Odia text (`packages/shared/src/voice.ts`, `apps/server/src/features/agent/i18n.ts`)
 
-Dhrutinandan:
+Integration and deploy:
 
-- [x] D: Camera distance tracking (EAS development build): Distance setup (12), Distance warning (47), live distance in Near point
-- [x] D: Screen Coach (Android native module + overlay, screens 7, 21, 22, 23) + real screen time on Home; reminders in the installed app
-- [x] D: Mobile parity with the web (2026-10-23): guest mode, voice input in the intake chat, onboarding "Later" + skip-saves-profile fix, distance warning also on clock dial / duochrome / Amsler; server: hedged Gemini calls
-- [ ] D: Deploy the server (later, not started): Hyperdrive for Aiven, 4 secrets, `wrangler deploy`, smoke test on the live URL (`apps/server/CLAUDE.md` → Deploy)
-- [ ] D: Final APK (EAS `preview`) pointing at the live API (after the deploy)
+- [ ] D: Merge both PRs into `feat/final`; web mocks off; one consult end to end on three devices (web side done by T on 2026-11-23: mocks off against the local server on Neon, one consult in three browsers; still to do on the deployed server with the phone)
+- [ ] D: Deploy the server: Neon (tables already pushed on 2026-11-23), Hyperdrive pointed at Neon, secrets (the 4 + `AGORA_*`, key pools, `SARVAM_API_KEY`), `WEB_URL` = Vercel URL, `wrangler deploy`, smoke on the live URL, CORS for the Vercel URL
+- [ ] D: Final APK (EAS `preview`) on the live API
+- [ ] D: README + docs final pass; PR `feat/final` → `main`
+- [ ] D: Delete PGlite from the laptop: `rm -rf ~/.claude/jobs/3d970588/tmp/pg` and `bun pm cache rm`
 
-Sidhartha (details and pointers in `progress/sidhartha.md` → Handover):
+### Sidhartha (T): web (doctor portal, clinic portal additions, patient web)
 
-- [x] T: Web services from mock to the real API (`NEXT_PUBLIC_API_URL`); replace web-only types with the shared ones
-- [x] T: Web intake chat on `POST /intake/chat` (AI follow-up questions with chips)
-- [x] T: Web report page `/r/[token]` reading `GET /reports/:token` (the doctor link from Share report)
-- [x] T: Web camera distance (MediaPipe in `apps/web/lib/useDistance.ts`)
-- [ ] T: Vercel deploy (root `apps/web`) with the live API URL; send Dhrutinandan the web URL (share links + CORS)
-- [ ] T: Tune scoring / rules / lens if the accuracy check shows it (`apps/server/src/features/{scoring,rules,lens}`)
-- [ ] T: Accuracy check with 15–20 people
-- [ ] T: Demo video + presentation
+All on mock data first (`apps/web/services/mock/`), shaped exactly like the shared types.
 
-## Phase 4: next features (Nov)
+Doctor portal (`/doctor`, new, same sidebar style as the shop portal):
 
-New priority order agreed on 2026-11-08 (replaces "Visus: Plan to 15 November"). One branch: `feat/visus-next`, merged by PR. Deploy stays for later. **D** = built by Dhrutinandan with Claude Code (including web this time); anything left goes to Sidhartha.
+- [x] T: `/doctor/register` (name, login, password, specialty, registration number, languages) and `/doctor/login`; the normal `/login` sends `role: "doctor"` to `/doctor`; Visus ID shown big with a Copy button
+- [x] T: Requests and clinics (`/doctor/clinics`): approve / decline requests, weekly hours editor per clinic, leave a clinic
+- [x] T: Consults (`/doctor`): today, upcoming, past; "Join now" banner; Add to Google Calendar / `.ics`
+- [x] T: Patient file (`/doctor/consults/[id]`): AI summary first (labelled), then checks (open one: the existing result screens), glasses, earlier prescriptions and consults
+- [x] T: Consult room (`/doctor/consults/[id]/call`, `agora-rtc-sdk-ng`): patient video big, own preview, mute / camera / audio-only / end; captions panel (browser speech recognition → `POST captions`, others from `/live` every 2 s); test picker (test + eye) with live status and result cards; prescription panel (autosave every 10 s, Save and end)
+- [x] T: Records: `/doctor/prescriptions` (list + view) and `/doctor/account`
 
-1. Shop portal (web + server + mobile link requests)
+Clinic portal additions (`/shop`):
 
-- [x] D: Server: `users.role` + `users.phone`, `shops`, `shop_patients`, `sessions.shop_id`; `POST /shops/register`; role on `/me` and login
-- [x] D: Server: shop patients (list, search, add, detail with records), link request by phone, user approve / decline / unlink; shops can run checks for their patients
-- [x] D: Web: shop register, shop dashboard, new patient, patient detail with records and "Start check"
-- [x] D: Mobile + web: link requests ("Optics X wants to see your eye records"), Linked shops in Settings, "At <shop>" on shop-run checks
+- [x] T: Doctors (`/shop/doctors`): add by Visus ID, pending / active, hours (read only), remove
+- [x] T: Consults (`/shop/consults`): list (today, upcoming, past); Book consult (`/shop/consults/new`): linked patient → doctor → date → free slot → from home / at the clinic → reason + language; move / cancel
+- [x] T: Patient page: Consults and Prescriptions section + "Book consult" (only for linked patients)
+- [x] T: Join at the clinic (`/shop/consults/[id]/call`): the patient's call screen with role `clinic`; live tests on the laptop (calibration first)
 
-- [x] D: Shop portal v2: sidebar (Patient records; Account and Log out at the bottom; folds to icons, drawer on phones), Add new patient at the top, add a patient's mobile number later (`PATCH /shop/patients/:id`, links past results), Account page (`GET`/`PATCH /shop`); optical shop option on log in and sign up
+Patient web:
 
-- [x] D: Shop Test library in the sidebar (`/shop/tests`): tests by category; run one for a quick analysis or tick a set (`mode: "custom"`, `testIds`); patient optional (`profileId: ""` keeps it on the shop's walk-in record)
+- [x] T: My consults: Home card, `/consults`, `/consults/[id]` (Add to calendar, Join now)
+- [x] T: Call `/consults/[id]/call` (role `patient`, same component as the clinic join) with the live test takeover
+- [x] T: Prescriptions in Profile (`/profile/prescriptions`) and on the consult
+- [x] T (extra): print view `/rx/[id]` (browser print to PDF)
 
-- [x] D: Shop Ask Visus AI (`/shop/ask`, first in the sidebar as a highlighted capsule): AI chat and plan for a customer with or without a patient record; pick or add the patient mid-chat. Fixed the chat's Send button for shops
-- [x] D: Shop Orders (`shop_orders` table, `/shop/orders` routes; list with totals, new order, status steps, payments; orders on the patient page). **Aiven needs `bun run db:push`** (new table)
+Polish and deploy:
 
-2. Multilingual voice agent (English, Hindi, Odia)
+- [ ] T: Bug pass in the browser: every patient web and shop portal screen, by hand
+- [ ] T: Accuracy check with 15–20 people, then tune `scoring/`, `rules/`, `lens/`
+- [ ] T: Vercel deploy (root `apps/web`, `NEXT_PUBLIC_API_URL` = live API); send D the URL (CORS, `WEB_URL`)
+- [ ] T (extra): keyboard answers for the tests, 44 px targets, contrast check
 
-- [x] D: Server: `language` on intake chat, sessions and verdict; prompts reply in that language; Hindi / Odia rule fallbacks; Hindi / Odia urgent words in the red-flag rules
-- [x] D: Server: Sarvam AI (Indian voice) `POST /voice/tts` + `/voice/stt`, and `sarvam-105b-conversations` next to Gemini (first for Hindi/Odia). LiveKit dropped: our own VoiceOrb visualizer
-- [x] D: Mobile: language picker, talk mode (speak → auto-send → reply read aloud → listen again), `expo-audio`
-- [x] D: Mobile: test instructions, switch-eye and next-test text in Hindi and Odia, read aloud automatically in talk mode
-- [x] D: Web: same language picker, talk mode and translated instructions
-- [x] D: `SARVAM_API_KEY` in `apps/server/.dev.vars`; key checked (voice, speech to text and chat each answered once)
-- [x] D: Server: Sarvam through its official SDK `sarvamai`: `bulbul:v4-flash` Ritu medical voice (v3 for Odia), MP3, `saaras:v4` with eye-check keyterms, `sarvam-105b-conversations` (under 1 s), off for 10 min on 402/403, `GET /voice`; Settings on web and mobile shows which voice is in use
-- [ ] D: Try talk mode end to end by ear once there are credits; native speaker checks the Hindi/Odia text
-- [ ] D: New EAS development build for the installed app (adds `expo-audio`)
+Submission:
 
-3. Faster AI and offline checks
+- [ ] T: Demo video (a consult end to end: book → reminder → call with captions → live test → prescription) + updated slides
+- [ ] D + T: Final submission form
 
-- [ ] D: Server: Gemini timing logs, shorter hedge / budget, minimal thinking for chat and re-plan, plan started when the chat ends, verdict text and lens in parallel
-- [ ] D: `packages/engine`: scoring, rules, rule plan, rule verdict and lens shared by the server and the phone
-- [ ] D: Server: `POST /sessions/import` (an offline check with its own timestamps, re-scored on the server)
-- [ ] D: Mobile: full check offline on rules, saved on the phone, synced when online + background sync every ~15 min
-- [ ] D (stretch, **ask Dhrutinandan first: they have a different plan**): on-device model for the offline intake chat
+## Earlier phases (done)
 
-4. Web accessibility
+Phases 0–4 (Oct–Nov): patient app on Android and web (14 tests, AI intake chat and re-plan, verdict, ZEISS lenses, family, share, guest mode, camera distance, Screen Coach), server (auth, sessions, scoring, rules, lens, history, Gemini + Sarvam hedge), shop portal (patients, consent linking, test library, Ask Visus AI, orders), multilingual voice (English, Hindi, Odia). Details: `git log`, `progress/`, [docs/MID_PROGRESS.md](docs/MID_PROGRESS.md).
 
-- [ ] D: Keyboard answers for the tests (arrows for Tumbling E, numbers for plates, space for peripheral)
-- [ ] D: Spoken answers for Tumbling E ("up", "left")
-- [ ] D: Skip link, focus on page change, live region for the AI chat, labels on icon buttons, status not by colour alone
-- [ ] D: Reduced motion respected (landing smooth scroll, 3D iris, reveals)
-- [ ] D: High-contrast theme and a dyslexia-friendly font option; `<html lang>` follows the language
-- [ ] D or T: 44 px targets, contrast check, axe audit fixes
-
-Before the final PR (cleanup on Dhrutinandan's laptop):
-
-- [ ] D: Delete PGlite (the throwaway test Postgres from 2026-11-08): `rm -rf ~/.claude/jobs/3d970588/tmp/pg` and `bun pm cache rm`. It was never in the repo.
+Moved into the final plan above: deploy (server, Vercel, APK), accuracy check, demo video, talk mode by ear, native speaker check, new EAS build, PGlite cleanup.
+Dropped: faster-AI timing work beyond the key pool, `packages/engine`, `POST /sessions/import`, offline full checks and sync, on-device model, most of the web accessibility list (a few items stay as T extras).

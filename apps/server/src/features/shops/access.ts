@@ -1,9 +1,10 @@
 // Who may run or read a check. A person: their own profiles and checks. A shop: its walk-in
 // patients, the checks it ran, and (read only) the checks of patients who approved a link.
-import { and, eq, inArray, notInArray, or, type SQL } from 'drizzle-orm';
+// A doctor (read only): the checks of patients they have a consult with.
+import { and, eq, inArray, ne, notInArray, or, type SQL } from 'drizzle-orm';
 
 import type { Db } from '../../db/client';
-import { profiles, sessions, shopPatients, shops } from '../../db/schema';
+import { consults, doctors, profiles, sessions, shopPatients, shops } from '../../db/schema';
 import { fail } from '../../lib/errors';
 import { isUuid } from '../../lib/validate';
 import { createProfile, toProfile } from '../profiles/profiles.service';
@@ -23,13 +24,22 @@ const linkedUsers = (db: Db, userId: string) =>
     .from(shopPatients)
     .where(and(inArray(shopPatients.shopId, myShops(db, userId)), eq(shopPatients.linkStatus, 'approved')));
 
+/** Profiles of patients this user (a doctor) has a consult with (not cancelled). */
+const consultPatients = (db: Db, userId: string) =>
+  db
+    .select({ id: consults.profileId })
+    .from(consults)
+    .innerJoin(doctors, eq(doctors.id, consults.doctorId))
+    .where(and(eq(doctors.userId, userId), ne(consults.status, 'cancelled')));
+
 /**
  * Sessions this user may use: their own and the ones their shop ran. With `read`, also every check
- * of a linked patient (a shop looking at past records).
+ * of a linked patient (a shop looking at past records) and, for a doctor, the checks of patients
+ * they have a consult with (the patient file).
  */
 export function sessionAccess(db: Db, userId: string, read = false): SQL {
   const own = [eq(sessions.userId, userId), inArray(sessions.shopId, myShops(db, userId))];
-  if (read) own.push(inArray(sessions.userId, linkedUsers(db, userId)));
+  if (read) own.push(inArray(sessions.userId, linkedUsers(db, userId)), inArray(sessions.profileId, consultPatients(db, userId)));
   return or(...own)!;
 }
 

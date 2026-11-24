@@ -1,6 +1,5 @@
 // Shared types and the test catalog for mobile, web and server.
 // Types and constants only — no logic. Changes need both people's approval.
-// DRAFT: agree on these together before building against them.
 import { z } from "zod";
 
 // ---------- Tests ----------
@@ -73,8 +72,8 @@ export const LoginRequest = z.object({
   identifier: z.string().min(3),
   password: z.string().min(1).max(128),
 });
-/** "shop" accounts open the shop portal (web) instead of the personal app. */
-export const Role = z.enum(["user", "shop"]);
+/** "shop" accounts open the shop (clinic) portal and "doctor" accounts the doctor portal (web) instead of the personal app. */
+export const Role = z.enum(["user", "shop", "doctor"]);
 export type Role = z.infer<typeof Role>;
 
 export const AuthResponse = z.object({
@@ -86,6 +85,7 @@ export const AuthResponse = z.object({
     role: Role.optional(), // missing = "user"
     shopName: z.string().optional(), // shop accounts only
     phone: z.string().optional(), // 10 digits; shops find a patient's account by it
+    visusId: z.string().optional(), // doctor accounts only: the ID a clinic adds them by
   }),
 });
 
@@ -393,4 +393,256 @@ export const UpdateOrderRequest = z.object({
 });
 
 // Hindi and Odia instructions, spoken lines and the voice routes (Sarvam AI via the server).
+// ---------- Remote consult (final submission) ----------
+// The clinic (code name "shop": the shop portal) adds doctors by their Visus ID and books consults
+// for its linked patients. The doctor (doctor portal, web) consults by video (Agora), pushes live
+// tests and writes the prescription. The patient (app or web) sees the consults booked for them,
+// joins and takes the tests. Only the clinic books. Full spec: docs/CONSULT.md.
+
+/** Consults are booked in 15-minute slots. */
+export const CONSULT_MINUTES = 15;
+
+export const DoctorRegisterRequest = z.object({
+  name: z.string().min(1).max(100),
+  identifier: z.string().min(3), // phone or email, used to log in with POST /auth/login
+  password: z.string().min(8).max(128),
+  specialty: z.string().min(1).max(100), // e.g. "Ophthalmologist", "Optometrist"
+  registrationNo: z.string().min(1).max(40), // shown on calls and prescriptions; NOT verified (hackathon demo)
+  languages: z.array(Language).min(1), // languages the doctor speaks
+});
+
+/** A doctor as others see them. `visusId` is the short code a clinic types to add them, e.g. "VIS-D-7K3Q". */
+export const Doctor = z.object({
+  id: z.string(),
+  visusId: z.string(),
+  name: z.string(),
+  specialty: z.string(),
+  registrationNo: z.string(),
+  languages: z.array(Language),
+});
+export type Doctor = z.infer<typeof Doctor>;
+
+/** GET /doctor: the logged-in doctor's own account. */
+export const DoctorAccount = Doctor.extend({ identifier: z.string() });
+export type DoctorAccount = z.infer<typeof DoctorAccount>;
+export const UpdateDoctorRequest = DoctorRegisterRequest.pick({ name: true, specialty: true, registrationNo: true, languages: true }).partial();
+
+/** A block of weekly hours at one clinic, India time. day 0 = Sunday. "16:00"–"18:00". */
+export const HoursBlock = z.object({
+  day: z.number().int().min(0).max(6),
+  start: z.string().regex(/^\d{2}:\d{2}$/),
+  end: z.string().regex(/^\d{2}:\d{2}$/),
+});
+export type HoursBlock = z.infer<typeof HoursBlock>;
+export const SetHoursRequest = z.object({ hours: z.array(HoursBlock).max(21) });
+
+/** pending = the clinic asked, the doctor hasn't answered. removed = the clinic removed them or the doctor left. */
+export const ClinicDoctorStatus = z.enum(["pending", "active", "declined", "removed"]);
+export type ClinicDoctorStatus = z.infer<typeof ClinicDoctorStatus>;
+
+/** The clinic's view of one of its doctors (GET /shop/doctors). */
+export const ClinicDoctor = z.object({
+  linkId: z.string(),
+  doctor: Doctor,
+  status: ClinicDoctorStatus,
+  hours: z.array(HoursBlock),
+  createdAt: z.string(),
+});
+export type ClinicDoctor = z.infer<typeof ClinicDoctor>;
+
+/** The doctor's view of a clinic: a request (pending) or a clinic they work with (GET /doctor/clinics). */
+export const DoctorClinic = z.object({
+  linkId: z.string(),
+  clinic: Shop,
+  status: ClinicDoctorStatus,
+  hours: z.array(HoursBlock),
+  createdAt: z.string(),
+});
+export type DoctorClinic = z.infer<typeof DoctorClinic>;
+
+export const AddDoctorRequest = z.object({ visusId: z.string().min(4).max(20) });
+export const DoctorRequestAnswer = z.object({ approve: z.boolean() });
+
+/** A free slot (GET /shop/doctors/:doctorId/slots?date=YYYY-MM-DD). */
+export const Slot = z.object({ startsAt: z.string() }); // ISO
+export type Slot = z.infer<typeof Slot>;
+
+export const ConsultStatus = z.enum(["scheduled", "live", "completed", "missed", "cancelled"]);
+export type ConsultStatus = z.infer<typeof ConsultStatus>;
+/** Where the patient is planned to join from. Both still work on the day. */
+export const JoinFrom = z.enum(["home", "clinic"]);
+export type JoinFrom = z.infer<typeof JoinFrom>;
+export const ConsultKind = z.enum(["first", "follow_up"]);
+export type ConsultKind = z.infer<typeof ConsultKind>;
+/** Who is on the call. "clinic" = the clinic's device with the patient sitting there. */
+export const CallRole = z.enum(["doctor", "patient", "clinic"]);
+export type CallRole = z.infer<typeof CallRole>;
+
+/** POST /shop/consults. Only the clinic books, only for a linked patient. */
+export const CreateConsultRequest = z.object({
+  patientId: z.string(), // ShopPatient.id, linkStatus must be "approved"
+  doctorId: z.string(), // an active doctor of this clinic
+  startsAt: z.string(), // ISO, one of the free slots
+  joinFrom: JoinFrom,
+  reason: z.string().max(500),
+  language: Language, // the patient's language for captions and the prescription
+});
+/** PATCH /shop/consults/:id: move or cancel. */
+export const UpdateConsultRequest = z.object({
+  startsAt: z.string().optional(),
+  joinFrom: JoinFrom.optional(),
+  status: z.literal("cancelled").optional(),
+});
+
+/** Add-to-calendar links. The phone app adds the event straight to the calendar instead. */
+export const CalendarLinks = z.object({ googleUrl: z.string(), icsUrl: z.string() });
+
+/** One consult in every list (clinic, doctor, patient). */
+export const ConsultSummary = z.object({
+  id: z.string(),
+  startsAt: z.string(), // ISO
+  minutes: z.number(),
+  status: ConsultStatus,
+  kind: ConsultKind,
+  joinFrom: JoinFrom,
+  reason: z.string(),
+  language: Language,
+  patient: z.object({ profileId: z.string(), name: z.string(), age: z.number() }),
+  doctor: Doctor,
+  clinic: z.object({ id: z.string(), name: z.string(), city: z.string() }),
+  hasPrescription: z.boolean(),
+  calendar: CalendarLinks,
+});
+export type ConsultSummary = z.infer<typeof ConsultSummary>;
+
+/** GET /consults/:id: the consult plus who is asking. */
+export const ConsultDetail = ConsultSummary.extend({ role: CallRole });
+export type ConsultDetail = z.infer<typeof ConsultDetail>;
+
+/** POST /consults/:id/join: what the app needs to join the Agora channel. */
+export const JoinConsultResponse = z.object({
+  appId: z.string(),
+  channel: z.string(),
+  token: z.string().nullable(), // null when the Agora project runs in testing mode (App ID only)
+  uid: z.number().int(), // doctor 1, patient 2, clinic 3
+  role: CallRole,
+  expiresAt: z.string(),
+});
+export type JoinConsultResponse = z.infer<typeof JoinConsultResponse>;
+
+/** POST /consults/:id/captions: one finished sentence, in the speaker's language. */
+export const CaptionRequest = z.object({ text: z.string().min(1).max(300), language: Language });
+/** A saved caption line with its translations (the server translates into the other side's language). */
+export const Caption = z.object({
+  id: z.string(),
+  at: z.string(), // ISO
+  from: CallRole,
+  language: Language,
+  text: z.string(),
+  translations: z.partialRecord(Language, z.string()),
+});
+export type Caption = z.infer<typeof Caption>;
+
+/** POST /consults/:id/tests (doctor): show this test on the patient's screen now. */
+export const PushTestRequest = z.object({ testId: TestId, eye: Eye });
+export const ConsultTestStatus = z.enum(["pushed", "done", "cancelled"]);
+export const ConsultTest = z.object({
+  id: z.string(),
+  testId: TestId,
+  eye: Eye,
+  status: ConsultTestStatus,
+  pushedAt: z.string(),
+  result: ScoredResult.nullable(), // set when done; the patient's raw answers go to POST /consults/:id/tests/:testRowId/result
+});
+export type ConsultTest = z.infer<typeof ConsultTest>;
+
+/**
+ * GET /consults/:id/live?after=<captionId>: every app on the call polls this every 2 s. Agora carries
+ * only video and voice; captions, live tests and the prescription state all go through our server.
+ */
+export const LiveState = z.object({
+  status: ConsultStatus,
+  pendingTest: ConsultTest.nullable(), // the test the patient should be taking now
+  tests: z.array(ConsultTest),
+  captions: z.array(Caption), // after the `after` id, oldest first
+  prescriptionSaved: z.boolean(),
+});
+export type LiveState = z.infer<typeof LiveState>;
+
+/** One medicine line. Free text written by the doctor; Visus never suggests medicines. */
+export const Medicine = z.object({
+  name: z.string().min(1).max(100),
+  dose: z.string().max(60), // e.g. "1 drop"
+  frequency: z.string().max(60), // e.g. "3 times a day"
+  days: z.number().int().min(0).max(365),
+  notes: z.string().max(200).optional(),
+});
+export type Medicine = z.infer<typeof Medicine>;
+
+/** Glasses power on a prescription: SPH / CYL / AXIS per eye, optional ADD, optional PD (mm). */
+export const RxEye = PrescriptionEye.extend({ add: z.number().min(0).max(4).optional() });
+export const GlassesRx = z.object({ right: RxEye, left: RxEye, pd: z.number().min(40).max(80).optional() });
+export type GlassesRx = z.infer<typeof GlassesRx>;
+
+/** PUT /consults/:id/prescription (doctor). Draft while the call runs, final at the end. */
+export const SavePrescriptionRequest = z.object({
+  kind: ConsultKind,
+  symptoms: z.string().max(2000),
+  observations: z.string().max(2000),
+  glasses: GlassesRx.nullable(),
+  medicines: z.array(Medicine).max(20),
+  remedies: z.array(z.string().max(300)).max(20), // daily practices, e.g. "20-20-20 breaks", "warm compress"
+  followUpDate: z.string().nullable(), // YYYY-MM-DD: books the doctor's first free slot that day at the same clinic
+  final: z.boolean(),
+});
+export type SavePrescriptionRequest = z.infer<typeof SavePrescriptionRequest>;
+
+/** A saved prescription, in the patient's, the clinic's and the doctor's records. */
+export const ConsultPrescription = SavePrescriptionRequest.omit({ final: true }).extend({
+  id: z.string(),
+  consultId: z.string(),
+  date: z.string(), // ISO
+  status: z.enum(["draft", "final"]),
+  doctor: Doctor, // name and registration number are printed on it
+  clinic: z.object({ id: z.string(), name: z.string(), city: z.string() }),
+  patient: z.object({ profileId: z.string(), name: z.string(), age: z.number() }),
+  followUpConsultId: z.string().nullable(),
+  /** The doctor's words in the patient's language (medicine names stay as written). null for English. */
+  translated: z
+    .object({ language: Language, symptoms: z.string(), observations: z.string(), remedies: z.array(z.string()) })
+    .nullable(),
+});
+export type ConsultPrescription = z.infer<typeof ConsultPrescription>;
+
+/** The short summary shown first in the patient file. Labelled "AI summary, check the full records". */
+export const PatientSummary = z.object({
+  text: z.string(), // 2–3 sentences
+  points: z.array(z.string()), // key findings, worst first
+  ai: z.boolean(), // false = written by the rules (AI unavailable)
+  generatedAt: z.string(),
+});
+export type PatientSummary = z.infer<typeof PatientSummary>;
+
+/** GET /consults/:id/file (doctor): summary first, then the full history. */
+export const PatientFile = z.object({
+  patient: z.object({
+    profileId: z.string(),
+    name: z.string(),
+    age: z.number(),
+    gender: z.string().optional(),
+    wearsGlasses: z.boolean(),
+    healthConditions: z.array(z.string()),
+    glasses: Prescription.nullable(), // the glasses saved on the profile
+  }),
+  summary: PatientSummary,
+  sessions: z.array(SessionSummary), // open one with GET /sessions/:id
+  prescriptions: z.array(ConsultPrescription),
+  consults: z.array(ConsultSummary),
+});
+export type PatientFile = z.infer<typeof PatientFile>;
+
+/** GET /shop/patients/:id/consults: a clinic patient's consults and prescriptions. */
+export const PatientConsults = z.object({ consults: z.array(ConsultSummary), prescriptions: z.array(ConsultPrescription) });
+export type PatientConsults = z.infer<typeof PatientConsults>;
+
 export * from "./voice";

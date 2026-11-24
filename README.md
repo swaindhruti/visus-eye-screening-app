@@ -16,6 +16,8 @@ You describe your eye problem in a short chat. An AI agent then picks the right 
 > - red-flag rules in all three languages;
 > - Sarvam AI working next to Gemini, so a check never stalls.
 
+> **Final submission (in progress, branch `feat/final`):** a **remote consult** that connects a rural clinic's patient to an eye doctor anywhere: video call with live captions in each side's language, live Visus tests pushed by the doctor, and a prescription saved to the patient's, the clinic's and the doctor's records. Spec: [docs/CONSULT.md](docs/CONSULT.md).
+
 ## Features
 
 - **AI intake chat:** Visus AI asks up to 3 short follow-up questions, with quick-reply chips. You can type or speak (voice input). Gemini answers, and Sarvam AI's `sarvam-105b-conversations` steps in when Gemini is slow or busy (it goes first for Hindi and Odia).
@@ -56,15 +58,21 @@ You describe your eye problem in a short chat. An AI agent then picks the right 
   - It can run any check for a patient (full AI, quick, glasses, single test).
   - It can link a patient's own Visus account by mobile number. The patient allows it in their app.
   - Once linked, the shop sees the patient's past checks, and the checks the shop runs show up in the patient's Results ("At <shop>").
+- **Remote consult** (final, being built): the clinic adds doctors by their Visus ID and books consults for linked patients.
+  - **Doctor portal** (web, `/doctor`): consults, patient file with an AI summary first, the call, live tests, the prescription panel, records.
+  - **The call:** video and voice over Agora, live captions translated between English, Hindi and Odia, audio-only for weak networks.
+  - **Live tests:** the doctor sends a test to the patient's screen and sees the result at once.
+  - **Prescription:** symptoms, observations, glasses power, medicines, daily practices, follow-up date (books the next consult); shown in the patient's language.
+  - **Reminders:** calendar events and a "Join now" banner. The patient joins from their app or at the clinic.
 - **Accessible:** adjustable text size, large touch targets, clinical white test screens, and simple wording.
 
 ## Tech
 
 | Part | Stack |
 |---|---|
-| Mobile (`apps/mobile`) | Expo SDK 57, Expo Router, React Native, Skia, VisionCamera v5 + ML Kit face detection, `expo-audio` + `expo-speech-recognition` (talk mode), local Kotlin module (Screen Coach), zustand, TanStack Query, EAS Build |
-| Web (`apps/web`) | Next.js (App Router), Tailwind CSS, MediaPipe (camera distance), zustand, TanStack Query, Vercel |
-| Server (`apps/server`) | Hono on Cloudflare Workers, Drizzle ORM + `pg`, Postgres on Aiven (Hyperdrive in production), zod, JWT + PBKDF2, Gemini API, Sarvam AI through its JS SDK `sarvamai` (Indian voice: bulbul TTS, saaras STT, sarvam-105b-conversations) |
+| Mobile (`apps/mobile`) | Expo SDK 57, Expo Router, React Native, Skia, VisionCamera v5 + ML Kit face detection, `expo-audio` + `expo-speech-recognition` (talk mode), local Kotlin module (Screen Coach), `react-native-agora` + `expo-calendar` (consult), zustand, TanStack Query, EAS Build |
+| Web (`apps/web`) | Next.js (App Router), Tailwind CSS, MediaPipe (camera distance), `agora-rtc-sdk-ng` (consult call), zustand, TanStack Query, Vercel |
+| Server (`apps/server`) | Hono on Cloudflare Workers, Drizzle ORM + `pg`, Postgres on Neon (Hyperdrive in production), zod, JWT + PBKDF2, Gemini API, Sarvam AI through its JS SDK `sarvamai` (Indian voice: bulbul TTS, saaras STT, sarvam-105b-conversations), Agora tokens for the consult call |
 | Shared (`packages/shared`) | zod schemas, types and the test catalog used by all three |
 | Tooling | Bun workspaces (Bun only), TypeScript everywhere |
 
@@ -76,7 +84,7 @@ You describe your eye problem in a short chat. An AI agent then picks the right 
 | [`apps/web`](apps/web/README.md) | Web app (Next.js) |
 | [`apps/server`](apps/server/README.md) | API, AI agent, scoring, rules and lens logic |
 | `packages/shared` | Shared types and test catalog |
-| `docs/` | [Mid-progress update](docs/MID_PROGRESS.md), [Setup](docs/SETUP.md), [Architecture](docs/ARCHITECTURE.md), [API](docs/API.md), [Screens](docs/SCREENS.md) |
+| `docs/` | [Remote consult](docs/CONSULT.md), [Mid-progress update](docs/MID_PROGRESS.md), [Setup](docs/SETUP.md), [Architecture](docs/ARCHITECTURE.md), [API](docs/API.md), [Screens](docs/SCREENS.md) |
 | `design/` | Claude Design handoff |
 
 ## Get started

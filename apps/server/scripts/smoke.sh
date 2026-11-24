@@ -198,6 +198,13 @@ TOKEN=""
 call POST /auth/signup "{\"name\":\"Patient Smoke\",\"identifier\":\"+91 $PHONE\",\"password\":\"secret123\"}"
 check "patient signs up with a phone number" 201 "d['user']['phone'] == '$PHONE' and d['user']['role'] == 'user'"
 PATIENT=$(get "d['token']")
+TOKEN=""
+call POST /auth/login "{\"identifier\":\"$PHONE\",\"password\":\"secret123\"}"
+check "phone login without +91 (signed up with +91)" 200 "d['user']['phone'] == '$PHONE'"
+call POST /auth/login "{\"identifier\":\"0$PHONE\",\"password\":\"secret123\"}"
+check "phone login with a leading 0" 200 "d['user']['phone'] == '$PHONE'"
+call POST /auth/login "{\"identifier\":\"$PHONE\",\"password\":\"wrong-password\"}"
+check "phone login, wrong password → 401" 401
 TOKEN=$PATIENT
 call POST /profiles '{"name":"Patient Smoke","age":52,"isChild":false,"wearsGlasses":true,"healthConditions":[],"screenHoursPerDay":3}'
 PATIENT_ME=$(get "d['id']")
@@ -344,6 +351,276 @@ check "after the unlink: the shop keeps the checks it ran" 200 "d['sessionId'] =
 call POST /sessions "{\"profileId\":\"$PATIENT_ME\",\"intake\":\"\",\"mode\":\"quick\"}"
 check "after the unlink: no new checks → 404" 404
 TOKEN=$SAVED_TOKEN
+
+echo "Remote consult: doctors, clinic requests, hours, free slots"
+TOKEN=""
+call POST /doctors/register "{\"name\":\"Dr Smoke\",\"identifier\":\"dr-$EMAIL\",\"password\":\"secret123\",\"specialty\":\"Ophthalmologist\",\"registrationNo\":\"OMC-12345\",\"languages\":[\"en\"]}"
+check "doctor signs up → Visus ID" 201 "d['user']['role'] == 'doctor' and d['user']['visusId'].startswith('VIS-D-') and len(d['user']['visusId']) == 10"
+VISUS_ID=$(get "d['user']['visusId']")
+call POST /auth/login "{\"identifier\":\"dr-$EMAIL\",\"password\":\"secret123\"}"
+check "doctor logs in with the normal login" 200 "d['user']['role'] == 'doctor' and d['user']['visusId'] == '$VISUS_ID'"
+DOC=$(get "d['token']")
+TOKEN=$DOC
+call GET /doctor
+check "GET /doctor" 200 "d['visusId'] == '$VISUS_ID' and d['registrationNo'] == 'OMC-12345' and d['identifier'] == 'dr-$EMAIL'"
+DOCTOR_ID=$(get "d['id']")
+call PATCH /doctor '{"languages":["en","hi"],"specialty":"Eye surgeon"}'
+check "PATCH /doctor" 200 "d['languages'] == ['en', 'hi'] and d['specialty'] == 'Eye surgeon'"
+TOKEN=$PATIENT
+call GET /doctor
+check "personal account can't open the doctor portal → 403" 403
+
+# A clinic with a linked patient (the patient approves), for booking consults.
+TOKEN=""
+call POST /shops/register "{\"shopName\":\"Consult Clinic\",\"city\":\"Puri\",\"ownerName\":\"Clinic Owner\",\"identifier\":\"clinic-$EMAIL\",\"password\":\"secret123\"}"
+CLINIC=$(get "d['token']")
+TOKEN=$CLINIC
+call POST /shop/patients "{\"name\":\"Patient Smoke\",\"age\":52,\"phone\":\"$PHONE\",\"wearsGlasses\":true}"
+CP=$(get "d['id']")
+TOKEN=$PATIENT
+call GET /me/shop-requests
+REQ=$(get "[r['id'] for r in d if r['shopName'] == 'Consult Clinic'][0]")
+call POST "/me/shop-requests/$REQ" '{"approve":true}'
+check "patient approves the clinic" 200
+TOKEN=$CLINIC
+call GET /doctor
+check "clinic can't open the doctor portal → 403" 403
+LOWER_ID=$(echo "$VISUS_ID" | tr 'A-Z' 'a-z')
+call POST /shop/doctors "{\"visusId\":\"$LOWER_ID\"}"
+check "clinic adds the doctor by Visus ID (any case) → pending" 201 "d['status'] == 'pending' and d['doctor']['visusId'] == '$VISUS_ID'"
+LINK=$(get "d['linkId']")
+call POST /shop/doctors "{\"visusId\":\"$VISUS_ID\"}"
+check "adding the same doctor twice → 409" 409
+call POST /shop/doctors '{"visusId":"VIS-D-ZZZZ"}'
+check "unknown Visus ID → 404" 404
+call GET "/shop/doctors/$DOCTOR_ID/slots?date=2030-01-07"
+check "no slots before the doctor approves → 404" 404
+
+TOKEN=$DOC
+call GET /doctor/clinics
+check "doctor sees the request" 200 "len(d) == 1 and d[0]['status'] == 'pending' and d[0]['clinic']['name'] == 'Consult Clinic'"
+call PUT "/doctor/clinics/$LINK/hours" '{"hours":[{"day":1,"start":"16:00","end":"18:00"}]}'
+check "hours before approving → 409" 409
+call POST "/doctor/clinics/$LINK" '{"approve":true}'
+check "doctor approves" 200 "d['status'] == 'active'"
+call POST "/doctor/clinics/$LINK" '{"approve":false}'
+check "answering twice → 409" 409
+ALL_WEEK=$(python3 -c 'import json; print(json.dumps({"hours":[{"day":d,"start":"00:00","end":"23:45"} for d in range(7)]}))')
+call PUT "/doctor/clinics/$LINK/hours" "$ALL_WEEK"
+check "doctor sets weekly hours" 200 "len(d['hours']) == 7"
+call PUT "/doctor/clinics/$LINK/hours" '{"hours":[{"day":1,"start":"18:00","end":"16:00"}]}'
+check "end before start → 400" 400
+call PUT "/doctor/clinics/$LINK/hours" '{"hours":[{"day":1,"start":"16:00","end":"18:00"},{"day":1,"start":"17:00","end":"19:00"}]}'
+check "overlapping blocks → 400" 400
+
+TOKEN=$CLINIC
+call GET /shop/doctors
+check "clinic sees the doctor active, with hours" 200 "len(d) == 1 and d[0]['status'] == 'active' and len(d[0]['hours']) == 7"
+TOMORROW=$(python3 -c 'import datetime as t; print((t.datetime.now(t.timezone(t.timedelta(hours=5, minutes=30))) + t.timedelta(days=1)).date())')
+call GET "/shop/doctors/$DOCTOR_ID/slots?date=$TOMORROW"
+check "free slots tomorrow (15 min, India time)" 200 "len(d) == 95 and d[0]['startsAt'].endswith('T18:30:00.000Z')"
+SLOT1=$(get "d[40]['startsAt']"); SLOT2=$(get "d[41]['startsAt']"); SLOT3=$(get "d[42]['startsAt']")
+call GET "/shop/doctors/$DOCTOR_ID/slots?date=tomorrow"
+check "bad date → 400" 400
+
+echo "Remote consult: booking, lists, calendar, join, live, end"
+TOKEN=$CLINIC
+call POST /shop/patients '{"name":"Not Linked","age":40,"wearsGlasses":false}'
+NOT_LINKED=$(get "d['id']")
+call POST /shop/consults "{\"patientId\":\"$NOT_LINKED\",\"doctorId\":\"$DOCTOR_ID\",\"startsAt\":\"$SLOT1\",\"joinFrom\":\"home\",\"reason\":\"x\",\"language\":\"en\"}"
+check "booking for a patient who didn't link → 400" 400
+call POST /shop/consults "{\"patientId\":\"$CP\",\"doctorId\":\"$DOCTOR_ID\",\"startsAt\":\"$SLOT1\",\"joinFrom\":\"home\",\"reason\":\"Blurry left eye\",\"language\":\"hi\"}"
+check "clinic books a consult" 201 "d['status'] == 'scheduled' and d['kind'] == 'first' and d['patient']['profileId'] == '$PATIENT_ME' and d['doctor']['id'] == '$DOCTOR_ID' and d['clinic']['name'] == 'Consult Clinic' and 'calendar.google.com' in d['calendar']['googleUrl'] and not d['hasPrescription']"
+CONSULT=$(get "d['id']")
+call POST /shop/consults "{\"patientId\":\"$CP\",\"doctorId\":\"$DOCTOR_ID\",\"startsAt\":\"$SLOT1\",\"joinFrom\":\"home\",\"reason\":\"x\",\"language\":\"en\"}"
+check "same slot twice → 409" 409
+call POST /shop/consults "{\"patientId\":\"$CP\",\"doctorId\":\"$DOCTOR_ID\",\"startsAt\":\"2020-01-01T10:00:00.000Z\",\"joinFrom\":\"home\",\"reason\":\"x\",\"language\":\"en\"}"
+check "a time in the past → 409" 409
+call GET "/shop/doctors/$DOCTOR_ID/slots?date=$TOMORROW"
+check "the booked slot is no longer free" 200 "len(d) == 94 and all(s['startsAt'] != '$SLOT1' for s in d)"
+call GET "/shop/consults?when=upcoming"
+check "clinic: upcoming consults" 200 "len(d) == 1 and d[0]['id'] == '$CONSULT'"
+call GET "/shop/consults?when=soon"
+check "bad when → 400" 400
+call POST /shop/consults "{\"patientId\":\"$CP\",\"doctorId\":\"$DOCTOR_ID\",\"startsAt\":\"$SLOT3\",\"joinFrom\":\"clinic\",\"reason\":\"Second\",\"language\":\"en\"}"
+OTHER=$(get "d['id']")
+call PATCH "/shop/consults/$CONSULT" "{\"startsAt\":\"$SLOT3\"}"
+check "moving onto a taken slot → 409" 409
+call PATCH "/shop/consults/$CONSULT" "{\"startsAt\":\"$SLOT2\",\"joinFrom\":\"clinic\"}"
+check "clinic moves the consult" 200 "d['startsAt'] == '$SLOT2' and d['joinFrom'] == 'clinic'"
+call PATCH "/shop/consults/$OTHER" '{"status":"cancelled"}'
+check "clinic cancels a consult" 200 "d['status'] == 'cancelled'"
+call PATCH "/shop/consults/$OTHER" "{\"startsAt\":\"$SLOT1\"}"
+check "changing a cancelled consult → 409" 409
+
+TOKEN=$DOC
+call GET "/doctor/consults?when=upcoming"
+check "doctor: upcoming consults" 200 "len(d) == 2 and d[0]['id'] == '$CONSULT' and 'r=doctor' in d[0]['calendar']['icsUrl']"
+call GET "/consults/$CONSULT"
+check "doctor opens the consult" 200 "d['role'] == 'doctor' and d['language'] == 'hi'"
+call POST "/consults/$CONSULT/join"
+check "joining a day early → 409" 409
+TOKEN=$PATIENT
+call GET /me/consults
+check "patient: their consults (no cancelled ones)" 200 "len(d) == 1 and d[0]['id'] == '$CONSULT' and d[0]['doctor']['name'] == 'Dr Smoke'"
+ICS_PATH=$(get "d[0]['calendar']['icsUrl'].split('/consults/', 1)[1]")
+call GET "/consults/$CONSULT"
+check "patient opens the consult" 200 "d['role'] == 'patient'"
+TOKEN=$SAVED_TOKEN
+call GET "/consults/$CONSULT"
+check "someone else can't open it → 404" 404
+TOKEN=""
+call GET "/consults/$ICS_PATH"
+if [ "$CODE" = 200 ] && [[ "$BODY" == *"BEGIN:VEVENT"* ]] && [[ "$BODY" == *"TRIGGER:-PT10M"* ]] && [[ "$BODY" == *"Eye consult with Dr Smoke"* ]]; then PASS=$((PASS + 1)); echo "  ok    calendar .ics (no login, alarms 1 h and 10 min)"; else FAIL=$((FAIL + 1)); echo "  FAIL  calendar .ics (HTTP $CODE): ${BODY:0:200}"; fi
+call GET "/consults/$CONSULT/calendar.ics?t=wrong"
+check "calendar with a wrong token → 404" 404
+
+# A consult in the next free slot today, to join (the server runs with CONSULT_JOIN_EARLY_MIN=30).
+TOKEN=$CLINIC
+TODAY=$(python3 -c 'import datetime as t; print(t.datetime.now(t.timezone(t.timedelta(hours=5, minutes=30))).date())')
+call GET "/shop/doctors/$DOCTOR_ID/slots?date=$TODAY"
+NOW_SLOT=$(get "d[0]['startsAt'] if d else ''")
+if [ -z "$NOW_SLOT" ]; then
+  echo "  skip  join and call (no free slot left today, India time)"
+else
+  call POST /shop/consults "{\"patientId\":\"$CP\",\"doctorId\":\"$DOCTOR_ID\",\"startsAt\":\"$NOW_SLOT\",\"joinFrom\":\"home\",\"reason\":\"Sudden blur\",\"language\":\"hi\"}"
+  check "clinic books the next slot today" 201 "d['kind'] == 'first'"
+  LIVE=$(get "d['id']")
+  TOKEN=$DOC
+  call POST "/consults/$LIVE/join"
+  if [ "$CODE" = 409 ] && [[ "$BODY" == *"minutes before"* ]]; then
+    echo "  skip  join and call (this server allows joining only 10 min early: set CONSULT_JOIN_EARLY_MIN=30)"
+    LIVE=""
+  else
+    check "doctor joins → Agora token, uid 1" 200 "d['uid'] == 1 and d['channel'] == '$LIVE' and d['role'] == 'doctor' and (d['token'] is None or d['token'].startswith('007'))"
+  fi
+fi
+if [ -n "$LIVE" ]; then
+  TOKEN=$PATIENT
+  call POST "/consults/$LIVE/join"
+  check "patient joins → uid 2" 200 "d['uid'] == 2 and d['role'] == 'patient'"
+  TOKEN=$CLINIC
+  call POST "/consults/$LIVE/join"
+  check "clinic joins → uid 3" 200 "d['uid'] == 3"
+  call GET "/shop/consults?when=today"
+  check "the consult is live" 200 "any(c['id'] == '$LIVE' and c['status'] == 'live' for c in d)"
+  call PATCH "/shop/consults/$LIVE" '{"status":"cancelled"}'
+  check "a live consult can't be cancelled → 409" 409
+  TOKEN=$PATIENT
+  call GET "/consults/$LIVE/live"
+  check "GET /live" 200 "d['status'] == 'live' and d['pendingTest'] is None and d['tests'] == [] and d['captions'] == [] and not d['prescriptionSaved']"
+  call POST "/consults/$LIVE/end"
+  check "only the doctor ends the consult → 403" 403
+
+  echo "Remote consult: captions, live tests, patient file, prescription"
+  TOKEN=$PATIENT
+  call POST "/consults/$LIVE/captions" '{"text":"मेरी बाईं आँख धुंधली है","language":"hi"}'
+  check "patient's caption (Hindi), translated for the doctor" 201 "d['from'] == 'patient' and d['language'] == 'hi' and isinstance(d['translations'], dict)"
+  echo "        en: $(get "d['translations'].get('en', '(untranslated)')")"
+  CAP1=$(get "d['id']")
+  TOKEN=$DOC
+  call POST "/consults/$LIVE/captions" '{"text":"Please cover your right eye.","language":"en"}'
+  check "doctor's caption (English)" 201 "d['from'] == 'doctor'"
+  echo "        hi: $(get "d['translations'].get('hi', '(untranslated)')")"
+  call GET "/consults/$LIVE/live?after=$CAP1"
+  check "GET /live?after= returns only newer captions" 200 "len(d['captions']) == 1 and d['captions'][0]['from'] == 'doctor'"
+  call POST "/consults/$CONSULT/captions" '{"text":"hello","language":"en"}'
+  check "captions on a consult that isn't live → 409" 409
+
+  TOKEN=$PATIENT
+  call POST "/consults/$LIVE/tests" '{"testId":"amsler","eye":"left"}'
+  check "only the doctor sends tests → 403" 403
+  TOKEN=$DOC
+  call POST "/consults/$LIVE/tests" '{"testId":"amsler","eye":"both"}'
+  check "doctor sends the Amsler grid" 201 "d['status'] == 'pushed' and d['result'] is None"
+  T1=$(get "d['id']")
+  call POST "/consults/$LIVE/tests" '{"testId":"contrast","eye":"both"}'
+  check "a second test while one is pending → 409" 409
+  call DELETE "/consults/$LIVE/tests/$T1"
+  check "doctor cancels the test" 200 "d['status'] == 'cancelled'"
+  call POST "/consults/$LIVE/tests" '{"testId":"tumbling_e","eye":"both"}'
+  T2=$(get "d['id']")
+  TOKEN=$PATIENT
+  call GET "/consults/$LIVE/live"
+  check "the patient's device sees the pending test" 200 "d['pendingTest']['id'] == '$T2' and d['pendingTest']['testId'] == 'tumbling_e'"
+  call POST "/consults/$LIVE/tests/$T2/result" '{"testId":"amsler","eye":"both","durationSec":5,"answers":{}}'
+  check "answers for another test → 400" 400
+  call POST "/consults/$LIVE/tests/$T2/result" "{\"testId\":\"tumbling_e\",\"eye\":\"both\",\"durationSec\":60,\"answers\":{\"right\":$E_GOOD,\"left\":$E_GOOD}}"
+  check "patient finishes it → scored by the normal scorers" 200 "d['status'] == 'done' and d['result']['testId'] == 'tumbling_e' and d['result']['score'] > 0"
+  call POST "/consults/$LIVE/tests/$T2/result" "{\"testId\":\"tumbling_e\",\"eye\":\"both\",\"durationSec\":60,\"answers\":{\"right\":$E_GOOD,\"left\":$E_GOOD}}"
+  check "sending it twice → 409" 409
+  TOKEN=$DOC
+  call POST "/consults/$LIVE/tests" '{"testId":"amsler","eye":"both"}'
+  T3=$(get "d['id']")
+  TOKEN=$CLINIC
+  call POST "/consults/$LIVE/tests/$T3/result" '{"testId":"amsler","eye":"both","durationSec":40,"answers":{"right":{"gridSize":10,"marked":[],"allStraight":true},"left":{"gridSize":10,"marked":[44,45,54],"allStraight":false}}}'
+  check "clinic's device sends an Amsler with a red flag → finding on the card" 200 "d['status'] == 'done' and d['result']['status'] == 'see_doctor' and 'left eye' in d['result']['meaning']"
+  TOKEN=$DOC
+  call GET "/consults/$LIVE/live"
+  check "doctor sees the result cards" 200 "d['pendingTest'] is None and [t['status'] for t in d['tests']] == ['cancelled', 'done', 'done']"
+  TOKEN=$PATIENT
+  call GET /sessions
+  check "live tests are in the patient's Results, marked with the clinic" 200 "sum(1 for s in d if s.get('shopName') == 'Consult Clinic') == 2"
+
+  TOKEN=$DOC
+  call GET "/consults/$LIVE/file"
+  check "patient file: AI summary first, then the history" 200 "d['summary']['text'] and d['patient']['profileId'] == '$PATIENT_ME' and len(d['sessions']) >= 3"
+  echo "        summary (ai: $(get "d['summary']['ai']")): $(get "d['summary']['text']")"
+  FILE_CHECK=$(get "d['sessions'][0]['id']")
+  call GET "/sessions/$FILE_CHECK"
+  check "doctor opens one of the patient's checks" 200 "d['sessionId'] == '$FILE_CHECK'"
+  TOKEN=$PATIENT
+  call GET "/consults/$LIVE/file"
+  check "patient file is for the doctor → 403" 403
+
+  RX_DRAFT='{"kind":"first","symptoms":"Blurry left eye for 2 weeks","observations":"Amsler: wavy lines near the centre, left eye","glasses":null,"medicines":[],"remedies":["20-20-20 breaks"],"followUpDate":null,"final":false}'
+  call PUT "/consults/$LIVE/prescription" "$RX_DRAFT"
+  check "only the doctor writes the prescription → 403" 403
+  TOKEN=$DOC
+  call PUT "/consults/$LIVE/prescription" "$RX_DRAFT"
+  check "doctor's draft (autosave)" 200 "d['status'] == 'draft' and d['doctor']['registrationNo'] == 'OMC-12345'"
+  TOKEN=$PATIENT
+  call GET "/consults/$LIVE/prescription"
+  check "the patient doesn't see a draft → 404" 404
+  TOKEN=$DOC
+  RX_FINAL="{\"kind\":\"first\",\"symptoms\":\"Blurry left eye for 2 weeks\",\"observations\":\"Amsler: wavy lines near the centre, left eye\",\"glasses\":{\"right\":{\"sph\":-1.25,\"cyl\":0,\"axis\":0},\"left\":{\"sph\":-1.5,\"cyl\":-0.5,\"axis\":90}},\"medicines\":[{\"name\":\"Carboxymethylcellulose 0.5%\",\"dose\":\"1 drop\",\"frequency\":\"3 times a day\",\"days\":14}],\"remedies\":[\"20-20-20 breaks\",\"Warm compress at night\"],\"followUpDate\":\"$TOMORROW\",\"final\":true}"
+  call PUT "/consults/$LIVE/prescription" "$RX_FINAL"
+  check "Save and end: final, translated, follow-up booked" 200 "d['status'] == 'final' and d['followUpConsultId'] and d['medicines'][0]['name'] == 'Carboxymethylcellulose 0.5%' and 'translated' in d"
+  echo "        translated (hi): $(get "(d['translated'] or {}).get('observations', '(none: AI unavailable)')")"
+  FOLLOW=$(get "d['followUpConsultId']")
+  call PUT "/consults/$LIVE/prescription" "$RX_FINAL"
+  check "saving a final prescription again → 409" 409
+  call GET "/consults/$LIVE/live"
+  check "the consult is completed, prescription saved" 200 "d['status'] == 'completed' and d['prescriptionSaved']"
+  call POST "/consults/$LIVE/end"
+  check "ending a completed consult is fine" 200 "d['status'] == 'completed' and d['hasPrescription']"
+  call POST "/consults/$LIVE/join"
+  check "joining a completed consult → 409" 409
+  call GET /doctor/prescriptions
+  check "doctor's prescriptions" 200 "len(d) == 1 and d[0]['consultId'] == '$LIVE'"
+  TOKEN=$PATIENT
+  call GET /me/prescriptions
+  check "patient's prescriptions" 200 "len(d) == 1 and d[0]['patient']['profileId'] == '$PATIENT_ME'"
+  call GET "/consults/$LIVE/prescription"
+  check "patient opens the final prescription" 200 "d['status'] == 'final'"
+  TOKEN=$CLINIC
+  call GET "/consults/$FOLLOW"
+  check "the follow-up consult (same clinic, doctor, patient)" 200 "d['kind'] == 'follow_up' and d['role'] == 'clinic' and d['status'] == 'scheduled'"
+  call GET "/shop/patients/$CP/consults"
+  check "clinic's patient page: consults and prescriptions" 200 "len(d['consults']) >= 3 and len(d['prescriptions']) == 1"
+fi
+
+echo "Remote consult: a clinic removes the doctor"
+TOKEN=$CLINIC
+call DELETE "/shop/doctors/$LINK"
+check "clinic removes the doctor" 200 "d['ok']"
+call GET "/consults/$CONSULT"
+check "their future consults are cancelled" 200 "d['status'] == 'cancelled'"
+call GET /shop/doctors
+check "the doctor is no longer listed" 200 "d == []"
+TOKEN=$DOC
+call GET /doctor/clinics
+check "the clinic is gone from the doctor's list" 200 "d == []"
 
 echo
 echo "$PASS passed, $FAIL failed"

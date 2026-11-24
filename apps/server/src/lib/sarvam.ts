@@ -5,8 +5,8 @@
 //   Keyterms bias it towards the words people say in an eye check.
 // - Chat: sarvam-105b-conversations, used next to Gemini in lib/gemini.ts. Plain sarvam-105b reasons
 //   before answering (7–16 s, over our AI budget); the conversations model answers in under 1 s.
-// The key is a server secret (SARVAM_API_KEY). Without it, or when Sarvam says the credits are used up
-// (402) or the key is wrong (403), Sarvam is off for a while: voice routes answer 503, the apps switch to
+// The keys are server secrets (SARVAM_KEYS and/or SARVAM_API_KEY, a pool in lib/keys.ts). Without one, or
+// when every key said the credits are used up (402) or it is wrong (403), Sarvam is off for a while: voice routes answer 503, the apps switch to
 // the device voice, and the AI uses Gemini only.
 // Only the three resource clients are imported (not the root client), so the Worker skips the SDK's
 // WebSocket streaming code.
@@ -14,6 +14,8 @@ import type { Language } from '@visus/shared';
 import { ChatClient } from 'sarvamai/chat';
 import { SpeechToTextClient } from 'sarvamai/speechToText';
 import { TextToSpeechClient } from 'sarvamai/textToSpeech';
+
+import { coolKey, hasKey, pickKey } from './keys';
 
 /** Sarvam's language codes (Odia is od-IN there). */
 const CODE = { en: 'en-IN', hi: 'hi-IN', or: 'od-IN' } as const satisfies Record<Language, string>;
@@ -40,21 +42,23 @@ function sdk(apiKey: string) {
   return clients;
 }
 
-/** Out of credits (402) or a bad key (403): Sarvam stays off this long (per Worker instance). */
+/** Out of credits (402) or a bad key (403): that key rests this long (per Worker instance). */
 const OFF_MS = 10 * 60_000;
-let offUntil = 0;
 
-/** Sarvam can be used now: a key is set and it hasn't just said "no credits" or "bad key". */
-export const sarvamReady = (apiKey: string | undefined): apiKey is string => !!apiKey && offUntil < Date.now();
+/**
+ * Sarvam can be used now: a key of the pool (SARVAM_KEYS + SARVAM_API_KEY, set per request by
+ * lib/keys.ts) hasn't just said "no credits" or "bad key". The `apiKey` arguments are kept for the
+ * callers' signatures; the pool decides which key each call uses.
+ */
+export const sarvamReady = (_apiKey?: string): boolean => hasKey('sarvam');
 
 const statusOf = (err: unknown) => (err as { statusCode?: number }).statusCode;
 
-/** Logs a failed call; turns Sarvam off on 402/403. Returns true when the model is just busy (429/503). */
-function failed(what: string, err: unknown): boolean {
+/** Logs a failed call; rests the key on 402/403. Returns true when the model is just busy (429/503). */
+function failed(what: string, err: unknown, key: string): boolean {
   const status = statusOf(err);
   if (status === 402 || status === 403) {
-    offUntil = Date.now() + OFF_MS;
-    console.warn(`Sarvam ${what}: ${status === 402 ? 'no credits left' : 'the key was refused'}, using device voices and Gemini for ${OFF_MS / 60_000} min`);
+    coolKey('sarvam', key, OFF_MS, `${what}: ${status === 402 ? 'no credits left' : 'the key was refused'} (the apps use device voices and Gemini meanwhile)`);
     return false;
   }
   if (status === 429 || status === 503) return true;
@@ -66,12 +70,13 @@ function failed(what: string, err: unknown): boolean {
 const ttsCache = new Map<string, { audio: string; mime: string }>();
 
 export async function sarvamTts(apiKey: string | undefined, text: string, language: Language): Promise<{ audio: string; mime: string } | null> {
-  if (!sarvamReady(apiKey)) return null;
-  const key = `${language}:${text}`;
-  const hit = ttsCache.get(key);
+  const key = pickKey('sarvam');
+  if (!key) return null;
+  const cacheKey = `${language}:${text}`;
+  const hit = ttsCache.get(cacheKey);
   if (hit) return hit;
   try {
-    const res = await sdk(apiKey).tts.convert(
+    const res = await sdk(key).tts.convert(
       { text, language_code: CODE[language], ...VOICE[language], pace: 0.95, output_audio_codec: 'mp3' },
       { timeoutInSeconds: 15 },
     );
@@ -79,18 +84,19 @@ export async function sarvamTts(apiKey: string | undefined, text: string, langua
     if (!audio) return null;
     const out = { audio, mime: 'audio/mpeg' };
     if (ttsCache.size >= 200) ttsCache.delete(ttsCache.keys().next().value!);
-    ttsCache.set(key, out);
+    ttsCache.set(cacheKey, out);
     return out;
   } catch (err) {
-    failed('TTS', err);
+    failed('TTS', err, key);
     return null;
   }
 }
 
 export async function sarvamStt(apiKey: string | undefined, file: Blob, language?: Language): Promise<{ transcript: string; language: Language | null } | null> {
-  if (!sarvamReady(apiKey)) return null;
+  const key = pickKey('sarvam');
+  if (!key) return null;
   try {
-    const res = await sdk(apiKey).stt.transcribe(
+    const res = await sdk(key).stt.transcribe(
       {
         file: { data: file, filename: (file as File).name || 'speech.webm', contentType: file.type || undefined },
         model: 'saaras:v4',
@@ -102,16 +108,17 @@ export async function sarvamStt(apiKey: string | undefined, file: Blob, language
     );
     return { transcript: (res.transcript ?? '').trim(), language: (res.language_code && FROM_CODE[res.language_code]) || null };
   } catch (err) {
-    failed('STT', err);
+    failed('STT', err, key);
     return null;
   }
 }
 
 /** One chat call asking for a JSON object. The raw text, or null. Throws `{ busy: true }` on 429/503. */
 export async function sarvamChat(apiKey: string, system: string, prompt: string, signal: AbortSignal): Promise<string | null> {
-  if (!sarvamReady(apiKey)) return null;
+  const key = pickKey('sarvam');
+  if (!key) return null;
   try {
-    const res = await sdk(apiKey).chat.completions(
+    const res = await sdk(key).chat.completions(
       {
         model: SARVAM_CHAT_MODEL,
         messages: [
@@ -127,7 +134,7 @@ export async function sarvamChat(apiKey: string, system: string, prompt: string,
     return res.choices[0]?.message?.content ?? null;
   } catch (err) {
     if (signal.aborted) return null;
-    if (failed('chat', err)) throw Object.assign(new Error('busy'), { busy: true });
+    if (failed('chat', err, key)) throw Object.assign(new Error('busy'), { busy: true });
     return null;
   }
 }

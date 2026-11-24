@@ -10,6 +10,7 @@ import { cn } from "@/components/cn";
 import { Icon } from "@/components/Icon";
 import { Screen } from "@/components/Screen";
 import { HeaderButton, ScreenHeader } from "@/components/ScreenHeader";
+import { useMe } from "@/components/ShopShell";
 import { ErrorState, LoadingState } from "@/components/States";
 import { TestIcon } from "@/components/TestArt";
 import { fmtShort } from "@/lib/dates";
@@ -26,6 +27,8 @@ export default function Results() {
   const router = useRouter();
   const q = useVerdict(sessionId);
   const check = useCheck();
+  // A doctor reading a patient's check (from the patient file): no "your", no share or find-a-doctor.
+  const byDoctor = useMe().data?.user.role === "doctor";
   useSayInTalkMode(q.data ? `${q.data.headline}. ${q.data.advice}` : undefined);
 
   if (q.isPending) return <LoadingState />;
@@ -43,9 +46,9 @@ export default function Results() {
     <Screen wide gap="gap-0">
       <ScreenHeader
         left="close"
-        title="Your results"
+        title={byDoctor ? "Check results" : "Your results"}
         onLeft={() => router.push("/home")}
-        right={<HeaderButton icon="share" label="Share report" onClick={() => router.push(`/results/${sessionId}/share`)} />}
+        right={byDoctor ? undefined : <HeaderButton icon="share" label="Share report" onClick={() => router.push(`/results/${sessionId}/share`)} />}
       />
 
       <section className="mt-4 flex flex-none flex-col gap-1 rounded-[24px] bg-night px-5 py-[18px] text-white md:mt-6 md:flex-row md:flex-wrap md:items-end md:justify-between md:gap-6 md:rounded-[28px] md:p-8">
@@ -57,7 +60,7 @@ export default function Results() {
           <h1 className="m-0 mt-1 text-[24px] font-bold leading-[1.2] tracking-[-0.02em] md:mt-0 md:text-[36px] md:leading-[1.15] md:tracking-[-0.025em]">{v.headline}</h1>
           <p className="m-0 mt-0.5 text-[15px] leading-[1.45] text-white/75 md:text-[17px]">{v.advice}</p>
         </div>
-        <div className="hidden flex-wrap gap-2.5 md:flex">
+        <div className={cn("hidden flex-wrap gap-2.5", !byDoctor && "md:flex")}>
           {doctor && (
             <button type="button" onClick={() => window.open(MAPS, "_blank", "noopener")} className="flex h-[52px] items-center gap-2 rounded-[16px] bg-white px-5 text-[16px] font-semibold text-ink hover:bg-[#F4F4F1]">
               <Icon name="pin" size={18} />
@@ -150,7 +153,7 @@ export default function Results() {
       </div>
 
       <div className="mt-6 flex flex-col gap-2.5 md:hidden">
-        {doctor && (
+        {doctor && !byDoctor && (
           <Button onClick={() => window.open(MAPS, "_blank", "noopener")} leading={<Icon name="pin" size={20} />}>
             Find eye doctors nearby
           </Button>

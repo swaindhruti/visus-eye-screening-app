@@ -66,3 +66,11 @@ Task: write the headline and advice for the end of the check. The scores and sta
 - If the worst status is "mild", suggest an optician or eye test within a few months.
 - If everything is "good", tell them to check again in 6 months.
 - Mention the one or two findings that matter most, in plain words. This is a screening, not a diagnosis.`;
+
+/** Remote consult: the short summary at the top of the doctor's patient file (features/consults/file.service.ts). */
+export const PATIENT_SUMMARY_PROMPT = `You help an eye doctor prepare for a video consult. You get a patient's Visus screening history: home and clinic eye-test results (scored by rules), their saved glasses and earlier prescriptions.
+Task: a short summary the doctor reads in 15 seconds.
+- text: 2–3 plain sentences: who they are, what the checks show over time, what to look at first.
+- points: up to 5 key findings, worst first, each under 15 words, with the test and the date when it matters (e.g. "Amsler grid, left eye: wavy lines near the centre (12 Nov)").
+- These are screening results, not a diagnosis: never name a disease as certain, never suggest medicines or treatment.
+- Use only what is in the data. If there is little data, say so.`;

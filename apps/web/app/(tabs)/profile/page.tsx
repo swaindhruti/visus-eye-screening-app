@@ -89,7 +89,9 @@ export default function Profile() {
 
       </div>
       <Card flush className="md:max-w-[calc(50%-12px)]">
-        <ListRow first href="/settings" icon={<Icon name="settings" size={20} strokeWidth={1.8} />} title="Settings" subtitle="Reminders, privacy, data" className="min-h-16" />
+        <ListRow first href="/consults" icon={<Icon name="camera" size={20} strokeWidth={1.8} />} title="My consults" subtitle="Video consults your clinic booked" className="min-h-16" />
+        <ListRow href="/profile/prescriptions" icon={<Icon name="doc" size={20} strokeWidth={1.8} />} title="Prescriptions" subtitle="From your consults, in your language" className="min-h-16" />
+        <ListRow href="/settings" icon={<Icon name="settings" size={20} strokeWidth={1.8} />} title="Settings" subtitle="Reminders, privacy, data" className="min-h-16" />
       </Card>
     </Screen>
   );

@@ -7,11 +7,12 @@ Visus has two thin clients (mobile and web) and one server that owns all the log
 ```mermaid
 flowchart LR
   subgraph Clients
-    M["Mobile app<br/>Expo, Android"]
-    W["Web app<br/>Next.js, Vercel"]
+    M["Mobile app<br/>Expo, Android<br/>patient"]
+    W["Web app<br/>Next.js, Vercel<br/>patient · clinic portal · doctor portal"]
   end
+  A["Agora<br/>video + voice only"]
   S["API<br/>Hono on Cloudflare Workers"]
-  DB[("Postgres<br/>Aiven")]
+  DB[("Postgres<br/>Neon")]
   G["Gemini API"]
   SH["packages/shared<br/>zod types + test catalog"]
 
@@ -19,6 +20,8 @@ flowchart LR
   W -- "HTTPS + JWT" --> S
   S -- "Hyperdrive / pg" --> DB
   S -- "JSON schema calls" --> G
+  M <-- "consult call" --> A
+  W <-- "consult call" --> A
   SH -. imported by .-> M
   SH -. imported by .-> W
   SH -. imported by .-> S
@@ -112,6 +115,9 @@ apps/server/src/
     lens/         ZEISS lens and coating catalog + recommendation
     history/      past checks, share links (24 h), guest scoring
     shops/        shop portal: register, patients, link by phone, who may see a check
+    voice/        Sarvam TTS / STT
+    doctors/      (final) doctor accounts, Visus ID, clinic links, weekly hours, slots
+    consults/     (final) booking, Agora join, live state, captions, live tests, prescriptions, patient file
 ```
 
 ## Data model
@@ -179,6 +185,19 @@ sequenceDiagram
   App->>Server: POST /intake/chat (answer, language)
   Server->>AI: next question in that language
 ```
+
+### Remote consult (final)
+
+Spec: [CONSULT.md](CONSULT.md). A clinic books a consult for a linked patient with one of its doctors; the doctor runs a video call from the doctor portal, pushes live tests and writes the prescription.
+
+- **Agora carries only video and voice.** The server issues the Agora token (`POST /consults/:id/join`, App Certificate stays a server secret). Captions, live tests and the prescription go through our API, and every device on the call polls `GET /consults/:id/live` every 2 s.
+- **Captions:** each device recognises its own person's speech, sends finished sentences to the server, and the server translates them (`lib/translate.ts`: Gemini Flash-Lite → Sarvam) into the other sides' languages.
+- **Live tests reuse the check engine:** a pushed test is a normal `single` session for the patient's profile, scored by the same scorers and red-flag rules, so it also shows up in the patient's Results.
+- **Records:** one `prescriptions` row per consult, read by the patient, the clinic and the doctor. A follow-up date books the next consult.
+- **Reminders** are calendar events (phone calendar, Google Calendar link, `.ics`), plus a "Join now" banner in every app. No email or push.
+- **Access:** a doctor may read the file and checks of patients they have a consult with (`features/shops/access.ts`).
+
+New tables: `doctors`, `clinic_doctors`, `consults`, `consult_tests`, `consult_captions`, `prescriptions` (`users.role` gains `doctor`).
 
 ## Clients
 

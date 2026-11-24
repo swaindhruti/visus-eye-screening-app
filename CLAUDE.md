@@ -1,13 +1,13 @@
 # Visus
 
-AI eye-screening app for the ZEISS BeyondCode'26 hackathon. The user describes their eye problem, an AI agent picks vision tests, the user takes them on their phone, the agent re-plans after each test, and the check ends with a verdict and a ZEISS lens suggestion. **Screening, not diagnosis.**
+AI eye-screening app for the ZEISS BeyondCode'26 hackathon. The user describes their eye problem, an AI agent picks vision tests, the user takes them on their phone, the agent re-plans after each test, and the check ends with a verdict and a ZEISS lens suggestion. Optical shops / clinics use the shop portal. **Final feature: the remote consult** (`docs/CONSULT.md`): a clinic books a video consult with a doctor anywhere, with live translated captions, live tests pushed by the doctor and a saved prescription. **Screening, not diagnosis.**
 
 **This is a hackathon MVP.** Prefer the simplest thing that works. No extra abstractions, no new libraries without a clear reason, no over-engineering.
 
 ## Every session
 
 1. Read this file, then your progress file in `progress/`.
-2. Take the next unchecked task assigned to you in `WORK.md`.
+2. Take the next unchecked task assigned to you in `WORK.md` → Final submission (D = Dhrutinandan, T = Sidhartha).
 3. Build it. Read the `CLAUDE.md` inside the folder you work in.
 4. When done: tick it in `WORK.md`, update your progress file (done / next / blockers), commit.
 
@@ -15,10 +15,11 @@ AI eye-screening app for the ZEISS BeyondCode'26 hackathon. The user describes t
 
 | Folder | What | Owner |
 |---|---|---|
-| `apps/mobile/` | Expo SDK 57 app (Expo Router), deployed with EAS | Dhrutinandan |
-| `apps/web/` | Next.js app, deployed on Vercel | Teammate |
-| `apps/server/` | Hono API on Cloudflare Workers, Postgres on Aiven | Split by folder (see `apps/server/CLAUDE.md`) |
+| `apps/mobile/` | Expo SDK 57 patient app (Expo Router), deployed with EAS | Dhrutinandan |
+| `apps/web/` | Next.js: patient web, shop (clinic) portal `/shop`, doctor portal `/doctor`; Vercel | Sidhartha |
+| `apps/server/` | Hono API on Cloudflare Workers, Postgres on Neon | Dhrutinandan for the final; Sidhartha only tunes `scoring/`, `rules/`, `lens/` (see `apps/server/CLAUDE.md`) |
 | `packages/shared/` | Shared zod types + test catalog. No logic | Both |
+| `docs/CONSULT.md` | The remote consult: flow, call, captions, live tests, prescription, data model | Both |
 | `docs/API.md` | Every server route: owner, request, response | Both |
 | `docs/SCREENS.md` | All 61 screens → routes, web vs mobile | Both |
 | `design/` | Claude Design handoff | Dhrutinandan |
@@ -44,14 +45,16 @@ All logic (scoring, rules, AI, lens) lives on the server. Apps are screens + tes
 6. **No secrets in apps.** Keys live only in `apps/server/.dev.vars` (local) and `wrangler secret` (production). Never read or print `.env` or `.dev.vars`.
 7. **Test screens are clinical:** white background, black symbols, neutral font, no decoration. Symbol sizes come from screen calibration (pixels per mm).
 8. **Wording:** always "screening, not diagnosis". Never claim "nothing is uploaded". Red flags come from server rules, not from the AI alone.
-9. **Match the design** from Claude Design (`design/`). If a screen isn't covered, ask instead of inventing a new style.
+9. **Match the design** from Claude Design (`design/`). If a screen isn't covered, ask instead of inventing a new style. Consult screens aren't in the design: build them from the existing components and the shop portal's layout.
+10. **Remote consult** (`docs/CONSULT.md`): only the clinic books; Agora carries only video and voice, everything else (captions, live tests, prescription) goes through the server and every device polls `GET /consults/:id/live`; the server makes the Agora token; Visus never suggests medicines; the AI summary is labelled "AI summary, check the full records"; the doctor's registration number is shown as typed (not verified).
+11. **Scrapped for the final:** on-device AI and full offline checks. Don't build them.
 
 ## Git
 
-- Never commit to `main`. Branch per task: `feat/<area>-<thing>` (e.g. `feat/mobile-home`, `feat/server-auth`).
+- Never commit to `main`. **Final:** both start from `feat/final`; Dhrutinandan works on `feat/final-d`, Sidhartha on `feat/final-web` (in his fork). Each opens a PR into `feat/final`; Dhrutinandan merges and integrates, then `feat/final` → `main`.
 - Commit messages: `feat(mobile): home screen`, `fix(server): login error`.
-- Pull `main` daily: `git pull --rebase origin main`.
-- `bun.lock` conflict: `git checkout origin/main -- bun.lock && bun install`, then commit.
+- Pull `feat/final` daily: `git pull --rebase origin feat/final`.
+- `bun.lock` conflict: `git checkout origin/feat/final -- bun.lock && bun install`, then commit.
 - Merge through a pull request.
 
 ## Commands
@@ -70,4 +73,4 @@ All logic (scoring, rules, AI, lens) lives on the server. Apps are screens + tes
 |---|---|---|
 | Web | Vercel | Auto on push to `main` (root directory `apps/web`) |
 | Server | Cloudflare Workers | Auto on push via Workers Builds (root `apps/server`), or `bunx wrangler deploy` |
-| Mobile | Expo | Expo Go for screens; EAS development build for camera + Screen Coach; `bunx eas-cli build --profile preview --platform android` for the APK |
+| Mobile | Expo | Expo Go for screens; EAS development build for camera, Screen Coach and the consult call (`react-native-agora`); `bunx eas-cli build --profile preview --platform android` for the APK |

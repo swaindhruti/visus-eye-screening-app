@@ -8,6 +8,7 @@
 // The first valid answer wins and the others are cancelled. After BUDGET_MS the rules answer instead.
 import { z } from 'zod';
 
+import { coolKey, pickKey } from './keys';
 import { SARVAM_CHAT_MODEL, sarvamChat, sarvamReady } from './sarvam';
 
 const BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
@@ -15,11 +16,6 @@ const BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 export const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.8-flash'];
 export const SARVAM_MODEL = SARVAM_CHAT_MODEL;
 
-/** Set once per request from the env (index.ts), so the agent code doesn't pass a second key around. */
-let sarvamKey = '';
-export const setSarvamKey = (key: string | undefined) => {
-  sarvamKey = key ?? '';
-};
 const HEDGE_MS = 2_500;
 /** All models together: after this the caller's rule-based fallback answers. */
 const BUDGET_MS = 7_000;
@@ -41,7 +37,7 @@ type Options<T extends z.ZodType> = {
 async function askSarvam<T extends z.ZodType>(system: string, prompt: string, schema: T, signal: AbortSignal): Promise<z.infer<T> | null> {
   try {
     const json = JSON.stringify(z.toJSONSchema(schema, { target: 'draft-7' }));
-    const text = await sarvamChat(sarvamKey, `${system}\n\nReply with one JSON object only, matching this JSON schema:\n${json}`, prompt, signal);
+    const text = await sarvamChat('', `${system}\n\nReply with one JSON object only, matching this JSON schema:\n${json}`, prompt, signal);
     if (!text) return null;
     // Reasoning models may think out loud first: take the JSON object.
     const parsed = schema.safeParse(JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)));
@@ -55,8 +51,10 @@ async function askSarvam<T extends z.ZodType>(system: string, prompt: string, sc
   }
 }
 
-/** One model, one try: the parsed reply or null. */
-async function ask<T extends z.ZodType>(model: string, apiKey: string, body: string, schema: T, signal: AbortSignal): Promise<z.infer<T> | null> {
+/** One model, one try: the parsed reply or null. The key comes from the pool (lib/keys.ts), else `fallbackKey`. */
+async function ask<T extends z.ZodType>(model: string, fallbackKey: string, body: string, schema: T, signal: AbortSignal): Promise<z.infer<T> | null> {
+  const apiKey = pickKey('gemini', model) ?? (pickKey('gemini') ? null : fallbackKey);
+  if (!apiKey) return null; // every key used up this model's quota: the next model tries
   try {
     const res = await fetch(`${BASE}/${model}:generateContent`, {
       method: 'POST',
@@ -64,7 +62,12 @@ async function ask<T extends z.ZodType>(model: string, apiKey: string, body: str
       body,
       signal,
     });
-    if (res.status === 503 || res.status === 429 || res.status === 404) {
+    if (res.status === 429) {
+      // This key's free-tier quota for this model: rest that pair (other keys, other models carry on).
+      coolKey('gemini', apiKey, 60_000, `${model} quota (429)`, model);
+      return null;
+    }
+    if (res.status === 503 || res.status === 404) {
       console.warn(`Gemini ${model}: ${res.status}, skipping it for a minute`);
       busyUntil.set(model, Date.now() + 60_000);
       return null;
@@ -87,8 +90,8 @@ async function ask<T extends z.ZodType>(model: string, apiKey: string, body: str
 
 export async function geminiJson<T extends z.ZodType>({ apiKey, system, prompt, schema, models = GEMINI_MODELS, prefer }: Options<T>): Promise<z.infer<T> | null> {
   // Sarvam goes first for Hindi/Odia, else second (it joins when Flash-Lite is slow or busy).
-  if (sarvamReady(sarvamKey) && !models.includes(SARVAM_MODEL)) models = prefer === 'sarvam' ? [SARVAM_MODEL, ...models] : [models[0], SARVAM_MODEL, ...models.slice(1)];
-  if (!apiKey) models = models.filter((m) => m === SARVAM_MODEL);
+  if (sarvamReady() && !models.includes(SARVAM_MODEL)) models = prefer === 'sarvam' ? [SARVAM_MODEL, ...models] : [models[0], SARVAM_MODEL, ...models.slice(1)];
+  if (!apiKey && !pickKey('gemini')) models = models.filter((m) => m === SARVAM_MODEL);
   if (!models.length) return null;
   const body = JSON.stringify({
     systemInstruction: { parts: [{ text: system }] },
