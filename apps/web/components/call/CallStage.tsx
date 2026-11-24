@@ -1,13 +1,12 @@
 "use client";
 
-import type { CallRole, ConsultDetail, Language } from "@visus/shared";
+import type { CallRole, ConsultDetail } from "@visus/shared";
 import { useState, type ReactNode, type RefObject } from "react";
 
 import { cn } from "@/components/cn";
 import { Icon } from "@/components/Icon";
 import { useNow } from "@/lib/consults";
 import { initials } from "@/services/profiles";
-import type { Caption } from "@/services/consults";
 
 import type { useAgoraCall } from "./useAgoraCall";
 
@@ -18,31 +17,21 @@ export function otherSide(c: ConsultDetail, role: CallRole) {
   return role === "doctor" ? c.patient.name : c.doctor.name;
 }
 
-/** The speaker's name on a caption line. */
-function speaker(c: ConsultDetail, from: CallRole, me: CallRole) {
-  if (from === me) return "You";
-  return from === "doctor" ? c.doctor.name : from === "clinic" ? c.clinic.name : c.patient.name;
-}
-
 /**
  * The call screen shared by the doctor, the patient and the clinic: the other side's video big,
- * your own small, captions over the video in your language, and the controls. `side` is the
- * doctor's panel (tests, prescription); `takeover` is a live test on the patient's side, shown
+ * your own small, and the controls. `side` is the panel next to the video: the doctor's tabs (tests,
+ * prescription, captions), or the captions panel on the patient's side while captions are on; `takeover` is a live test on the patient's side, shown
  * full screen with the video shrunk to a corner (the voice stays on). Used by the doctor's room and by
  * `PatientRoom` (the patient at home, or the clinic's laptop with the patient there).
  */
 export function CallStage({
   c,
   role,
-  myLanguage,
   call,
   remoteRef,
   localRef,
-  captions,
-  partial,
   captionsOn,
   onToggleCaptions,
-  captionNote,
   onLeave,
   leaveLabel = "Leave",
   side,
@@ -51,15 +40,11 @@ export function CallStage({
 }: {
   c: ConsultDetail;
   role: CallRole;
-  myLanguage: Language;
   call: Call;
   remoteRef: RefObject<HTMLDivElement | null>;
   localRef: RefObject<HTMLDivElement | null>;
-  captions: Caption[];
-  partial: string;
   captionsOn: boolean;
   onToggleCaptions: () => void;
-  captionNote: string | null;
   onLeave: () => void;
   leaveLabel?: string;
   side?: ReactNode;
@@ -71,7 +56,6 @@ export function CallStage({
   const [since] = useState(() => Date.now());
   const elapsed = now ? Math.max(0, Math.floor((now - since) / 1000)) : 0;
   const other = otherSide(c, role);
-  const recent = captions.slice(-3);
   const placeholder =
     call.state === "no-video"
       ? "Video isn't set up here (mock data without an Agora App ID). Captions, tests and the prescription still work."
@@ -125,20 +109,6 @@ export function CallStage({
 
           {notice && <div className="absolute left-3 top-3 z-10 max-w-[calc(100%-150px)] md:left-5 md:top-5 md:max-w-[calc(100%-220px)]">{notice}</div>}
 
-          {/* Captions, in your language. */}
-          <div className="absolute inset-x-3 bottom-3 z-10 flex flex-col gap-1.5 md:inset-x-6 md:bottom-5" aria-live="polite">
-            {captionsOn &&
-              recent.map((cap) => (
-                <p key={cap.id} className="m-0 max-w-[720px] self-start rounded-[12px] bg-black/70 px-3 py-1.5 text-[15px] leading-snug backdrop-blur md:text-[17px]">
-                  <span className="font-semibold text-white/70">{speaker(c, cap.from, role)}: </span>
-                  {cap.translations[myLanguage] ?? cap.text}
-                </p>
-              ))}
-            {captionsOn && partial && (
-              <p className="m-0 max-w-[720px] self-start rounded-[12px] bg-black/50 px-3 py-1.5 text-[15px] italic leading-snug text-white/80 md:text-[17px]">You: {partial}</p>
-            )}
-            {captionNote && <p className="m-0 self-start rounded-[12px] bg-black/70 px-3 py-1.5 text-[13px] text-[#ffb4ab]">{captionNote}</p>}
-          </div>
         </div>
 
         <footer className="flex items-center justify-center gap-2.5 px-4 py-4 md:gap-3">

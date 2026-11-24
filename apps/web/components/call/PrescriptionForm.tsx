@@ -180,11 +180,20 @@ export function PrescriptionForm({ c, initial, onSaved }: { c: ConsultDetail; in
         </form>
       </div>
 
-      <label className="flex flex-col gap-1 text-[15px] font-semibold">
-        Follow-up date
-        <input type="date" min={tomorrow} value={followUp} onChange={(e) => setFollowUp(e.target.value)} className={cn(SMALL, "self-start")} />
-        <span className="text-[12px] font-normal text-muted">Books your first free slot that day at {c.clinic.name}. Leave empty for none.</span>
-      </label>
+      <div className="flex flex-col gap-1 text-[15px] font-semibold">
+        <label htmlFor="rx-follow-up">Follow-up date (optional)</label>
+        <div className="flex items-center gap-2">
+          <input id="rx-follow-up" type="date" min={tomorrow} value={followUp} onChange={(e) => setFollowUp(e.target.value)} className={SMALL} />
+          {followUp && (
+            <button type="button" onClick={() => setFollowUp("")} className="h-10 rounded-[10px] px-3 text-[14px] font-semibold text-muted hover:bg-pressed hover:text-ink">
+              Clear
+            </button>
+          )}
+        </div>
+        <span className="text-[12px] font-normal text-muted">
+          {followUp ? `Books your first free slot that day at ${c.clinic.name}.` : "No follow-up. Pick a date to book one at the clinic."}
+        </span>
+      </div>
 
       <div className="sticky bottom-0 -mx-4 -mb-4 flex flex-col gap-2 border-t border-line bg-white px-4 py-3 md:-mx-5 md:-mb-5 md:px-5">
         <span className="text-[12px] text-muted">

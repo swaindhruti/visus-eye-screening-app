@@ -12,7 +12,15 @@ import { fmtTime } from "@/lib/consults";
 import { CATEGORIES, TEST_COPY, testInfo } from "@/lib/tests";
 import { cancelTest, pushTest, type ConsultTest, type LiveState } from "@/services/consults";
 
-const EYE_LABEL: Record<Eye, string> = { right: "Right eye", left: "Left eye", both: "Both eyes" };
+/** The eye choice, as the doctor reads it. One-eye tests asked for "both" run right, then left. */
+const CHOICE: Record<Eye, string> = { right: "Right eye only", left: "Left eye only", both: "Both, one at a time" };
+
+/** What the patient is doing for this test: "Left eye only (right eye covered)", "Both eyes together"… */
+function eyeText(testId: TestId, eye: Eye) {
+  if (!testInfo(testId).eachEye) return "Both eyes together";
+  if (eye === "both") return "Both eyes, right then left";
+  return eye === "right" ? "Right eye only (left covered)" : "Left eye only (right covered)";
+}
 
 /**
  * The doctor's live tests: pick a test and an eye, send it to the patient's screen, and see the
@@ -21,7 +29,7 @@ const EYE_LABEL: Record<Eye, string> = { right: "Right eye", left: "Left eye", b
 export function DoctorTests({ consultId, live }: { consultId: string; live?: LiveState }) {
   const client = useQueryClient();
   const [testId, setTestId] = useState<TestId>("amsler");
-  const [eye, setEye] = useState<Eye>("left");
+  const [eye, setEye] = useState<Eye>("right");
   const eachEye = testInfo(testId).eachEye;
   const refresh = () => client.invalidateQueries({ queryKey: ["live", consultId] });
   const push = useMutation({ mutationFn: () => pushTest(consultId, { testId, eye: eachEye ? eye : "both" }), onSuccess: refresh });
@@ -68,11 +76,11 @@ export function DoctorTests({ consultId, live }: { consultId: string; live?: Liv
                 onClick={() => setEye(e)}
                 className={cn("h-10 flex-1 rounded-[12px] border text-[14px] font-semibold transition-colors", (eachEye ? eye : "both") === e ? "border-ink bg-ink text-white" : "border-line-strong bg-white text-ink hover:bg-card-hover")}
               >
-                {EYE_LABEL[e]}
+                {eachEye ? CHOICE[e] : "Both eyes together"}
               </button>
             ))}
           </div>
-          {!eachEye && <span className="font-normal">This test is done with both eyes together.</span>}
+          <span className="font-normal">{eachEye ? `Sends: ${eyeText(testId, eye)}.` : "This test is done with both eyes open together."}</span>
         </div>
         <button
           type="button"
@@ -91,7 +99,7 @@ export function DoctorTests({ consultId, live }: { consultId: string; live?: Liv
           <span className="size-5 flex-none animate-spin rounded-full border-[3px] border-acc/30 border-t-acc" />
           <span className="flex min-w-0 flex-1 flex-col">
             <span className="text-[15px] font-semibold">
-              {TEST_COPY[pending.testId].title} · {EYE_LABEL[pending.eye]}
+              {TEST_COPY[pending.testId].title} · {eyeText(pending.testId, pending.eye)}
             </span>
             <span className="text-[13px] text-ink-soft">On the patient&apos;s screen now. The result shows here when they finish.</span>
           </span>
@@ -120,7 +128,7 @@ function ResultCard({ t }: { t: ConsultTest }) {
     return (
       <div className="flex items-center gap-3 rounded-[16px] border border-dashed border-line px-4 py-3 text-[14px] text-muted">
         <TestIcon id={t.testId} />
-        {TEST_COPY[t.testId].title} · {EYE_LABEL[t.eye]} · cancelled
+        {TEST_COPY[t.testId].title} · {eyeText(t.testId, t.eye)} · cancelled
       </div>
     );
   const flagged = r.status === "see_doctor";
@@ -133,7 +141,7 @@ function ResultCard({ t }: { t: ConsultTest }) {
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="truncate text-[15px] font-semibold">{TEST_COPY[t.testId].title}</span>
           <span className="text-[12px] text-muted">
-            {EYE_LABEL[t.eye]} · sent {fmtTime(t.pushedAt)}
+            {eyeText(t.testId, t.eye)} · sent {fmtTime(t.pushedAt)}
           </span>
         </span>
         <span className="text-[22px] font-bold tabular-nums">{r.score}</span>
@@ -142,7 +150,7 @@ function ResultCard({ t }: { t: ConsultTest }) {
       <p className="m-0 text-[14px] leading-snug text-ink-soft">{r.summary}</p>
       {r.eyes && (
         <div className="flex gap-2">
-          {(["right", "left"] as const).map(
+          {(t.eye === "both" ? (["right", "left"] as const) : t.eye === "right" ? (["right"] as const) : (["left"] as const)).map(
             (side) =>
               r.eyes?.[side] && (
                 <span key={side} className="flex-1 rounded-[10px] bg-fill px-3 py-2 text-[13px]">
