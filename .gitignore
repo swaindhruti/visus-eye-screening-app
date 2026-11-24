@@ -11,3 +11,6 @@ apps/mobile/ios/
 .DS_Store
 ._*
 .claude/settings.local.json
+
+# Written by `next dev` (agent notes); not part of the repo
+apps/web/AGENTS.md

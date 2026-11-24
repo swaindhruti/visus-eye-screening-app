@@ -186,7 +186,7 @@ sequenceDiagram
   Server->>AI: next question in that language
 ```
 
-### Remote consult (final)
+### Remote consult
 
 Spec: [CONSULT.md](CONSULT.md). A clinic books a consult for a linked patient with one of its doctors; the doctor runs a video call from the doctor portal, pushes live tests and writes the prescription.
 
@@ -210,7 +210,7 @@ New tables: `doctors`, `clinic_doctors`, `consults`, `consult_tests`, `consult_c
 | Token | `expo-secure-store` | `localStorage` |
 | Mobile only | Screen Coach: a local Kotlin module that reads usage stats and runs a foreground service with a break overlay | none |
 
-The two clients share the same screens and routes (see [SCREENS.md](SCREENS.md)). Native features load lazily, so the mobile app still runs in Expo Go without them.
+The two clients share the same screens and routes. Native features load lazily, so the mobile app still runs in Expo Go without them.
 
 ## Security and privacy
 

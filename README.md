@@ -2,109 +2,85 @@
   <img src="docs/assets/banner.png" alt="Visus: an AI eye check that runs on any phone. ZEISS BeyondCode'26, Team G302" width="100%">
 </p>
 
-# Visus
+<h1 align="center">Visus</h1>
 
-**An AI eye check that runs on any phone.** Built for ZEISS BeyondCode'26 (theme: *No-Device Vision Intelligence & Accessible Clinical UX*) by Team G302: Dhrutinandan Swain and Siddharta Subudhi.
+<p align="center">
+  <b>An AI eye check on any phone, and an eye doctor on a video call when it's needed.</b><br>
+  ZEISS BeyondCode'26 · <i>No-Device Vision Intelligence & Accessible Clinical UX</i> · Team G302: Dhrutinandan Swain and Sidhartha Subudhi
+</p>
 
-You describe your eye problem in a short chat. An AI agent then picks the right vision tests, and you take them on your phone. After each test the agent re-plans. The check ends with plain-language results, a "see a doctor" flag when the rules call for one, and a ZEISS lens suggestion.
+<p align="center">
+  <a href="https://visus-eye-screening-app.vercel.app"><b>Open the web app</b></a> ·
+  <a href="https://expo.dev/artifacts/eas/wQgq-J_bnLmTDAaEbrhoAYT9W1bqj1kq0rdXuTjo9jM.apk"><b>Android APK</b></a> ·
+  <a href="https://visus-api.dhrutinandan-dev-80e.workers.dev/health">API health</a>
+</p>
 
 > **Screening, not diagnosis.** Visus tells you when to see an eye doctor; it does not replace one.
 
-> **Mid-progress update (9 Nov 2026):** [docs/MID_PROGRESS.md](docs/MID_PROGRESS.md) covers what we added since the first build:
-> - a **shop portal** for optical stores, with patient records and consent-based account linking;
-> - **talk mode in English, Hindi and Odia** with a natural Indian voice (Sarvam AI);
-> - red-flag rules in all three languages;
-> - Sarvam AI working next to Gemini, so a check never stalls.
+## How it works
 
-> **Final submission (in progress, branch `feat/final`):** a **remote consult** that connects a rural clinic's patient to an eye doctor anywhere: video call with live captions in each side's language, live Visus tests pushed by the doctor, and a prescription saved to the patient's, the clinic's and the doctor's records. Spec: [docs/CONSULT.md](docs/CONSULT.md).
+1. **Tell Visus what's wrong**, typing or talking, in English, Hindi or Odia.
+2. **An AI agent picks the vision tests** and re-plans after every result. Red flags come from clinical rules, never from the AI alone.
+3. **Take the tests on your phone**, at real sizes thanks to screen calibration and camera distance.
+4. **Get plain-language results** with a ZEISS lens suggestion, or a "see an eye doctor" flag.
+5. **See a doctor remotely:** a clinic books a video consult with live translated captions, tests the doctor sends to your screen, and a prescription in your language.
 
 ## Features
 
-- **AI intake chat:** Visus AI asks up to 3 short follow-up questions, with quick-reply chips. You can type or speak (voice input). Gemini answers, and Sarvam AI's `sarvam-105b-conversations` steps in when Gemini is slow or busy (it goes first for Hindi and Odia).
-- **English, Hindi and Odia, by voice:** pick a language, or just speak one and Visus AI follows you.
-  - **Talk mode:** each question is read aloud in an Indian voice (Sarvam AI), the app listens until you pause, and your answer is sent.
-  - **Read aloud too:** the test plan, the test instructions, the switch-eye prompts and the result.
-  - **Fallback:** without the Sarvam key, or when its credits run out, the phone's or browser's own voice is used. Settings shows which voice is in use.
-  - Red-flag words are caught in all three languages by rules.
-- **Adaptive test plan:** the AI picks tests only from the test catalog and adds up to 2 tests after a result that needs a closer look. Rules handle the fixed cases.
-- **14 vision tests:**
-  - Distance acuity (Tumbling E) and near reading
-  - Near point, astigmatism dial and red-green test
-  - Amsler grid, contrast sensitivity and peripheral vision
-  - Colour vision plates
-  - Questionnaires for eye risk, eye strain, and glare and night vision
-  - Two kids tests (Tumbling E and colour shapes)
-- **Real sizes:** screen calibration with a bank card gives pixels per mm. Test symbols are drawn at clinical sizes.
-- **Camera distance** (installed app): the front camera measures your face distance. It guides you to the test distance and pauses the test if you move too close or too far.
-- **Red flags from rules, not AI:**
-  - distortion on the Amsler grid, a peripheral field loss or very low acuity;
-  - urgent words in the chat, such as sudden vision loss or flashes.
-  When a rule fires, the app shows a "see an eye doctor" screen.
-- **Check modes:**
-  - full AI check;
-  - 1-minute quick check;
-  - glasses check (without vs. with glasses);
-  - any single test from the Tests library;
-  - a kids flow.
-- **Results:** a score per area and per eye, plain-language meaning, a trend over past checks, and ZEISS lens and coating suggestions.
-- **Share:** PDF report, WhatsApp, or a 24-hour link with a QR code that opens the report on the web.
-- **Family profiles:** add family members (child mode included) and save their glasses prescriptions.
-- **Screen Coach** (Android, installed app):
-  - real screen time from the phone's usage stats, with a weekly view;
-  - 20-20-20 break reminders shown over other apps;
-  - a daily goal (2 h in child mode).
-- **Guest mode:** take any single test without an account. Results are scored but not saved.
-- **Shop portal** (web, `/shop`): an optical shop registers and keeps a record of walk-in patients.
-  - It can run any check for a patient (full AI, quick, glasses, single test).
-  - It can link a patient's own Visus account by mobile number. The patient allows it in their app.
-  - Once linked, the shop sees the patient's past checks, and the checks the shop runs show up in the patient's Results ("At <shop>").
-- **Remote consult** (final, being built): the clinic adds doctors by their Visus ID and books consults for linked patients.
-  - **Doctor portal** (web, `/doctor`): consults, patient file with an AI summary first, the call, live tests, the prescription panel, records.
-  - **The call:** video and voice over Agora, live captions translated between English, Hindi and Odia, audio-only for weak networks.
-  - **Live tests:** the doctor sends a test to the patient's screen and sees the result at once.
-  - **Prescription:** symptoms, observations, glasses power, medicines, daily practices, follow-up date (books the next consult); shown in the patient's language.
-  - **Reminders:** calendar events and a "Join now" banner. The patient joins from their app or at the clinic.
-- **Accessible:** adjustable text size, large touch targets, clinical white test screens, and simple wording.
-
-## Tech
-
-| Part | Stack |
+| | |
 |---|---|
-| Mobile (`apps/mobile`) | Expo SDK 57, Expo Router, React Native, Skia, VisionCamera v5 + ML Kit face detection, `expo-audio` + `expo-speech-recognition` (talk mode), local Kotlin module (Screen Coach), `react-native-agora` + `expo-calendar` (consult), zustand, TanStack Query, EAS Build |
-| Web (`apps/web`) | Next.js (App Router), Tailwind CSS, MediaPipe (camera distance), `agora-rtc-sdk-ng` (consult call), zustand, TanStack Query, Vercel |
-| Server (`apps/server`) | Hono on Cloudflare Workers, Drizzle ORM + `pg`, Postgres on Neon (Hyperdrive in production), zod, JWT + PBKDF2, Gemini API, Sarvam AI through its JS SDK `sarvamai` (Indian voice: bulbul TTS, saaras STT, sarvam-105b-conversations), Agora tokens for the consult call |
-| Shared (`packages/shared`) | zod schemas, types and the test catalog used by all three |
-| Tooling | Bun workspaces (Bun only), TypeScript everywhere |
+| 🧠 **AI eye check** | A short intake chat, then an adaptive test plan from 14 tests: acuity, near reading, astigmatism, red-green, Amsler grid, contrast, peripheral vision, colour plates, questionnaires and two kids' tests. Full, 1-minute, glasses and single-test modes. |
+| 🗣️ **Voice, 3 languages** | Talk mode in English, Hindi and Odia with a natural Indian voice (Sarvam AI); instructions and results read aloud. |
+| 📏 **Clinical sizes, no device** | Bank-card screen calibration (pixels per mm) and front-camera distance that pauses the test when you move. |
+| 🚩 **Rules first, AI second** | Red flags (Amsler distortion, field loss, very low acuity, urgent words) come from rules; Gemini plans and explains, with Sarvam as a backup. |
+| 📊 **Results** | Score per area and per eye, plain meaning, trends, ZEISS lens and coating suggestions; share as PDF, WhatsApp or a QR link. |
+| 👨‍👩‍👧 **Family & habits** | Family profiles with saved glasses; Screen Coach (Android) with real screen time and 20-20-20 breaks. |
+| 🏪 **Clinic portal** (web) | Walk-in patient records, any check on the counter's screen, consent-based linking of a patient's own account, glasses orders. |
+| 🩺 **Remote consult** | Clinics add doctors by Visus ID and book 15-minute slots. Video and voice over Agora, captions translated live, live tests pushed by the doctor, an AI summary of the patient's history (labelled as such), a prescription translated for the patient, automatic follow-up booking and calendar reminders. |
+| ♿ **Accessible** | Adjustable text size, large touch targets, clinical white test screens, simple wording, guest mode without an account. |
 
-## Repo
+## Try it
 
-| Folder | What |
-|---|---|
-| [`apps/mobile`](apps/mobile/README.md) | Android app (Expo) |
-| [`apps/web`](apps/web/README.md) | Web app (Next.js) |
-| [`apps/server`](apps/server/README.md) | API, AI agent, scoring, rules and lens logic |
-| `packages/shared` | Shared types and test catalog |
-| `docs/` | [Remote consult](docs/CONSULT.md), [Mid-progress update](docs/MID_PROGRESS.md), [Setup](docs/SETUP.md), [Architecture](docs/ARCHITECTURE.md), [API](docs/API.md), [Screens](docs/SCREENS.md) |
-| `design/` | Claude Design handoff |
+The web app opens on the landing page. These demo accounts are already linked, so the clinic can book a consult straight away:
 
-## Get started
+| Who | Where | Login | Password |
+|---|---|---|---|
+| Patient | Android app (APK above) | `9000012345` | `visus1234` |
+| Clinic | [web → `/shop/login`](https://visus-eye-screening-app.vercel.app/shop/login) | `clinic@visus.demo` | `visus1234` |
+| Doctor | [web → `/doctor/login`](https://visus-eye-screening-app.vercel.app/doctor/login) | `doctor@visus.demo` | `visus1234` |
 
-**[docs/SETUP.md](docs/SETUP.md)** walks through the whole setup:
-- installing dependencies;
-- secrets and the database;
-- running the server, web and mobile together on one network;
-- the EAS build for the phone;
-- deployment.
+Consult demo: the clinic books the next free slot → the doctor and the patient join → turn on captions → the doctor sends a test → the doctor saves the prescription.
 
-**[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** explains how a check flows through the apps, the server, the rules and the AI.
+## Inside
 
-Quick version (Bun required):
-
-```bash
-bun install                                # repo root
-cd apps/server && bun run dev:phone        # API on :8787
-cd apps/web && bun dev                     # web on :3000
-cd apps/mobile && bunx expo start -c       # Metro; open in the Visus dev build
+```mermaid
+flowchart LR
+  M["📱 Mobile app<br/>Expo · React Native"] --> A
+  W["💻 Web app<br/>Next.js: patient, clinic, doctor"] --> A
+  A["⚙️ API on Cloudflare Workers<br/>Hono · scoring · rules · AI agent"] --> D[("Postgres<br/>Neon + Hyperdrive")]
+  A --> G["Gemini + Sarvam AI"]
+  M <-. "video and voice" .-> V["Agora"]
+  W <-. "video and voice" .-> V
 ```
 
-Contributors: read [`CLAUDE.md`](CLAUDE.md) (rules), [`WORK.md`](WORK.md) (tasks) and `progress/` (status per person).
+All the logic lives on the server; the apps show screens and collect raw answers. Every device in a consult polls one small `/live` route for captions, tests and the prescription.
+
+| Part | Stack | Read more |
+|---|---|---|
+| **Mobile** | Expo SDK 57, Expo Router, Skia, VisionCamera + ML Kit, speech recognition, Agora, a Kotlin module (Screen Coach), EAS | [apps/mobile](apps/mobile/README.md) |
+| **Web** | Next.js (App Router), Tailwind CSS, MediaPipe, Agora web SDK, Vercel | [apps/web](apps/web/README.md) |
+| **Server** | Hono on Cloudflare Workers, Drizzle + Postgres (Neon, Hyperdrive), zod, JWT, Gemini, Sarvam AI, Agora tokens | [apps/server](apps/server/README.md) |
+| **Shared** | zod schemas, types and the test catalog used by all three | `packages/shared` |
+
+Docs: [Setup](docs/SETUP.md) · [Architecture](docs/ARCHITECTURE.md) · [API](docs/API.md) · [Remote consult](docs/CONSULT.md)
+
+## Run it locally
+
+```bash
+bun install                                # repo root (Bun only)
+cd apps/server && bun run dev:phone        # API on :8787
+cd apps/web && bun dev                     # web on :3000
+cd apps/mobile && bunx expo start -c       # Metro; open it in the Visus development build
+```
+
+Secrets, the database and phone setup: [docs/SETUP.md](docs/SETUP.md).

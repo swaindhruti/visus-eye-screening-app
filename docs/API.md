@@ -6,13 +6,13 @@ Hono on Cloudflare Workers. Types come from `packages/shared` (`@visus/shared`).
 - Auth: send `Authorization: Bearer <token>` on every route except `/health`, `/auth/signup`, `/auth/login`, `/shops/register`, `/doctors/register`, `/reports/*`, `/consults/:id/calendar.ics`
 - Errors: `{ "error": "message" }` with a 4xx/5xx status
 
-**D** = Dhrutinandan, **T** = Teammate. Status: planned → mock (apps use mock data) → live.
+**D** = Dhrutinandan, **T** = Sidhartha (who built it). Every route below is live.
 
 | Route | Request | Response | Owner | Status |
 |---|---|---|---|---|
 | `GET /health` | — | `{ ok: true }` | D | live |
 | `POST /auth/signup` | `SignupRequest` | `AuthResponse` (201). 409 if the phone/email is taken. A phone identifier also fills `user.phone` | D | live |
-| `POST /auth/login` | `LoginRequest` | `AuthResponse`. 401 on a wrong password. `user.role` sends the web app to `/shop` (clinic) or `/doctor` (planned: `role: "doctor"` + `visusId`) | D | live |
+| `POST /auth/login` | `LoginRequest` | `AuthResponse`. 401 on a wrong password. `user.role` sends the web app to `/shop` (clinic) or `/doctor` (doctor, with `visusId`); the mobile app is for patients only | D | live |
 | `GET /me` | — | `{ user, profiles: Profile[] }`, owner first. `user.role` is `"user"` or `"shop"` (+ `shopName`) | D | live |
 | `PATCH /me` | `UpdateMeRequest` (`{ phone }`) | `AuthResponse["user"]`. The number shops can link this account by (email sign-ups) | D | live |
 | `GET /profiles` | — | `Profile[]`, owner first | D | live |
@@ -48,7 +48,7 @@ Hono on Cloudflare Workers. Types come from `packages/shared` (`@visus/shared`).
 | `GET /me/shops` | — | `ShopRequest[]`: linked shops | D | live |
 | `DELETE /me/shops/:id` | — | `{ ok: true }`. The shop loses access (it keeps the checks it ran) | D | live |
 
-Server code: `apps/server` (feature folders, see `apps/server/CLAUDE.md`). Smoke test of every route: `apps/server/scripts/smoke.sh`.
+Server code: `apps/server` (feature folders, see `apps/server/README.md`). Smoke test of every route: `apps/server/scripts/smoke.sh`.
 
 ## Languages (English, Hindi, Odia)
 
@@ -84,7 +84,7 @@ An optical shop registers (`POST /shops/register`) and logs in with the normal `
 
 ## Remote consult (final)
 
-Full flow: [CONSULT.md](CONSULT.md). Types: `@visus/shared` → "Remote consult". All **D**. **Status:** live = on `feat/final-d` and in the smoke test; planned = not built yet. Who may call: **C** = clinic (shop account), **Dr** = doctor account, **P** = the patient (personal account), **any** = the consult's doctor, patient or clinic.
+Full flow: [CONSULT.md](CONSULT.md). Types: `@visus/shared` → "Remote consult". All **D**. **Status:** all live and covered by the smoke test. Who may call: **C** = clinic (shop account), **Dr** = doctor account, **P** = the patient (personal account), **any** = the consult's doctor, patient or clinic.
 
 | Route | Who | Request | Response | Status |
 |---|---|---|---|---|

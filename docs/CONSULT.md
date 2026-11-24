@@ -1,10 +1,10 @@
-# Remote consult (final submission)
+# Remote consult
 
 A rural clinic connects its patient to an eye doctor anywhere, by video, with **live captions in each side's language**. During the call the doctor **pushes Visus tests** to the patient's screen and sees the results at once, then writes a **prescription** that lands in the patient's, the clinic's and the doctor's records.
 
 Screening, not diagnosis: the Visus tests and the AI summary help the doctor; the doctor decides. Visus never suggests medicines.
 
-Types: `packages/shared/src/index.ts` → "Remote consult". Routes: [API.md](API.md) → Remote consult. Screens: [SCREENS.md](SCREENS.md) → Remote consult. Tasks: [`WORK.md`](../WORK.md) → Final submission.
+Types: `packages/shared/src/index.ts` → "Remote consult". Routes: [API.md](API.md) → Remote consult.
 
 ## Who does what
 
@@ -74,9 +74,7 @@ sequenceDiagram
 
 **Translation** (`apps/server/src/lib/translate.ts`): Gemini Flash-Lite through the key pool first; Sarvam's `sarvam-105b-conversations` joins the hedge when Gemini is slow or busy (`lib/gemini.ts`); if both fail, the caption is saved untranslated and shown as it is. Medicine names, doses and eye powers are kept as written.
 
-**Two risks to check on day 1** (D, see `WORK.md`):
-- Android may not let `expo-speech-recognition` use the mic while Agora is in a call. Fallback: the doctor portal records the patient's incoming audio track in 5-second pieces (`MediaRecorder`) and sends them to `POST /voice/stt` (Sarvam), so the patient's captions are made on the doctor's side.
-- The browser or phone may not recognise Odia (`or-IN`). Same fallback: 5-second pieces to `/voice/stt`.
+**Live, not perfect:** a caption waits at most 2.5 s for its translation; after that it's saved as said, so the other side sees the original words rather than nothing. Captions are off at the start; turned on, they show in a panel next to the video (the doctor's Captions tab) with the whole conversation. Speech recognition needs Chrome or Edge on the web; some phones don't recognise Odia (`or-IN`).
 
 ## Live tests
 

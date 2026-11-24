@@ -1,17 +1,37 @@
 # Visus API
 
-Hono on Cloudflare Workers, with Postgres on Neon (Drizzle + `pg`) and Gemini for the agent. It owns all the logic: scoring, red-flag rules, AI planning and verdicts, and lens suggestions.
+Hono on Cloudflare Workers, with Postgres on Neon (Drizzle + `pg`, Hyperdrive in production), Gemini and Sarvam AI for the agent and voice, and Agora tokens for the video consult. It owns all the logic: scoring, red-flag rules, AI planning and verdicts, lens suggestions, and the remote consult (booking, captions, live tests, prescriptions).
+
+**Live:** `https://visus-api.dhrutinandan-dev-80e.workers.dev` (`GET /health` → `{"ok":true}`)
 
 - [`docs/API.md`](../../docs/API.md): every route.
 - [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md): how a check flows.
-- [`CLAUDE.md`](CLAUDE.md): layout, owners and rules.
+- [`docs/CONSULT.md`](../../docs/CONSULT.md): the remote consult.
+
+## Layout
+
+```
+src/
+  index.ts                     CORS, error handler, one DB pool per request, mounts the feature routers
+  db/schema.ts                 every table (Drizzle)
+  lib/                         Gemini (hedged models), Sarvam, key pool, translation, Agora token, env
+  features/
+    auth/ profiles/            sign up, log in, JWT; family profiles and glasses
+    intake/ sessions/ agent/   a check: intake chat, plan, re-plan, verdict (rules first, AI second)
+    scoring/ rules/            one scorer per test; red flags and next-test rules
+    lens/ history/             ZEISS lens suggestions; results, trends, share links
+    shops/ orders/             clinic portal: patients, linking by phone, access, glasses orders
+    voice/                     Sarvam text-to-speech and speech-to-text
+    doctors/                   doctor sign-up (Visus ID), clinic links, weekly hours, free slots
+    consults/                  booking, calendar, join, live state, captions, live tests, prescription, patient file
+```
 
 ## Setup
 
 All commands run in `apps/server`, after a `bun install` at the repo root.
 
 ```bash
-cp .dev.vars.example .dev.vars    # fill in the 4 keys below (gitignored, never commit)
+cp .dev.vars.example .dev.vars    # fill in the keys below (gitignored, never commit)
 bun run db:push                   # create the tables
 ```
 
@@ -21,13 +41,16 @@ bun run db:push                   # create the tables
 | `GEMINI_API_KEY` | Google AI Studio key |
 | `JWT_SECRET` | long random string |
 | `PASSWORD_PEPPER` | long random string |
+| `SARVAM_API_KEY` | optional: Indian voice and a second AI model ([dashboard.sarvam.ai](https://dashboard.sarvam.ai)) |
+| `AGORA_APP_ID`, `AGORA_APP_CERTIFICATE` | the Agora project, for video consult tokens |
+| `GEMINI_KEYS`, `SARVAM_KEYS` | optional: extra keys, comma-separated (round robin, a key that hits a limit rests) |
 
 ## Run
 
 | Command | What |
 |---|---|
 | `bun run dev:phone` | Runs the app on Bun at `0.0.0.0:8787` (`src/local.ts`), so phones on your Wi-Fi can reach it. Use this for local integration. |
-| `bun run dev` | Runs on the local Workers runtime (wrangler). Neon's certificate is publicly trusted, so no CA file is needed. |
+| `CONSULT_JOIN_EARLY_MIN=30 bun run dev:phone` | Same, with consults joinable 30 min before the start (default 10), handy for a demo |
 | `bun run smoke` | Checks every route against a running server. Use `API=https://… bun run smoke` for a deployed one. |
 | `bun run typecheck` | TypeScript check |
 | `bun run db:push` | Syncs the Drizzle schema (`src/db/schema.ts`) to the database |
@@ -38,13 +61,16 @@ Health check: `GET /health` → `{"ok":true}`.
 
 ```bash
 bunx wrangler login
-bunx wrangler hyperdrive create visus-db --connection-string="<DATABASE_URL>"   # add the id to wrangler.jsonc
-bunx wrangler secret put DATABASE_URL       # and GEMINI_API_KEY, JWT_SECRET, PASSWORD_PEPPER
-bunx wrangler deploy
+bunx wrangler hyperdrive create visus-db --connection-string="<Neon direct URL>"   # add the id to wrangler.jsonc
+bunx wrangler hyperdrive update <id> --caching-disabled true                      # always read fresh data
+bunx wrangler secret bulk .dev.vars                                                # the same secrets as local
+bun run deploy
 API=https://visus-api.<subdomain>.workers.dev bun run smoke
 ```
 
-Before deploying, set `WEB_URL` in `wrangler.jsonc` to the web app's URL; share links point there. [`CLAUDE.md`](CLAUDE.md#deploy-dhrutinandan) has the full deploy steps.
+- Use Neon's **direct** connection string for Hyperdrive (connection pooling off); Hyperdrive pools the connections itself.
+- Keep `JWT_SECRET` and `PASSWORD_PEPPER` the same as local, or existing accounts can't log in.
+- `wrangler.jsonc` sets `WEB_URL` (the Vercel app: report and join links) and `CONSULT_JOIN_EARLY_MIN`.
 
 ## AI
 
