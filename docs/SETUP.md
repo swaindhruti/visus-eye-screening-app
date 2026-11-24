@@ -164,14 +164,15 @@ The `preview` profile bakes its `env` from `eas.json` into the APK. Set `EXPO_PU
 | The app says it can't reach the server | Make sure the phone and the computer are on the same network and the IP in `.env` is current. Open `http://<IP>:8787/health` on the phone, then restart Metro with `-c`. |
 | AI answers are slow or generic | Gemini is slow or busy. The server races the models in `src/lib/gemini.ts` and falls back to rules after 7 s, so the check still works. |
 | EAS fails with `Unknown lockfile version` | Keep `"bun": "1.4.2"` in the `base` profile of `eas.json`. |
-| Expo Go crashes on a native module | Use the development build, or `--go`; native code must load lazily (see `apps/mobile/CLAUDE.md`). |
+| Expo Go crashes on a native module | Use the development build, or `--go`; native code must load lazily (see `apps/mobile/README.md` → Native features). |
+| The live API (`*.workers.dev`) doesn't load, but `/health` works on mobile data | Some Wi-Fi networks block `*.workers.dev`. Use mobile data or a hotspot on the phone and the laptop. |
 | Camera distance or Screen Coach missing | They only exist in the installed Visus build, not in Expo Go. Screen Coach also needs *Usage access* and *Display over other apps*. |
 
 ## 8. Deploy
 
 | App | How |
 |---|---|
-| Server (Cloudflare Workers) | Follow the steps in [`apps/server/CLAUDE.md`](../apps/server/CLAUDE.md#deploy-dhrutinandan): `bunx wrangler login`, then create Hyperdrive for the Neon URL, `bunx wrangler secret put` each secret, and `bunx wrangler deploy`. Check it with `API=https://visus-api.<subdomain>.workers.dev bun run smoke`. |
+| Server (Cloudflare Workers) | Follow [`apps/server/README.md`](../apps/server/README.md#deploy): `bunx wrangler login`, create Hyperdrive for the Neon URL (caching off), `bunx wrangler secret bulk .dev.vars`, then `bun run deploy`. Check it with `API=https://visus-api.<subdomain>.workers.dev bun run smoke`. |
 | Web (Vercel) | Import the repo with root directory `apps/web`. Set `NEXT_PUBLIC_API_URL` to the Worker URL and `NEXT_PUBLIC_USE_MOCK=0`. Every push to `main` deploys. |
 | Mobile | Point the `preview` env in `eas.json` to the Worker URL, then run `bunx eas-cli build --profile preview --platform android` and share the APK link. |
 
