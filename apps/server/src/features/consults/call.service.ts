@@ -14,6 +14,9 @@ import { doctorsById } from '../doctors/doctors.service';
 import { createVerdict, submitResult } from '../sessions/sessions.service';
 import { canJoin, consultFor, joinEarlyMs, statusOf, toSummaries, type ConsultRow, type Urls } from './consults.service';
 
+/** How long a caption waits for its translation before it's saved untranslated. */
+const CAPTION_WAIT_MS = 2500;
+
 type TestRow = typeof consultTests.$inferSelect;
 type CaptionRow = typeof consultCaptions.$inferSelect;
 
@@ -106,7 +109,10 @@ export async function addCaption(db: Db, env: Bindings, userId: string, id: stri
   // The doctor reads their first language; the patient and the clinic read the consult's language.
   const targets: Language[] = role === 'doctor' ? [row.language] : [doctor.languages[0] ?? 'en', ...(role === 'patient' ? [row.language] : [])];
   const text = input.text.trim();
-  const translations = await translateCaption(env.GEMINI_API_KEY, text, input.language, targets);
+  // Captions must feel live: wait for the translation at most 2.5 s, else save the words as said
+  // (the other side sees the original rather than nothing).
+  const giveUp = new Promise<Partial<Record<Language, string>>>((done) => setTimeout(() => done({}), CAPTION_WAIT_MS));
+  const translations = await Promise.race([translateCaption(env.GEMINI_API_KEY, text, input.language, targets), giveUp]);
   const [saved] = await db.insert(consultCaptions).values({ consultId: row.id, fromRole: role, language: input.language, text, translations }).returning();
   return toCaption(saved);
 }
