@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { CallStage } from "@/components/call/CallStage";
 import { DoctorTests } from "@/components/call/DoctorTests";
 import { PrescriptionForm } from "@/components/call/PrescriptionForm";
+import { Transcript } from "@/components/call/Transcript";
 import { useAgoraCall } from "@/components/call/useAgoraCall";
 import { useCaptions } from "@/components/call/useCaptions";
 import { useLiveConsult } from "@/components/call/useLiveConsult";
@@ -15,8 +16,7 @@ import { cn } from "@/components/cn";
 import { Icon } from "@/components/Icon";
 import { useMe } from "@/components/ShopShell";
 import { LoadingState } from "@/components/States";
-import { fmtTime } from "@/lib/consults";
-import { endConsult, getConsult, getPrescription, joinConsult, type Caption, type ConsultDetail } from "@/services/consults";
+import { endConsult, getConsult, getPrescription, joinConsult, type ConsultDetail } from "@/services/consults";
 import { isDoctor } from "@/services/doctor";
 
 type Tab = "tests" | "rx" | "captions";
@@ -59,7 +59,8 @@ function Room({ c, join }: { c: ConsultDetail; join: NonNullable<Parameters<type
   const call = useAgoraCall(join, remoteRef, localRef);
   const { live, captions } = useLiveConsult(c.id, true);
   const myLanguage = c.doctor.languages[0] ?? "en";
-  const [captionsOn, setCaptionsOn] = useState(true);
+  // Captions are off until the doctor turns them on; then the Captions tab shows them as they come.
+  const [captionsOn, setCaptionsOn] = useState(false);
   const cap = useCaptions(c.id, myLanguage, captionsOn);
   const [tab, setTab] = useState<Tab>("tests");
   const [ending, setEnding] = useState(false);
@@ -104,7 +105,18 @@ function Room({ c, join }: { c: ConsultDetail; join: NonNullable<Parameters<type
           {draft.isPending ? <p className="m-0 p-5 text-[15px] text-muted">Loading the draft…</p> : <PrescriptionForm c={c} initial={draft.data ?? null} onSaved={finish} />}
         </div>
         <div className={cn(tab !== "captions" && "hidden")}>
-          <Transcript c={c} captions={captions} myLanguage={myLanguage} />
+          {captionsOn || captions.length ? (
+            <Transcript
+              c={c}
+              role="doctor"
+              captions={captions}
+              myLanguage={myLanguage}
+              partial={cap.partial}
+              note={cap.error ?? (!cap.supported && captionsOn ? "This browser can't make captions (use Chrome); the patient's still show." : null)}
+            />
+          ) : (
+            <p className="m-0 p-5 text-[15px] text-muted">Captions are off. Turn them on with CC below the video: what you both say shows here, translated, and is saved with the consult.</p>
+          )}
         </div>
       </div>
     </>
@@ -115,15 +127,14 @@ function Room({ c, join }: { c: ConsultDetail; join: NonNullable<Parameters<type
       <CallStage
         c={c}
         role="doctor"
-        myLanguage={myLanguage}
         call={call}
         remoteRef={remoteRef}
         localRef={localRef}
-        captions={captions}
-        partial={cap.partial}
         captionsOn={captionsOn}
-        onToggleCaptions={() => setCaptionsOn(!captionsOn)}
-        captionNote={cap.error ?? (!cap.supported && captionsOn ? "This browser can't make captions; the other side's still show." : null)}
+        onToggleCaptions={() => {
+          if (!captionsOn) setTab("captions");
+          setCaptionsOn(!captionsOn);
+        }}
         onLeave={() => setEnding(true)}
         leaveLabel="End"
         side={side}
@@ -151,26 +162,5 @@ function Room({ c, join }: { c: ConsultDetail; join: NonNullable<Parameters<type
         </div>
       )}
     </>
-  );
-}
-
-/** Every caption of the call, in the doctor's language with the original under it. */
-function Transcript({ c, captions, myLanguage }: { c: ConsultDetail; captions: Caption[]; myLanguage: ConsultDetail["language"] }) {
-  if (!captions.length) return <p className="m-0 p-5 text-[15px] text-muted">Captions show here as you both talk. They are saved with the consult.</p>;
-  return (
-    <ol className="m-0 flex list-none flex-col gap-2.5 p-4 md:p-5">
-      {captions.map((cap) => {
-        const shown = cap.translations[myLanguage] ?? cap.text;
-        return (
-          <li key={cap.id} className={cn("flex flex-col gap-0.5 rounded-[14px] px-3.5 py-2.5", cap.from === "doctor" ? "bg-fill" : "bg-acc-soft")}>
-            <span className="text-[12px] font-semibold text-muted">
-              {cap.from === "doctor" ? "You" : cap.from === "clinic" ? c.clinic.name : c.patient.name} · {fmtTime(cap.at)}
-            </span>
-            <span className="text-[15px] leading-snug">{shown}</span>
-            {shown !== cap.text && <span className="text-[13px] text-muted">{cap.text}</span>}
-          </li>
-        );
-      })}
-    </ol>
   );
 }

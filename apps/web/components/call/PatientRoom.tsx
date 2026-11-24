@@ -16,6 +16,7 @@ import { EYE_LABEL } from "@/tests/types";
 import { CallStage } from "./CallStage";
 import { LiveTest } from "./LiveTest";
 import { useAgoraCall } from "./useAgoraCall";
+import { Transcript } from "./Transcript";
 import { useCaptions } from "./useCaptions";
 import { useLiveConsult } from "./useLiveConsult";
 
@@ -56,7 +57,8 @@ function Room({ c, join, role, back }: { c: ConsultDetail; join: JoinConsultResp
   const { live, captions } = useLiveConsult(c.id, !over);
   const ended = over || live?.status === "completed" || live?.status === "cancelled";
   const myLanguage = c.language;
-  const [captionsOn, setCaptionsOn] = useState(true);
+  // Captions are off until turned on; then they show in a panel next to the video (below it on a phone).
+  const [captionsOn, setCaptionsOn] = useState(false);
   const cap = useCaptions(c.id, myLanguage, captionsOn && !ended);
   // A test the patient closed stays closed until they open it again (or the doctor sends another).
   const [closed, setClosed] = useState<string | null>(null);
@@ -103,15 +105,33 @@ function Room({ c, join, role, back }: { c: ConsultDetail; join: JoinConsultResp
     <CallStage
       c={c}
       role={role}
-      myLanguage={myLanguage}
       call={call}
       remoteRef={remoteRef}
       localRef={localRef}
-      captions={captions}
-      partial={cap.partial}
       captionsOn={captionsOn}
       onToggleCaptions={() => setCaptionsOn(!captionsOn)}
-      captionNote={cap.error ?? (!cap.supported && captionsOn ? "This browser can't make captions; the doctor's still show." : null)}
+      side={
+        captionsOn && (
+          <>
+            <div className="flex flex-none items-center justify-between border-b border-line px-4 py-3">
+              <span className="text-[16px] font-bold">Captions</span>
+              <button type="button" onClick={() => setCaptionsOn(false)} className="h-9 rounded-[10px] px-3 text-[14px] font-semibold text-muted hover:bg-pressed hover:text-ink">
+                Turn off
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <Transcript
+                c={c}
+                role={role}
+                captions={captions}
+                myLanguage={myLanguage}
+                partial={cap.partial}
+                note={cap.error ?? (!cap.supported ? "This browser can't make captions (use Chrome); the doctor's still show." : null)}
+              />
+            </div>
+          </>
+        )
+      }
       onLeave={() => void call.leave().then(() => router.replace(back as Route))}
       notice={notice}
       takeover={testOpen && <LiveTest key={testOpen.id} consultId={c.id} test={testOpen} doctorName={c.doctor.name} onClose={() => setClosed(testOpen.id)} />}
