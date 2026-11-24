@@ -1,6 +1,6 @@
 # Visus mobile
 
-The Android app: an Expo SDK 57 app using Expo Router. For the full stack, see [`docs/SETUP.md`](../../docs/SETUP.md). For rules and structure, see [`CLAUDE.md`](CLAUDE.md). Every screen and route is listed in [`docs/SCREENS.md`](../../docs/SCREENS.md).
+The patient app for Android: an Expo SDK 57 app using Expo Router. Eye checks with the AI agent, results and lens suggestions, family profiles, Screen Coach, and the **video consult** a clinic books (join the call, captions, live tests from the doctor, prescriptions). Clinic and doctor accounts use the web portals instead. For the full stack, see [`docs/SETUP.md`](../../docs/SETUP.md).
 
 ## Setup
 
@@ -54,6 +54,8 @@ bunx eas-cli build --profile preview --platform android        # standalone APK
 | Talk mode (Indian voice, English / Hindi / Odia) | `src/services/talk.ts`: `speak()` plays `POST /voice/tts` (MP3), `useTalk().hear()` records with `expo-audio` until a pause and sends it to `POST /voice/stt`; `src/components/VoiceOrb.tsx` | microphone permission. `expo-audio`/`expo-file-system` are in Expo Go; an installed app needs a **new development build** (made after 2026-11-09), otherwise talk mode uses the phone's own voice |
 | Screen Coach (screen time, weekly view, 20-20-20 breaks) | `modules/screen-coach` (Kotlin), `src/services/coach.ts`, `src/app/coach/*` | *Usage access* and *Display over other apps* |
 | Check reminders | `src/services/reminders.ts` (`expo-notifications`) | notification permission |
+| Video consult call | `src/components/ConsultCall.tsx` (`react-native-agora`), loaded lazily by `src/app/consults/[id]/call.tsx`; captions with `expo-speech-recognition` | camera and microphone permission |
+| Add a consult to the calendar | `src/services/calendar.ts` (`expo-calendar`, alarms 1 h and 10 min before; falls back to the phone's event form, then the Google Calendar link) | calendar permission |
 
 Native code is never imported at the top of a file that Expo Go loads. It goes through `requireOptionalNativeModule` or `lazy(() => import(...))`, so the app keeps working in Expo Go.
 

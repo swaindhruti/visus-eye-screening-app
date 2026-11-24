@@ -1,15 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-
-import { getToken } from "@/services/api";
-import { isGuest } from "@/services/auth";
-
+/** The site opens on the landing page; people log in or sign up from there. */
 export default function Index() {
-  const router = useRouter();
-  useEffect(() => {
-    router.replace(getToken() ? "/home" : isGuest() ? "/tests" : "/welcome");
-  }, [router]);
-  return null;
+  redirect("/welcome");
 }

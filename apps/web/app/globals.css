@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Visus theme from the Claude Design handoff (design/README.md). Light only. */
+/* Visus theme (from the Claude Design handoff). Light only. */
 @theme {
   --font-sans: var(--font-figtree), system-ui, sans-serif;
 

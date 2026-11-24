@@ -1,6 +1,8 @@
 # Visus web
 
-The web app, built with Next.js (App Router) and Tailwind CSS. It has the same screens and routes as the mobile app ([`docs/SCREENS.md`](../../docs/SCREENS.md)), except the mobile-only Screen Coach. It also serves the shared report page at `/r/<token>`. For the full stack, see [`docs/SETUP.md`](../../docs/SETUP.md). For rules and structure, see [`CLAUDE.md`](CLAUDE.md).
+The web app, built with Next.js (App Router) and Tailwind CSS: the landing page, the patient app (same screens and routes as the mobile app, except the mobile-only Screen Coach), the **clinic portal** (`/shop`), the **doctor portal** (`/doctor`) and the shared report page (`/r/<token>`). For the full stack, see [`docs/SETUP.md`](../../docs/SETUP.md).
+
+**Live:** https://visus-eye-screening-app.vercel.app (opens on the landing page, `/welcome`)
 
 ## Setup
 
