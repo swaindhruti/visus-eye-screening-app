@@ -10,6 +10,7 @@ import { Icon } from "@/components/Icon";
 import { Screen } from "@/components/Screen";
 import { LinkBadge, useShopReady } from "@/components/ShopShell";
 import { ErrorState } from "@/components/States";
+import { SkeletonRows } from "@/components/Skeleton";
 import { fmtFull, fmtShort, useToday } from "@/lib/dates";
 import { initials } from "@/services/profiles";
 import { listPatients, type ShopPatient } from "@/services/shops";
@@ -92,7 +93,7 @@ export default function ShopHome() {
           {patients.map((p, i) => (
             <PatientRow key={p.id} p={p} first={i === 0} />
           ))}
-          {list.isPending && <p className="m-0 p-4 text-[15px] text-muted">Loading patients…</p>}
+          {list.isPending && <SkeletonRows label="Loading patients…" />}
         </div>
       )}
     </Screen>

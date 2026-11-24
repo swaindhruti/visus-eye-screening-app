@@ -14,6 +14,7 @@ import { Screen } from "@/components/Screen";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useShopReady } from "@/components/ShopShell";
 import { ErrorState } from "@/components/States";
+import { SkeletonCards } from "@/components/Skeleton";
 import { fmtFull, fmtShort } from "@/lib/dates";
 import { addPayment, getOrder, ORDER_KIND, ORDER_STATUS, PAYMENT_METHOD, rupees, updateOrder, type OrderStatus, type ShopOrder } from "@/services/orders";
 
@@ -32,7 +33,7 @@ export default function OrderPage() {
     return (
       <Screen gap="gap-4">
         <ScreenHeader title="Order" fallback="/shop/orders" />
-        <p className="m-0 text-[15px] text-muted">Loading…</p>
+        <SkeletonCards count={3} label="Loading the order…" />
       </Screen>
     );
 

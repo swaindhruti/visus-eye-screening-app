@@ -1,6 +1,6 @@
 import type { AuthResponse, LoginRequest, SignupRequest } from '@visus/shared';
 
-import { mockDelay, request, USE_MOCK } from '@/services/api';
+import { mockDelay, request, USE_MOCK, WEB_URL } from '@/services/api';
 import { mockLogin, mockSignup } from '@/services/mock/auth';
 import { useAuth } from '@/store/auth';
 
@@ -21,9 +21,12 @@ export async function signup(input: SignupInput): Promise<User> {
   return start(auth);
 }
 
-/** POST /auth/login */
+/** POST /auth/login. The app is for patients: clinic (shop) and doctor accounts use the web portal, so they are not signed in here. */
 export async function login(input: LoginInput): Promise<User> {
   const auth = USE_MOCK ? await mockDelay(mockLogin(input)) : await request<Auth>('/auth/login', { method: 'POST', body: input });
+  const role = auth.user.role ?? 'user';
+  if (role === 'shop') throw new Error(`This is a clinic account. Clinics use the Visus portal on the web: ${WEB_URL}/shop`);
+  if (role === 'doctor') throw new Error(`This is a doctor account. Doctors use the Visus portal on the web: ${WEB_URL}/doctor`);
   return start(auth);
 }
 

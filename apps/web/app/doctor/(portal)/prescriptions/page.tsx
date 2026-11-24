@@ -10,6 +10,7 @@ import { Icon } from "@/components/Icon";
 import { PrescriptionCard } from "@/components/PrescriptionCard";
 import { Screen } from "@/components/Screen";
 import { ErrorState } from "@/components/States";
+import { SkeletonCards } from "@/components/Skeleton";
 import { listDoctorPrescriptions } from "@/services/doctor";
 
 /** R7: every prescription this doctor saved, newest first. `?consult=<id>` opens that one. */
@@ -44,7 +45,7 @@ export default function DoctorPrescriptions() {
         />
       </label>
 
-      {list.isPending && <p className="m-0 text-[15px] text-muted">Loading prescriptions…</p>}
+      {list.isPending && <SkeletonCards count={3} label="Loading prescriptions…" />}
       {list.isSuccess && shown.length === 0 && (
         <div className="flex flex-col items-center px-3 py-12 text-center">
           <span className="grid size-[72px] place-items-center rounded-full border border-line bg-white">

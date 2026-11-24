@@ -11,6 +11,7 @@ import { TextField } from "@/components/Field";
 import { Icon } from "@/components/Icon";
 import { Screen } from "@/components/Screen";
 import { ErrorState } from "@/components/States";
+import { SkeletonPage } from "@/components/Skeleton";
 import { getDoctor, updateDoctor, type DoctorAccount } from "@/services/doctor";
 
 /** R8: the doctor's Visus ID (with Copy), their details (editable) and their login. */
@@ -24,7 +25,7 @@ export default function DoctorAccountPage() {
   return (
     <Screen wide gap="gap-5 md:gap-7" eyebrow="Doctor portal" title="Account">
       {!a ? (
-        <p className="m-0 text-[15px] text-muted">Loading…</p>
+        <SkeletonPage label="Loading your account…" />
       ) : (
         <div className="flex flex-col gap-5 md:flex-row md:items-start md:gap-6">
           <DoctorForm a={a} />

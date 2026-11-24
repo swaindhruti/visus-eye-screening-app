@@ -5,11 +5,14 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Icon } from '@/components/Icon';
 import { Text } from '@/components/Text';
 import { consultWhen, drName } from '@/constants/consult';
-import { Colors, Fonts, Radius } from '@/constants/theme';
+import { Colors, Fonts, Radius, StatusColors } from '@/constants/theme';
 import { joinable, listMyConsults, type ConsultSummary } from '@/services/consults';
 
+// Red tint (the design's "see a doctor" colours) so the consult is the first thing on Home.
+const RED = StatusColors.see_doctor;
+
 /**
- * Home: the next consult a clinic booked for you ("Consult with Dr X · Today 4:15 pm"), with
+ * Home (top): the next consult a clinic booked for you ("Consult with Dr X · Today 4:15 pm"), with
  * "Join now" from 10 minutes before the start. Nothing when there is none.
  */
 export function ConsultCard() {
@@ -41,7 +44,7 @@ export function ConsultCard() {
       onPress={() => router.push({ pathname: '/consults/[id]', params: { id: next.id } })}
       style={[styles.card, canJoin && styles.live]}>
       <View style={[styles.icon, canJoin && styles.iconLive]}>
-        <Icon name="video" size={20} color={canJoin ? Colors.white : Colors.accInk} strokeWidth={1.9} />
+        <Icon name="video" size={20} color={Colors.white} strokeWidth={1.9} />
       </View>
       <View style={styles.text}>
         <Text style={[styles.title, canJoin && styles.white]} numberOfLines={1}>
@@ -59,22 +62,22 @@ export function ConsultCard() {
           <Text style={styles.joinText}>Join now</Text>
         </Pressable>
       ) : (
-        <Icon name="chevronRight" size={16} color={Colors.faint} strokeWidth={2.2} />
+        <Icon name="chevronRight" size={16} color={RED.fg} strokeWidth={2.2} />
       )}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 20, borderWidth: 1, borderColor: Colors.accSoft, backgroundColor: Colors.card },
-  live: { backgroundColor: Colors.hero, borderColor: Colors.hero },
-  icon: { width: 40, height: 40, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.accSoft },
-  iconLive: { backgroundColor: 'rgba(255,255,255,0.14)' },
+  card: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 20, borderWidth: 1, borderColor: '#F2C9C3', backgroundColor: RED.bg },
+  live: { backgroundColor: RED.dot, borderColor: RED.dot },
+  icon: { width: 40, height: 40, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: RED.dot },
+  iconLive: { backgroundColor: 'rgba(255,255,255,0.2)' },
   text: { flex: 1, minWidth: 0, gap: 2 },
-  title: { fontFamily: Fonts.semibold, fontSize: 16, color: Colors.ink },
-  sub: { fontFamily: Fonts.regular, fontSize: 14, color: Colors.muted },
+  title: { fontFamily: Fonts.semibold, fontSize: 16, color: RED.fg },
+  sub: { fontFamily: Fonts.regular, fontSize: 14, color: Colors.inkSoft },
   white: { color: Colors.white },
-  whiteSoft: { color: 'rgba(255,255,255,0.72)' },
+  whiteSoft: { color: 'rgba(255,255,255,0.85)' },
   join: { paddingHorizontal: 14, height: 38, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.white },
-  joinText: { fontFamily: Fonts.semibold, fontSize: 14, color: Colors.ink },
+  joinText: { fontFamily: Fonts.semibold, fontSize: 14, color: RED.fg },
 });

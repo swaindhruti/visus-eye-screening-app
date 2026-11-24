@@ -16,6 +16,7 @@ import { OrderRow } from "@/components/Orders";
 import { PrescriptionCard } from "@/components/PrescriptionCard";
 import { LinkBadge, useShopReady } from "@/components/ShopShell";
 import { ErrorState } from "@/components/States";
+import { SkeletonCards, SkeletonRows } from "@/components/Skeleton";
 import { canJoin, useNow } from "@/lib/consults";
 import { MONTHS } from "@/lib/dates";
 import { sessionSub, sessionTitle } from "@/lib/history";
@@ -37,7 +38,7 @@ export default function Patient() {
 
   if (q.isError) return <ErrorState title="Couldn't open this patient" body={q.error.message} onRetry={() => q.refetch()} retrying={q.isFetching} />;
   const p = q.data;
-  if (!p) return <Screen gap="gap-4"><ScreenHeader title="Patient" fallback="/shop" /><p className="m-0 text-[15px] text-muted">Loading…</p></Screen>;
+  if (!p) return <Screen gap="gap-4"><ScreenHeader title="Patient" fallback="/shop" /><SkeletonCards count={3} label="Loading the patient…" /></Screen>;
 
   const child = p.age < 13;
   const begin = (mode: CheckMode, testId?: TestId) => {
@@ -347,7 +348,7 @@ function ConsultsSection({ p }: { p: PatientDetail }) {
                 />
               ))}
             {q.isSuccess && consults.length === 0 && <p className="m-0 p-4 text-[15px] text-muted">No consults yet.</p>}
-            {(q.isPending || !now) && <p className="m-0 p-4 text-[15px] text-muted">Loading consults…</p>}
+            {(q.isPending || !now) && <SkeletonRows rows={2} label="Loading consults…" />}
           </div>
           {prescriptions.length > 0 && (
             <>
@@ -386,8 +387,10 @@ function OrdersCard({ patientId }: { patientId: string }) {
             <OrderRow key={o.id} o={o} first={i === 0} />
           ))}
         </div>
+      ) : q.isPending ? (
+        <SkeletonRows rows={1} label="Loading orders…" />
       ) : (
-        <p className="m-0 text-[15px] text-muted">{q.isPending ? "Loading…" : "No orders yet."}</p>
+        <p className="m-0 text-[15px] text-muted">No orders yet.</p>
       )}
     </section>
   );
